@@ -269,8 +269,8 @@ class ChoraMediaLibraryService : MediaLibraryService() {
             .setAudioAttributes(AudioAttributes.DEFAULT, true)
             .build()
 
-        player.repeatMode = Player.REPEAT_MODE_OFF
-        player.shuffleModeEnabled = false
+        player.repeatMode = Player.REPEAT_MODE_ALL
+        player.shuffleModeEnabled = true
 
         var playerScrobbled = false
 

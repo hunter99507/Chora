@@ -25,6 +25,8 @@ class SongHelper {
             val safeIndex = index.coerceIn(0, playableItems.size - 1)
 
             withContext(Dispatchers.Main) {
+                mediaController?.repeatMode = androidx.media3.common.Player.REPEAT_MODE_ALL
+                mediaController?.shuffleModeEnabled = true
                 mediaController?.setMediaItems(playableItems, safeIndex, 0)
                 mediaController?.prepare()
                 mediaController?.play()
