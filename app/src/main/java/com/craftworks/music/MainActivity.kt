@@ -216,6 +216,21 @@ class MainActivity : ComponentActivity() {
 
                 val isTv = LocalConfiguration.current.uiMode and
                         Configuration.UI_MODE_TYPE_MASK == Configuration.UI_MODE_TYPE_TELEVISION
+                val isWideScreen = LocalWindowInfo.current.containerSize.width >= dpToPx(640)
+
+                LaunchedEffect(isTv, isWideScreen) {
+                    SongHelper.expandNowPlayingSheet.collect {
+                        try {
+                            if (isTv || isWideScreen) {
+                                navController.navigate(Screen.NowPlayingLandscape.route) {
+                                    launchSingleTop = true
+                                }
+                            } else {
+                                scaffoldState.bottomSheetState.expand()
+                            }
+                        } catch (_: Exception) {}
+                    }
+                }
 
                 if (isTv) {
                     // Set background color to colorScheme.background
@@ -239,22 +254,6 @@ class MainActivity : ComponentActivity() {
                     }
 
                     onBackPressedDispatcher.addCallback(this, backCallback)
-
-                    val isWideScreen = LocalWindowInfo.current.containerSize.width >= dpToPx(640)
-
-                    LaunchedEffect(scaffoldState, isWideScreen) {
-                        SongHelper.expandNowPlayingSheet.collect {
-                            try {
-                                if (isWideScreen) {
-                                    navController.navigate(Screen.NowPlayingLandscape.route) {
-                                        launchSingleTop = true
-                                    }
-                                } else {
-                                    scaffoldState.bottomSheetState.expand()
-                                }
-                            } catch (_: Exception) {}
-                        }
-                    }
 
                     Scaffold(
                         bottomBar = {
