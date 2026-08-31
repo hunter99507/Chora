@@ -207,13 +207,6 @@ fun NowPlayingPortrait(
                 val artworkHeight = (LocalConfiguration.current.screenHeightDp.dp * 0.51f).coerceAtLeast(380.dp)
                 var totalDrag by remember { mutableFloatStateOf(0f) }
                 var isForward by remember { mutableStateOf(true) }
-                var lastMediaIndex by remember { mutableIntStateOf(mediaController?.currentMediaItemIndex ?: 0) }
-
-                val currentIndex = mediaController?.currentMediaItemIndex ?: 0
-                if (currentIndex != lastMediaIndex) {
-                    isForward = currentIndex >= lastMediaIndex
-                    lastMediaIndex = currentIndex
-                }
 
                 Box(
                     modifier = Modifier

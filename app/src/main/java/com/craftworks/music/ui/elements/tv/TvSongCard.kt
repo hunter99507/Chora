@@ -66,11 +66,8 @@ fun TvHorizontalSongCard(
                         SubcomposeAsyncImage(
                             model = ImageRequest.Builder(context)
                                 .data(song.mediaMetadata.artworkUri)
+                                .diskCachePolicy(coil.request.CachePolicy.DISABLED)
                                 .crossfade(true)
-                                .size(64)
-                                .diskCacheKey(
-                                    song.mediaMetadata.extras?.getString("navidromeID") ?: song.mediaId
-                                )
                                 .build(),
                             contentDescription = null,
                             contentScale = ContentScale.FillHeight,

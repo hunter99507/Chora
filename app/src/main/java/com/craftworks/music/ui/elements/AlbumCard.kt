@@ -60,10 +60,8 @@ fun AlbumCard(
             SubcomposeAsyncImage(
                 model = ImageRequest.Builder(context)
                     .data(album.mediaMetadata.artworkUri)
+                    .diskCachePolicy(coil.request.CachePolicy.DISABLED)
                     .crossfade(true)
-                    .diskCacheKey(
-                        album.mediaMetadata.extras?.getString("navidromeID") ?: album.mediaId
-                    )
                     .build(),
                 contentDescription = "Album Image",
                 contentScale = ContentScale.Crop,

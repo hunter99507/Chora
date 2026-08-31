@@ -47,10 +47,8 @@ fun ArtistCard(artist: MediaData.Artist, onClick: () -> Unit) {
         SubcomposeAsyncImage (
             model = ImageRequest.Builder(LocalContext.current)
                 .data(artist.artistImageUrl)
+                .diskCachePolicy(coil.request.CachePolicy.DISABLED)
                 .crossfade(true)
-                .diskCacheKey(
-                    artist.navidromeID
-                )
                 .build(),
             contentScale = ContentScale.Crop,
             contentDescription = "Album Image",
