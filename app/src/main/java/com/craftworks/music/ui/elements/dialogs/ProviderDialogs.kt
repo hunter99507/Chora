@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -44,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
@@ -55,6 +57,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavHostController
 import com.craftworks.music.R
 import com.craftworks.music.data.NavidromeProvider
@@ -172,15 +175,21 @@ fun CreateMediaProviderDialog(
 
     var dir: String by remember { mutableStateOf("/Music/") }
     val coroutineScope = rememberCoroutineScope()
+    val configuration = LocalConfiguration.current
+    val maxDialogHeight = (configuration.screenHeightDp * 0.88f).dp
 
-    Dialog(onDismissRequest = { setShowDialog(false) }) {
+    Dialog(
+        onDismissRequest = { setShowDialog(false) },
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Column(
             modifier = Modifier
+                .widthIn(min = 280.dp, max = 360.dp)
+                .heightIn(max = maxDialogHeight)
                 .shadow(12.dp, RoundedCornerShape(24.dp))
                 .clip(RoundedCornerShape(24.dp))
                 .background(MaterialTheme.colorScheme.surface)
                 .padding(24.dp)
-                .widthIn(max = 340.dp)
                 .verticalScroll(rememberScrollState())
                 .dialogFocusable()
                 .selectableGroup(),
