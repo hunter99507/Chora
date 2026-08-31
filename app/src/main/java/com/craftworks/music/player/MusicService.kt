@@ -466,9 +466,19 @@ class ChoraMediaLibraryService : MediaLibraryService() {
                 .add(SessionCommand(CUSTOM_ACTION_REPEAT, Bundle.EMPTY))
                 .build()
 
-            val playerCommands = MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
+            val playerCommands = session.player.availableCommands.buildUpon()
                 .add(Player.COMMAND_SET_SHUFFLE_MODE)
                 .add(Player.COMMAND_SET_REPEAT_MODE)
+                .add(Player.COMMAND_PLAY_PAUSE)
+                .add(Player.COMMAND_PREPARE)
+                .add(Player.COMMAND_STOP)
+                .add(Player.COMMAND_SEEK_TO_DEFAULT_POSITION)
+                .add(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+                .add(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+                .add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+                .add(Player.COMMAND_SEEK_TO_MEDIA_ITEM)
+                .add(Player.COMMAND_SET_MEDIA_ITEM)
+                .add(Player.COMMAND_CHANGE_MEDIA_ITEMS)
                 .build()
 
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
@@ -609,7 +619,22 @@ class ChoraMediaLibraryService : MediaLibraryService() {
                     return Futures.immediateFuture(folderQueue)
                 }
 
-                // Not found in the current folder
+                // Check if it's an album that needs its songs loaded
+                val albumSongs = runBlocking { albumRepository.getAlbum(requestedId) }
+                if (!albumSongs.isNullOrEmpty()) {
+                    val songsList = if (albumSongs.size > 1) albumSongs.subList(1, albumSongs.size) else albumSongs
+                    val queue = songsList.map { it.buildUpon().setUri(it.mediaId).build() }
+                    return Futures.immediateFuture(queue)
+                }
+
+                // Check if it's a playlist
+                val playlistSongs = runBlocking { playlistRepository.getPlaylistSongs(requestedId) }
+                if (playlistSongs.isNotEmpty()) {
+                    val queue = playlistSongs.map { it.buildUpon().setUri(it.mediaId).build() }
+                    return Futures.immediateFuture(queue)
+                }
+
+                // Not found in folder, check other cached items
                 val cachedItem = aPlaylistScreenItems.find { it.mediaId == requestedId }
                     ?: aRadioScreenItems.find { it.mediaId == requestedId }
                     ?: aAlbumScreenItems.find { it.mediaId == requestedId }
