@@ -215,17 +215,18 @@ fun NowPlayingPortrait(
         }
         //endregion
 
-        //region Middle Section: Center of Title Area Exactly In Between Artwork & Controls
+        //region Middle Section: Shifted Down Title & Seekbar Area
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.BottomCenter
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
