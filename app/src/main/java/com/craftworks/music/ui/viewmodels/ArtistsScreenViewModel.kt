@@ -72,6 +72,10 @@ class ArtistsScreenViewModel @Inject constructor(
         return albumRepository.getAlbum(id) ?: emptyList()
     }
 
+    suspend fun getArtistAlbums(artistId: String): List<MediaItem> {
+        return artistRepository.getArtistAlbums(artistId)
+    }
+
 //    suspend fun search(query: String) {
 //        _allArtists.value = artistRepository.searchArtists(query)
 //    }

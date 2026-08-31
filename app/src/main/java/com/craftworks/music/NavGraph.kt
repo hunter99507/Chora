@@ -251,7 +251,7 @@ fun SetupNavGraph(
                         TvArtistScreen(navController, viewModel)
                     }
                 else
-                    ArtistsScreen(navController, viewModel)
+                    ArtistsScreen(navController, mediaController, viewModel)
             }
             composable(route = Screen.ArtistDetails.route) { backStackEntry ->
                 val parentEntry = remember(backStackEntry) {

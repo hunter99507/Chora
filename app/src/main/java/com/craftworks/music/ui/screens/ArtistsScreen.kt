@@ -35,18 +35,25 @@ import com.craftworks.music.ui.elements.ArtistsGrid
 import com.craftworks.music.ui.elements.RippleEffect
 import com.craftworks.music.ui.elements.TopBarWithSearch
 import com.craftworks.music.ui.playing.dpToPx
+import androidx.compose.foundation.layout.Row
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.media3.session.MediaController
+import com.craftworks.music.player.SongHelper
 import com.craftworks.music.ui.viewmodels.ArtistsScreenViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @ExperimentalFoundationApi
-@Preview(showBackground = true, showSystemUi = false)
 @Composable
 fun ArtistsScreen(
     navHostController: NavHostController = rememberNavController(),
+    mediaController: MediaController? = null,
     viewModel: ArtistsScreenViewModel = hiltViewModel()
 ) {
     val searchResults by viewModel.searchResults.collectAsStateWithLifecycle()
     val allArtistList by viewModel.allArtists.collectAsStateWithLifecycle()
+
+    val coroutineScope = rememberCoroutineScope()
 
     val state = rememberPullToRefreshState()
     val isRefreshing by viewModel.isLoading.collectAsStateWithLifecycle()
@@ -85,7 +92,29 @@ fun ArtistsScreen(
                         })
                     },
                     extraAction = {
-                        Box {
+                        Row {
+                            IconButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        if (allArtistList.isNotEmpty()) {
+                                            val randomArtist = allArtistList.random()
+                                            val albums = viewModel.getArtistAlbums(randomArtist.navidromeID)
+                                            if (albums.isNotEmpty()) {
+                                                val songs = viewModel.getAlbum(albums.random().mediaId)
+                                                if (songs.isNotEmpty()) {
+                                                    SongHelper.play(songs.shuffled(), 0, mediaController)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = ImageVector.vectorResource(R.drawable.round_shuffle_28),
+                                    contentDescription = "Shuffle random artist songs",
+                                )
+                            }
+
                             IconButton(
                                 onClick = { viewModel.setShowFavoritesOnly(!showFavoritesOnly) }
                             ) {

@@ -42,7 +42,10 @@ import com.craftworks.music.ui.elements.AlbumGrid
 import com.craftworks.music.ui.elements.RippleEffect
 import com.craftworks.music.ui.elements.TopBarWithSearch
 import com.craftworks.music.ui.playing.dpToPx
+import androidx.compose.runtime.rememberCoroutineScope
+import com.craftworks.music.player.SongHelper
 import com.craftworks.music.ui.viewmodels.AlbumScreenViewModel
+import kotlinx.coroutines.launch
 import java.net.URLEncoder
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,6 +58,8 @@ fun AlbumScreen(
 ) {
     val albums by viewModel.allAlbums.collectAsStateWithLifecycle()
     val searchResults by viewModel.searchResults.collectAsStateWithLifecycle()
+
+    val coroutineScope = rememberCoroutineScope()
 
     val state = rememberPullToRefreshState()
     val isRefreshing by viewModel.isLoading.collectAsStateWithLifecycle()
@@ -102,15 +107,33 @@ fun AlbumScreen(
                         },
                         extraAction = {
                             Row {
-                                Box {
-                                    IconButton(
-                                        onClick = { viewModel.setShowFavoritesOnly(!showFavoritesOnly) }
-                                    ) {
-                                        Icon(
-                                            imageVector = ImageVector.vectorResource(if (showFavoritesOnly) androidx.media3.session.R.drawable.media3_icon_heart_filled else androidx.media3.session.R.drawable.media3_icon_heart_unfilled),
-                                            contentDescription = stringResource(R.string.Label_Toggle_Favorites),
-                                        )
+                                IconButton(
+                                    onClick = {
+                                        coroutineScope.launch {
+                                            if (albums.isNotEmpty()) {
+                                                val randomAlbum = albums.random()
+                                                val albumId = randomAlbum.mediaMetadata.extras?.getString("navidromeID") ?: randomAlbum.mediaId
+                                                val songs = viewModel.getAlbum(albumId)
+                                                if (songs.isNotEmpty()) {
+                                                    SongHelper.play(songs.shuffled(), 0, mediaController)
+                                                }
+                                            }
+                                        }
                                     }
+                                ) {
+                                    Icon(
+                                        imageVector = ImageVector.vectorResource(R.drawable.round_shuffle_28),
+                                        contentDescription = "Shuffle random album songs",
+                                    )
+                                }
+
+                                IconButton(
+                                    onClick = { viewModel.setShowFavoritesOnly(!showFavoritesOnly) }
+                                ) {
+                                    Icon(
+                                        imageVector = ImageVector.vectorResource(if (showFavoritesOnly) androidx.media3.session.R.drawable.media3_icon_heart_filled else androidx.media3.session.R.drawable.media3_icon_heart_unfilled),
+                                        contentDescription = stringResource(R.string.Label_Toggle_Favorites),
+                                    )
                                 }
 
                                 Box {

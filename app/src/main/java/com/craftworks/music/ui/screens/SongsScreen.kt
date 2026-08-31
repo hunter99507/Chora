@@ -1,6 +1,7 @@
 package com.craftworks.music.ui.screens
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -107,11 +108,25 @@ fun SongsScreen(
                         )
                     },
                     extraAction = {
-                        Box {
-                            IconButton (
+                        Row {
+                            IconButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        if (allSongsList.isNotEmpty()) {
+                                            SongHelper.play(allSongsList.shuffled(), 0, mediaController)
+                                        }
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = ImageVector.vectorResource(R.drawable.round_shuffle_28),
+                                    contentDescription = "Shuffle all songs",
+                                )
+                            }
+                            IconButton(
                                 onClick = { viewModel.setShowFavoritesOnly(!showFavoritesOnly) }
                             ) {
-                                Icon (
+                                Icon(
                                     imageVector = ImageVector.vectorResource(if (showFavoritesOnly) androidx.media3.session.R.drawable.media3_icon_heart_filled else androidx.media3.session.R.drawable.media3_icon_heart_unfilled),
                                     contentDescription = stringResource(R.string.Label_Toggle_Favorites),
                                 )
