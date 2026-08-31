@@ -61,9 +61,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.Wallpapers
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.UnstableApi
@@ -92,6 +95,7 @@ fun NowPlayingPortrait(
     mediaController: MediaController? = null,
     metadata: MediaMetadata? = null,
     iconColor: Color = Color.White,
+    accentColor: Color = Color(0xFFC89B66),
     lyricsOpen: Boolean = false,
     sleepTimerMinutes: Int = 10,
     onToggleLyrics: () -> Unit = {},
@@ -100,21 +104,13 @@ fun NowPlayingPortrait(
     onOpenSleepTimer: () -> Unit = {},
     onRefreshLyrics: () -> Unit = {}
 ) {
-    val iconTextColor by animateColorAsState(
-        targetValue = iconColor,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessVeryLow
-        ),
-        label = "Animated text color"
+    val animatedAccentColor by animateColorAsState(
+        targetValue = accentColor,
+        animationSpec = tween(durationMillis = 600),
+        label = "Animated Accent Color"
     )
 
     val context = LocalContext.current
-    val settingsManager = remember { AppearanceSettingsManager(context) }
-    val showMoreInfo by settingsManager.showMoreInfoFlow.collectAsStateWithLifecycle(true)
-    val titleAlignment by settingsManager.nowPlayingTitleAlignment.collectAsStateWithLifecycle(
-        NowPlayingAlignment.LEFT
-    )
     val lyrics by LyricsState.lyrics.collectAsStateWithLifecycle()
     val loadingLyrics by LyricsState.loading.collectAsStateWithLifecycle()
 
@@ -124,255 +120,200 @@ fun NowPlayingPortrait(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .navigationBarsPadding(),
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .padding(horizontal = 12.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Column(
+        //region Top Section: Large Artwork / Lyrics
+        AnimatedContent(
+            targetState = isLyricsActive,
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f),
-        ) {
-            Column(
-                Modifier.padding(bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                AnimatedContent(
-                    targetState = isLyricsActive,
-                    modifier = Modifier
-                        .weight(1f, fill = false),
-                    label = "Crossfade between artwork and lyrics view",
-                    transitionSpec = {
-                        val enterSlideSpec = spring<IntOffset>(
-                            dampingRatio = Spring.DampingRatioLowBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
-                        val exitSlideSpec =
-                            tween<IntOffset>(durationMillis = 200, easing = FastOutLinearInEasing)
-                        val exitFadeSpec =
-                            tween<Float>(durationMillis = 200, easing = FastOutLinearInEasing)
-
-                        val enterFadeSpec = if (targetState) {
-                            tween<Float>(durationMillis = 300, delayMillis = 100)
-                        } else {
-                            tween<Float>(durationMillis = 300)
-                        }
-
-                        val direction = if (targetState) 1 else -1
-
-                        (fadeIn(enterFadeSpec) + slideInVertically(enterSlideSpec) { direction * (it / 4) }) togetherWith
-                                (fadeOut(exitFadeSpec) + slideOutVertically(exitSlideSpec) { -direction * (it / 4) }) using
-                                SizeTransform(clip = false)
-                    }
-                ) { showLyrics ->
-                    val laggedOffset by transition.animateFloat(
-                        label = "Artwork Bounce",
-                        transitionSpec = {
-                            spring(
-                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                stiffness = Spring.StiffnessLow
-                            )
-                        }
-                    ) { targetLyricsState ->
-                        if (targetLyricsState == EnterExitState.Visible) 0f else -60f
-                    }
-
-                    if (showLyrics) {
-                        Column(
-                            Modifier
-                                .statusBarsPadding()
-                                .padding(horizontal = 12.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Text(
-                                text = (metadata?.title ?: metadata?.displayTitle).toString(),
-                                style = MaterialTheme.typography.headlineSmallEmphasized,
-                                fontWeight = FontWeight.Bold,
-                                color = iconTextColor,
-                                maxLines = 1,
-                                overflow = TextOverflow.Visible,
-                                softWrap = false,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .marqueeHorizontalFadingEdges(
-                                        marqueeProvider = { Modifier.basicMarquee() })
-                            )
-                            Crossfade(
-                                targetState = metadata?.artist.toString(),
-                                animationSpec = tween(
-                                    durationMillis = 400,
-                                    easing = FastOutSlowInEasing
-                                ),
-                                label = "Animated Artist"
-                            ) { artistInfo ->
-                                Text(
-                                    text = artistInfo,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Normal,
-                                    color = iconTextColor.copy(alpha = 0.7f),
-                                    maxLines = 1,
-                                    softWrap = false,
-                                    textAlign = TextAlign.Center,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .marqueeHorizontalFadingEdges(marqueeProvider = { Modifier.basicMarquee() })
-                                )
-                            }
-                            LyricsView(iconTextColor, false, mediaController, onRefreshLyrics = onRefreshLyrics).apply {
-                                Modifier.graphicsLayer {
-                                    translationY = -laggedOffset
-                                }
-                            }
-                        }
-                    } else {
-                        Column(
-                            Modifier.statusBarsPadding(),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Crossfade(
-                                targetState = metadata?.artworkUri.toString()
-                                    .replace("size=128", "size=500"),
-                                animationSpec = tween(
-                                    durationMillis = 400,
-                                    easing = FastOutSlowInEasing
-                                ),
-                                label = "Crossfade between albums"
-                            ) { artworkUri ->
-                                SubcomposeAsyncImage(
-                                    model = ImageRequest.Builder(context)
-                                        .data(artworkUri)
-                                        .placeholderMemoryCacheKey(metadata?.artworkUri.toString())
-                                        .diskCachePolicy(CachePolicy.DISABLED)
-                                        .build(),
-                                    contentDescription = "Album Cover Art",
-                                    contentScale = ContentScale.Crop,
-                                    alignment = Alignment.Center,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 24.dp)
-                                        .aspectRatio(1f)
-                                        .graphicsLayer {
-                                            translationY = laggedOffset
-                                        }
-                                        .shadow(
-                                            elevation = 12.dp,
-                                            shape = RoundedCornerShape(24.dp)
-                                        )
-                                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                                        .clip(RoundedCornerShape(24.dp))
-                                )
-                            }
-
-                            Column(
-                                Modifier.padding(horizontal = 24.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Crossfade(
-                                    targetState = metadata?.title.toString(),
-                                    animationSpec = tween(
-                                        durationMillis = 400,
-                                        easing = FastOutSlowInEasing
-                                    ),
-                                    label = "Animated Song Title",
-                                    modifier = Modifier.fillMaxWidth()
-                                ) { title ->
-                                    Text(
-                                        text = title,
-                                        style = MaterialTheme.typography.headlineMediumEmphasized,
-                                        fontWeight = FontWeight.Bold,
-                                        color = iconTextColor,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Visible,
-                                        softWrap = false,
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .marqueeHorizontalFadingEdges(
-                                                marqueeProvider = { Modifier.basicMarquee() })
-                                    )
-                                }
-
-                                Crossfade(
-                                    targetState = metadata?.artist.toString(),
-                                    animationSpec = tween(
-                                        durationMillis = 400,
-                                        easing = FastOutSlowInEasing
-                                    ),
-                                    label = "Animated Artist",
-                                    modifier = Modifier.fillMaxWidth()
-                                ) { artistInfo ->
-                                    Text(
-                                        text = artistInfo,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Normal,
-                                        color = iconTextColor.copy(alpha = 0.85f),
-                                        maxLines = 1,
-                                        softWrap = false,
-                                        textAlign = TextAlign.Center,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .marqueeHorizontalFadingEdges(marqueeProvider = { Modifier.basicMarquee() })
-                                    )
-                                }
-
-                                if (metadata?.albumTitle != null && metadata.albumTitle.toString().isNotBlank()) {
-                                    Crossfade(
-                                        targetState = metadata.albumTitle.toString(),
-                                        animationSpec = tween(
-                                            durationMillis = 400,
-                                            easing = FastOutSlowInEasing
-                                        ),
-                                        label = "Animated Album",
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) { albumInfo ->
-                                        Text(
-                                            text = albumInfo,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.Normal,
-                                            color = iconTextColor.copy(alpha = 0.65f),
-                                            maxLines = 1,
-                                            softWrap = false,
-                                            textAlign = TextAlign.Center,
-                                            overflow = TextOverflow.Ellipsis,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .marqueeHorizontalFadingEdges(marqueeProvider = { Modifier.basicMarquee() })
-                                        )
-                                    }
-                                }
-                            }
-
-                            if (!isRadio) {
-                                Box(
-                                    Modifier.padding(horizontal = 24.dp)
-                                ) {
-                                    PlaybackProgressSlider(iconTextColor, mediaController, metadata)
-                                }
-                            }
-                        }
-                    }
+                .weight(1f, fill = false),
+            label = "Crossfade between artwork and lyrics view",
+            transitionSpec = {
+                (fadeIn(tween(300)) + slideInVertically { it / 4 }) togetherWith
+                        (fadeOut(tween(200)) + slideOutVertically { -it / 4 }) using
+                        SizeTransform(clip = false)
+            }
+        ) { showLyrics ->
+            if (showLyrics) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = (metadata?.title ?: metadata?.displayTitle).toString(),
+                        style = MaterialTheme.typography.headlineSmallEmphasized,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Visible,
+                        softWrap = false,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .marqueeHorizontalFadingEdges(marqueeProvider = { Modifier.basicMarquee() })
+                    )
+                    Text(
+                        text = metadata?.artist.toString(),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Normal,
+                        color = Color.White.copy(alpha = 0.75f),
+                        maxLines = 1,
+                        softWrap = false,
+                        textAlign = TextAlign.Center,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .marqueeHorizontalFadingEdges(marqueeProvider = { Modifier.basicMarquee() })
+                    )
+                    LyricsView(Color.White, false, mediaController, onRefreshLyrics = onRefreshLyrics)
                 }
-
-                Row(
+            } else {
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
-                        .requiredHeightIn(min = 88.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(top = 4.dp, bottom = 12.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    ChoraMediaLibraryService.getInstance()?.player?.let { player ->
-                        RepeatButton(player, iconTextColor, Modifier.size(28.dp))
-                        PreviousSongButton(player, iconTextColor, Modifier.size(34.dp))
-                        PlayPauseButton(player, iconTextColor, Modifier.size(76.dp))
-                        NextSongButton(player, iconTextColor, Modifier.size(34.dp))
-                        ShuffleButton(player, iconTextColor, Modifier.size(28.dp))
+                    Crossfade(
+                        targetState = metadata?.artworkUri.toString().replace("size=128", "size=600"),
+                        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+                        label = "Crossfade between albums"
+                    ) { artworkUri ->
+                        SubcomposeAsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(artworkUri)
+                                .placeholderMemoryCacheKey(metadata?.artworkUri.toString())
+                                .diskCachePolicy(CachePolicy.DISABLED)
+                                .build(),
+                            contentDescription = "Album Cover Art",
+                            contentScale = ContentScale.Crop,
+                            alignment = Alignment.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(1f)
+                                .shadow(elevation = 16.dp, shape = RoundedCornerShape(16.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .clip(RoundedCornerShape(16.dp))
+                        )
                     }
                 }
             }
         }
+        //endregion
+
+        //region Middle Section: Metadata & Seekbar
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Crossfade(
+                targetState = metadata?.title.toString(),
+                animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+                label = "Animated Song Title",
+                modifier = Modifier.fillMaxWidth()
+            ) { title ->
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineMediumEmphasized.copy(
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Visible,
+                    softWrap = false,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .marqueeHorizontalFadingEdges(marqueeProvider = { Modifier.basicMarquee() })
+                )
+            }
+
+            Crossfade(
+                targetState = metadata?.artist.toString(),
+                animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+                label = "Animated Artist",
+                modifier = Modifier.fillMaxWidth()
+            ) { artistInfo ->
+                Text(
+                    text = artistInfo,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Normal
+                    ),
+                    color = Color.White.copy(alpha = 0.85f),
+                    maxLines = 1,
+                    softWrap = false,
+                    textAlign = TextAlign.Center,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .marqueeHorizontalFadingEdges(marqueeProvider = { Modifier.basicMarquee() })
+                )
+            }
+
+            if (metadata?.albumTitle != null && metadata.albumTitle.toString().isNotBlank()) {
+                Crossfade(
+                    targetState = metadata.albumTitle.toString(),
+                    animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+                    label = "Animated Album",
+                    modifier = Modifier.fillMaxWidth()
+                ) { albumInfo ->
+                    Text(
+                        text = albumInfo,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Normal
+                        ),
+                        color = Color.White.copy(alpha = 0.65f),
+                        maxLines = 1,
+                        softWrap = false,
+                        textAlign = TextAlign.Center,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .marqueeHorizontalFadingEdges(marqueeProvider = { Modifier.basicMarquee() })
+                    )
+                }
+            }
+
+            if (!isRadio) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Box(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    PlaybackProgressSlider(animatedAccentColor, mediaController, metadata)
+                }
+            }
+        }
+        //endregion
+
+        //region Bottom Section: Playback Controls
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ChoraMediaLibraryService.getInstance()?.player?.let { player ->
+                RepeatButton(player, Color.White, Modifier.size(28.dp))
+                PreviousSongButton(player, Color.White, Modifier.size(34.dp))
+                PlayPauseButton(player, animatedAccentColor, Modifier.size(76.dp))
+                NextSongButton(player, Color.White, Modifier.size(34.dp))
+                ShuffleButton(player, Color.White, Modifier.size(28.dp))
+            }
+        }
+        //endregion
     }
 }

@@ -102,6 +102,7 @@ fun NowPlayingContent(
             mediaController = mediaController,
             metadata = metadata,
             iconColor = iconTextColor,
+            accentColor = colors.firstOrNull() ?: iconTextColor,
             lyricsOpen = lyricsOpen,
             sleepTimerMinutes = sleepTimerMinutes,
             onToggleLyrics = { viewModel.setLyricsOpen(!lyricsOpen) },
