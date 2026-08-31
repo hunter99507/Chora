@@ -117,6 +117,7 @@ import com.craftworks.music.managers.NavidromeManager
 import com.craftworks.music.managers.settings.AppTheme
 import com.craftworks.music.managers.settings.AppearanceSettingsManager
 import com.craftworks.music.player.ChoraMediaLibraryService
+import com.craftworks.music.player.SongHelper
 import com.craftworks.music.player.rememberManagedMediaController
 import com.craftworks.music.ui.elements.dialogs.tv.OnboardingDialog
 import com.craftworks.music.ui.playing.NowPlayingContent
@@ -238,6 +239,14 @@ class MainActivity : ComponentActivity() {
                     }
 
                     onBackPressedDispatcher.addCallback(this, backCallback)
+
+                    LaunchedEffect(scaffoldState) {
+                        SongHelper.expandNowPlayingSheet.collect {
+                            try {
+                                scaffoldState.bottomSheetState.expand()
+                            } catch (_: Exception) {}
+                        }
+                    }
 
                     Scaffold(
                         bottomBar = {
