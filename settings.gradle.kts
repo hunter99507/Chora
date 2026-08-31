@@ -17,5 +17,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "MusicPlayer"
+rootProject.name = "Chora"
 include(":app")

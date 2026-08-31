@@ -15,7 +15,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.craftworks.music"
+        applicationId = "com.craftworks.chora"
         minSdk = 23
         targetSdk = 37
         versionCode = 311
