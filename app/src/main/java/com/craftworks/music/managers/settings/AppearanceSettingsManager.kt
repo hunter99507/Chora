@@ -158,11 +158,11 @@ class AppearanceSettingsManager @Inject constructor(
             BottomNavItem("Albums", R.drawable.rounded_library_music_24, "album_screen"),
             BottomNavItem("Songs", R.drawable.round_music_note_24, "songs_screen"),
             BottomNavItem("Artists", R.drawable.rounded_artist_24, "artists_screen"),
-            BottomNavItem("Radios", R.drawable.rounded_radio, "radio_screen"),
-            BottomNavItem("Playlists", R.drawable.placeholder, "playlist_screen")
+            BottomNavItem("Playlists", R.drawable.rounded_queue_music_24, "playlist_screen")
         )
         try {
-            jsonString?.let { Json.decodeFromString<List<BottomNavItem>>(it) } ?: defaultValue
+            val items = jsonString?.let { Json.decodeFromString<List<BottomNavItem>>(it) } ?: defaultValue
+            items.filter { it.screenRoute != "radio_screen" }
         } catch (e: Exception) {
             println(e.message)
             defaultValue

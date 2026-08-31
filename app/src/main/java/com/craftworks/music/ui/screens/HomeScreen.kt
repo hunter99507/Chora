@@ -77,6 +77,12 @@ import com.craftworks.music.ui.playing.dpToPx
 import com.craftworks.music.ui.viewmodels.HomeScreenViewModel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import com.craftworks.music.ui.elements.PlaylistCard
+import com.craftworks.music.ui.viewmodels.PlaylistScreenViewModel
 import java.net.URLEncoder
 import kotlin.math.roundToInt
 
@@ -95,6 +101,13 @@ fun HomeScreen(
     viewModel: HomeScreenViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+
+    val playlists by viewModel.playlists.collectAsStateWithLifecycle()
+    val playlistViewModel: PlaylistScreenViewModel = hiltViewModel(
+        remember(navHostController.currentBackStackEntry) {
+            navHostController.getBackStackEntry("main_graph")
+        }
+    )
 
     val recentlyPlayedAlbums by viewModel.recentlyPlayedAlbums.collectAsStateWithLifecycle()
     val recentAlbums by viewModel.recentAlbums.collectAsStateWithLifecycle()
@@ -204,6 +217,67 @@ fun HomeScreen(
                 }
             }
 
+            // Playlists Row (First Entry)
+            if (playlists.isNotEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 6.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 12.dp)
+                            .clickable {
+                                navHostController.navigate(Screen.Playlists.route) {
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
+                    ) {
+                        Text(
+                            text = stringResource(R.string.playlists),
+                            color = MaterialTheme.colorScheme.onBackground,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = MaterialTheme.typography.headlineSmall.fontSize
+                        )
+
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier
+                                .size(MaterialTheme.typography.headlineSmall.fontSize.value.dp * 1.2f)
+                        )
+                    }
+
+                    LazyRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 172.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(
+                            items = playlists,
+                            key = { it.mediaId }
+                        ) { playlist ->
+                            PlaylistCard(
+                                playlist = playlist,
+                                onClick = {
+                                    playlistViewModel.setCurrentPlaylist(playlist)
+                                    navHostController.navigate(Screen.PlaylistDetails.route) {
+                                        launchSingleTop = true
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            }
 
             val orderedHomeItems = AppearanceSettingsManager(context).homeItemsItemsFlow.collectAsState(
                 initial = listOf(

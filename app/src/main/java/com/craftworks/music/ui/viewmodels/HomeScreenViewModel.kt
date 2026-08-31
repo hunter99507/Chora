@@ -6,6 +6,7 @@ import androidx.media3.common.MediaItem
 import com.craftworks.music.data.repository.AlbumRepository
 import com.craftworks.music.managers.DataRefreshManager
 import com.craftworks.music.managers.NavidromeManager
+import com.craftworks.music.data.repository.PlaylistRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -19,8 +20,12 @@ import javax.inject.Inject
 
 @HiltViewModel
 class HomeScreenViewModel @Inject constructor(
-    private val albumRepository: AlbumRepository
+    private val albumRepository: AlbumRepository,
+    private val playlistRepository: PlaylistRepository
 ) : ViewModel() {
+    private val _playlists = MutableStateFlow<List<MediaItem>>(emptyList())
+    val playlists: StateFlow<List<MediaItem>> = _playlists.asStateFlow()
+
     private val _recentlyPlayedAlbums = MutableStateFlow<List<MediaItem>>(emptyList())
     val recentlyPlayedAlbums: StateFlow<List<MediaItem>> = _recentlyPlayedAlbums.asStateFlow()
 
@@ -61,11 +66,13 @@ class HomeScreenViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             coroutineScope {
+                val playlistsDeferred = async { playlistRepository.getPlaylists(true) }
                 val recentlyPlayedDeferred = async { albumRepository.getAlbums("recent", 20, 0, true) }
                 val recentDeferred = async { albumRepository.getAlbums("newest", 20, 0, true) }
                 val mostPlayedDeferred = async { albumRepository.getAlbums("frequent", 20, 0, true) }
                 val shuffledDeferred = async { albumRepository.getAlbums("random", 20, 0, true) }
 
+                _playlists.value = playlistsDeferred.await()
                 _recentlyPlayedAlbums.value = recentlyPlayedDeferred.await()
                 _recentAlbums.value = recentDeferred.await()
                 _mostPlayedAlbums.value = mostPlayedDeferred.await()

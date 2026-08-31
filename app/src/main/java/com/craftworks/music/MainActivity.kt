@@ -457,10 +457,7 @@ fun TvSideNavigation(
                 stringResource((R.string.Artists)), R.drawable.rounded_artist_24, "artists_screen"
             ),
             BottomNavItem(
-                stringResource((R.string.radios)), R.drawable.rounded_radio, "radio_screen"
-            ),
-            BottomNavItem(
-                stringResource((R.string.playlists)), R.drawable.placeholder, "playlist_screen"
+                stringResource((R.string.playlists)), R.drawable.rounded_queue_music_24, "playlist_screen"
             ),
         )
     ).value
@@ -689,9 +686,7 @@ fun AnimatedBottomNavBar(
             ), BottomNavItem(
                 stringResource(R.string.Artists), R.drawable.rounded_artist_24, "artists_screen"
             ), BottomNavItem(
-                stringResource(R.string.radios), R.drawable.rounded_radio, "radio_screen"
-            ), BottomNavItem(
-                stringResource(R.string.playlists), R.drawable.placeholder, "playlist_screen"
+                stringResource(R.string.playlists), R.drawable.rounded_queue_music_24, "playlist_screen"
             )
         )
     ).value
@@ -709,16 +704,15 @@ fun AnimatedBottomNavBar(
 
         NavigationBar(modifier = Modifier.offset { IntOffset(x = 0, y = -yTrans) }) {
             orderedNavItems.forEachIndexed { _, item ->
-                if (!item.enabled) return@forEachIndexed
+                if (!item.enabled || item.screenRoute == "radio_screen") return@forEachIndexed
 
                 val icon = when (item.screenRoute) {
                     "home_screen"    -> R.drawable.rounded_home_24
                     "album_screen"   -> R.drawable.rounded_library_music_24
                     "songs_screen"   -> R.drawable.round_music_note_24
                     "artists_screen" -> R.drawable.rounded_artist_24
-                    "radio_screen"   -> R.drawable.rounded_radio
-                    "playlist_screen"-> R.drawable.placeholder
-                    else             -> R.drawable.placeholder
+                    "playlist_screen"-> R.drawable.rounded_queue_music_24
+                    else             -> R.drawable.rounded_queue_music_24
                 }
                 NavigationBarItem(
                     selected = item.screenRoute == backStackEntry?.destination?.route,
