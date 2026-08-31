@@ -117,7 +117,7 @@ fun TvNowPlaying(
     )
 
     val bottomPadding by animateIntAsState(
-        targetValue = if (controlsVisible && oledProtectionMode != OLEDProtectionMode.LYRICS_ONLY) dpToPx(64) else 0,
+        targetValue = if (controlsVisible && oledProtectionMode != OLEDProtectionMode.LYRICS_ONLY) dpToPx(96) else 0,
         animationSpec = tween(600, 0, FastOutSlowInEasing),
         label = "Move content up with controls visible"
     )
@@ -309,15 +309,21 @@ fun TvNowPlaying(
                 transformOrigin = TransformOrigin(0.5f, 1f)
             ),
             modifier = Modifier
-                .padding(horizontal = 24.dp)
+                .padding(horizontal = 24.dp, vertical = 12.dp)
                 .align(Alignment.BottomCenter)
                 .focusGroup()
         ) {
             Column(
                 modifier = Modifier
-                    .widthIn(max = 480.dp)
+                    .widthIn(max = 520.dp)
                     .fillMaxWidth()
                     .wrapContentHeight()
+                    .shadow(12.dp, RoundedCornerShape(24.dp))
+                    .background(
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
+                        shape = RoundedCornerShape(24.dp)
+                    )
+                    .padding(horizontal = 20.dp, vertical = 14.dp)
                     .focusGroup(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -391,7 +397,7 @@ fun TvNowPlaying(
                 }
 
                 if (metadata?.mediaType != MediaMetadata.MEDIA_TYPE_RADIO_STATION)
-                    PlaybackProgressSlider(iconTextColor, mediaController)
+                    PlaybackProgressSlider(iconTextColor, mediaController, metadata)
             }
         }
     }
