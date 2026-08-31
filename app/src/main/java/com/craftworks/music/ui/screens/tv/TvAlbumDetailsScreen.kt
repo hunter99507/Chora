@@ -211,13 +211,16 @@ fun TvAlbumDetails(
                     Button (
                         onClick = {
                             coroutineScope.launch {
-                                SongHelper.play(
-                                    currentAlbum.subList(1, currentAlbum.size),
-                                    0,
-                                    mediaController
-                                )
-                                navHostController.navigate(Screen.NowPlayingLandscape.route) {
-                                    launchSingleTop = true
+                                val songs = if (currentAlbum.size > 1) currentAlbum.subList(1, currentAlbum.size) else currentAlbum
+                                if (songs.isNotEmpty()) {
+                                    SongHelper.play(
+                                        songs,
+                                        0,
+                                        mediaController
+                                    )
+                                    navHostController.navigate(Screen.NowPlayingLandscape.route) {
+                                        launchSingleTop = true
+                                    }
                                 }
                             }
                         },
@@ -237,16 +240,17 @@ fun TvAlbumDetails(
 
                     OutlinedButton(
                         onClick = {
-                            mediaController?.shuffleModeEnabled = true
                             coroutineScope.launch {
-                                val random = currentAlbum.subList(1, currentAlbum.size).indices.random()
-                                SongHelper.play(
-                                    currentAlbum.subList(1, currentAlbum.size),
-                                    random,
-                                    mediaController
-                                )
-                                navHostController.navigate(Screen.NowPlayingLandscape.route) {
-                                    launchSingleTop = true
+                                val songs = if (currentAlbum.size > 1) currentAlbum.subList(1, currentAlbum.size) else currentAlbum
+                                if (songs.isNotEmpty()) {
+                                    SongHelper.play(
+                                        songs.shuffled(),
+                                        0,
+                                        mediaController
+                                    )
+                                    navHostController.navigate(Screen.NowPlayingLandscape.route) {
+                                        launchSingleTop = true
+                                    }
                                 }
                             }
                         },

@@ -1,5 +1,6 @@
 package com.craftworks.music.ui.elements.tv
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -41,7 +42,7 @@ fun TvHorizontalSongCard(
 ) {
     val context = LocalContext.current
     WideCardContainer(
-        modifier = modifier,
+        modifier = modifier.clickable { onClick() },
         imageCard = {
             Card(
                 onClick = onClick,
