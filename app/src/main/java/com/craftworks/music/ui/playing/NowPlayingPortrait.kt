@@ -225,18 +225,17 @@ fun NowPlayingPortrait(
         }
         //endregion
 
-        //region Middle Section: Shifted Down Title & Seekbar Area
+        //region Middle Section: Title & Seekbar Area (Shifted Upwards)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            contentAlignment = Alignment.BottomCenter
+            contentAlignment = Alignment.Center
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 16.dp),
+                    .padding(horizontal = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
@@ -328,7 +327,7 @@ fun NowPlayingPortrait(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                .padding(bottom = 60.dp),
+                .padding(bottom = 88.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
