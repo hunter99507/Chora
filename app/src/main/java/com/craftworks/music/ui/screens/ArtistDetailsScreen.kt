@@ -138,7 +138,7 @@ fun ArtistDetails(
             modifier = Modifier
                 .fillMaxSize()
                 .dialogFocusable(),
-            columns = GridCells.Adaptive(96.dp),
+            columns = GridCells.Fixed(3),
             verticalArrangement = Arrangement.spacedBy(6.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(bottom = 80.dp)

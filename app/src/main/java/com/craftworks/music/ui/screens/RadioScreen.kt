@@ -121,7 +121,7 @@ fun RadioScreen(
                     .padding(top = innerPadding.calculateTopPadding())
             ) {
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(96.dp),
+                    columns = GridCells.Fixed(3),
                     modifier = Modifier
                         .wrapContentWidth()
                         .fillMaxHeight(),

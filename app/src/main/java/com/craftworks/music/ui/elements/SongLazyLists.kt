@@ -188,7 +188,7 @@ fun AlbumGrid(
     }
 
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(96.dp),
+        columns = GridCells.Fixed(3),
         modifier = Modifier
             .wrapContentWidth()
             .fillMaxHeight(),
@@ -287,7 +287,7 @@ fun AlbumGrid(
     }
 
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(96.dp),
+        columns = GridCells.Fixed(3),
         modifier = Modifier
             .wrapContentWidth()
             .fillMaxHeight(),
@@ -443,7 +443,7 @@ fun ArtistsGrid(
     }
 
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(96.dp),
+        columns = GridCells.Fixed(3),
         modifier = Modifier
             .wrapContentWidth()
             .fillMaxHeight(),
@@ -504,7 +504,7 @@ fun PlaylistGrid(playlists: List<MediaItem>, onPlaylistSelected: (playlist: Medi
     val currentNavidromeServer by NavidromeManager.currentServerId.collectAsStateWithLifecycle()
 
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(96.dp),
+        columns = GridCells.Fixed(3),
         modifier = Modifier
             .wrapContentWidth()
             .fillMaxHeight(),
