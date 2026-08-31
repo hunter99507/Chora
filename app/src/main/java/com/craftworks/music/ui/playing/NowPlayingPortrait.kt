@@ -14,11 +14,16 @@ import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
@@ -52,7 +57,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -196,32 +203,66 @@ fun NowPlayingPortrait(
                 }
             } else {
                 val artworkHeight = (LocalConfiguration.current.screenHeightDp.dp * 0.51f).coerceAtLeast(380.dp)
+                var dragOffsetX by remember { mutableFloatStateOf(0f) }
+                val animatedOffsetX by animateFloatAsState(
+                    targetValue = dragOffsetX,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioLowBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    ),
+                    label = "artworkDragOffset"
+                )
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(artworkHeight)
+                        .graphicsLayer {
+                            translationX = animatedOffsetX
+                            rotationZ = (animatedOffsetX / 40f).coerceIn(-8f, 8f)
+                        }
                         .pointerInput(mediaController) {
-                            var totalDragX = 0f
                             detectHorizontalDragGestures(
-                                onDragStart = { totalDragX = 0f },
+                                onDragStart = { dragOffsetX = 0f },
                                 onDragEnd = {
-                                    if (totalDragX < -60f) {
+                                    if (dragOffsetX < -80f) {
                                         mediaController?.seekToNextMediaItem()
-                                    } else if (totalDragX > 60f) {
+                                    } else if (dragOffsetX > 80f) {
                                         mediaController?.seekToPreviousMediaItem()
                                     }
+                                    dragOffsetX = 0f
+                                },
+                                onDragCancel = {
+                                    dragOffsetX = 0f
                                 },
                                 onHorizontalDrag = { _, dragAmount ->
-                                    totalDragX += dragAmount
+                                    dragOffsetX = (dragOffsetX + dragAmount).coerceIn(-250f, 250f)
                                 }
                             )
                         },
                     contentAlignment = Alignment.TopCenter
                 ) {
-                    Crossfade(
+                    AnimatedContent(
                         targetState = metadata?.artworkUri.toString().replace("size=128", "size=600"),
-                        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
-                        label = "Crossfade between albums",
+                        transitionSpec = {
+                            (slideInHorizontally(
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = Spring.StiffnessMediumLow
+                                ),
+                                initialOffsetX = { fullWidth -> (fullWidth * 0.35f).toInt() }
+                            ) + fadeIn(animationSpec = tween(350)) + scaleIn(initialScale = 0.92f, animationSpec = tween(350)))
+                                .togetherWith(
+                                    slideOutHorizontally(
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioNoBouncy,
+                                            stiffness = Spring.StiffnessMediumLow
+                                        ),
+                                        targetOffsetX = { fullWidth -> (-fullWidth * 0.35f).toInt() }
+                                    ) + fadeOut(animationSpec = tween(250)) + scaleOut(targetScale = 0.92f, animationSpec = tween(250))
+                                )
+                        },
+                        label = "Album artwork animated transition",
                         modifier = Modifier.fillMaxSize()
                     ) { artworkUri ->
                         SubcomposeAsyncImage(
@@ -257,9 +298,20 @@ fun NowPlayingPortrait(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Crossfade(
+                AnimatedContent(
                     targetState = metadata?.title.toString(),
-                    animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+                    transitionSpec = {
+                        (slideInHorizontally(
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),
+                            initialOffsetX = { it / 3 }
+                        ) + fadeIn(animationSpec = tween(300)))
+                            .togetherWith(
+                                slideOutHorizontally(
+                                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),
+                                    targetOffsetX = { -it / 3 }
+                                ) + fadeOut(animationSpec = tween(200))
+                            )
+                    },
                     label = "Animated Song Title",
                     modifier = Modifier.fillMaxWidth()
                 ) { title ->
@@ -280,9 +332,20 @@ fun NowPlayingPortrait(
                     )
                 }
 
-                Crossfade(
+                AnimatedContent(
                     targetState = metadata?.artist.toString(),
-                    animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+                    transitionSpec = {
+                        (slideInHorizontally(
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),
+                            initialOffsetX = { it / 3 }
+                        ) + fadeIn(animationSpec = tween(300)))
+                            .togetherWith(
+                                slideOutHorizontally(
+                                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),
+                                    targetOffsetX = { -it / 3 }
+                                ) + fadeOut(animationSpec = tween(200))
+                            )
+                    },
                     label = "Animated Artist",
                     modifier = Modifier.fillMaxWidth()
                 ) { artistInfo ->

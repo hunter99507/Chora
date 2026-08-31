@@ -2,6 +2,10 @@ package com.craftworks.music
 
 import android.content.res.Configuration
 import android.util.Log
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -115,21 +119,73 @@ fun SetupNavGraph(
 
 
 
+    val topLevelTabRoutes = listOf(
+        Screen.Home.route,
+        Screen.Albums.route,
+        Screen.Song.route,
+        Screen.Artists.route,
+        Screen.Playlists.route
+    )
+
     NavHost(
         navController = navController,
         startDestination = Screen.Home.route,
         modifier = Modifier.padding(bottom = bottomPadding, start = leftPadding),
         enterTransition = {
-            fadeIn(animationSpec)
+            val fromIndex = topLevelTabRoutes.indexOf(initialState.destination.route)
+            val toIndex = topLevelTabRoutes.indexOf(targetState.destination.route)
+            if (fromIndex != -1 && toIndex != -1 && fromIndex != toIndex) {
+                if (toIndex > fromIndex) {
+                    slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+                    ) + fadeIn(animationSpec = tween(300))
+                } else {
+                    slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.End,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+                    ) + fadeIn(animationSpec = tween(300))
+                }
+            } else {
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(300))
+            }
         },
         exitTransition = {
-            fadeOut(animationSpec)
+            val fromIndex = topLevelTabRoutes.indexOf(initialState.destination.route)
+            val toIndex = topLevelTabRoutes.indexOf(targetState.destination.route)
+            if (fromIndex != -1 && toIndex != -1 && fromIndex != toIndex) {
+                if (toIndex > fromIndex) {
+                    slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+                    ) + fadeOut(animationSpec = tween(250))
+                } else {
+                    slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.End,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+                    ) + fadeOut(animationSpec = tween(250))
+                }
+            } else {
+                slideOutOfContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                ) + fadeOut(animationSpec = tween(250))
+            }
         },
         popEnterTransition = {
-            fadeIn(animationSpec)
+            slideIntoContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                animationSpec = tween(300, easing = FastOutSlowInEasing)
+            ) + fadeIn(animationSpec = tween(300))
         },
         popExitTransition = {
-            fadeOut(animationSpec)
+            slideOutOfContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                animationSpec = tween(300, easing = FastOutSlowInEasing)
+            ) + fadeOut(animationSpec = tween(250))
         },
         route = "main_graph"
     ) {
