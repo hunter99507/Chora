@@ -122,11 +122,11 @@ fun NowPlayingPortrait(
             .fillMaxSize()
             .statusBarsPadding()
             .navigationBarsPadding()
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .padding(horizontal = 12.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        //region Top Section: Large Artwork / Lyrics
+        //region Top Section: Large Elongated Artwork / Lyrics
         AnimatedContent(
             targetState = isLyricsActive,
             modifier = Modifier
@@ -143,7 +143,8 @@ fun NowPlayingPortrait(
                 Column(
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 8.dp),
+                        .padding(horizontal = 8.dp)
+                        .padding(top = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
@@ -178,7 +179,7 @@ fun NowPlayingPortrait(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 4.dp, bottom = 12.dp),
+                        .padding(top = 12.dp, bottom = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Crossfade(
@@ -197,7 +198,7 @@ fun NowPlayingPortrait(
                             alignment = Alignment.Center,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .aspectRatio(1f)
+                                .aspectRatio(0.88f)
                                 .shadow(elevation = 16.dp, shape = RoundedCornerShape(16.dp))
                                 .background(MaterialTheme.colorScheme.surfaceVariant)
                                 .clip(RoundedCornerShape(16.dp))
@@ -212,7 +213,8 @@ fun NowPlayingPortrait(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp),
+                .padding(horizontal = 8.dp)
+                .padding(top = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -288,7 +290,7 @@ fun NowPlayingPortrait(
             }
 
             if (!isRadio) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 Box(
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -302,7 +304,8 @@ fun NowPlayingPortrait(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 12.dp),
+                .padding(horizontal = 8.dp)
+                .padding(bottom = 20.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
