@@ -230,7 +230,7 @@ fun NowPlayingPortrait(
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Bold
                     ),
-                    color = Color.White,
+                    color = iconColor,
                     maxLines = 1,
                     overflow = TextOverflow.Visible,
                     softWrap = false,
@@ -253,7 +253,7 @@ fun NowPlayingPortrait(
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Normal
                     ),
-                    color = Color.White.copy(alpha = 0.85f),
+                    color = iconColor.copy(alpha = 0.85f),
                     maxLines = 1,
                     softWrap = false,
                     textAlign = TextAlign.Center,
@@ -277,7 +277,7 @@ fun NowPlayingPortrait(
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Normal
                         ),
-                        color = Color.White.copy(alpha = 0.65f),
+                        color = iconColor.copy(alpha = 0.65f),
                         maxLines = 1,
                         softWrap = false,
                         textAlign = TextAlign.Center,
@@ -294,7 +294,7 @@ fun NowPlayingPortrait(
                 Box(
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    PlaybackProgressSlider(animatedAccentColor, mediaController, metadata)
+                    PlaybackProgressSlider(iconColor, mediaController, metadata)
                 }
             }
         }
@@ -310,11 +310,11 @@ fun NowPlayingPortrait(
             verticalAlignment = Alignment.CenterVertically
         ) {
             ChoraMediaLibraryService.getInstance()?.player?.let { player ->
-                RepeatButton(player, Color.White, Modifier.size(28.dp))
-                PreviousSongButton(player, Color.White, Modifier.size(34.dp))
-                PlayPauseButton(player, animatedAccentColor, Modifier.size(76.dp))
-                NextSongButton(player, Color.White, Modifier.size(34.dp))
-                ShuffleButton(player, Color.White, Modifier.size(28.dp))
+                RepeatButton(player, iconColor, Modifier.size(28.dp))
+                PreviousSongButton(player, iconColor, Modifier.size(34.dp))
+                PlayPauseButton(player, iconColor, Modifier.size(76.dp))
+                NextSongButton(player, iconColor, Modifier.size(34.dp))
+                ShuffleButton(player, iconColor, Modifier.size(28.dp))
             }
         }
         //endregion

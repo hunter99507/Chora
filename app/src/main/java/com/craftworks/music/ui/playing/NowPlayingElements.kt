@@ -48,7 +48,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.core.graphics.ColorUtils
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -196,7 +198,7 @@ fun PlaybackProgressSlider(
             valueRange = 0f..(currentDuration?.toFloat() ?: 0f),
             colors = SliderDefaults.colors(
                 activeTrackColor = color,
-                inactiveTrackColor = color.copy(alpha = 0.25f),
+                inactiveTrackColor = color.copy(alpha = 0.35f),
                 thumbColor = color
             ),
             interactionSource = interactionSource,
@@ -209,9 +211,9 @@ fun PlaybackProgressSlider(
         ) {
             Text(
                 text = remember(currentValue) { formatMilliseconds(currentValue.toInt() / 1000) },
-                fontWeight = FontWeight.Normal,
+                fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Start,
-                color = color.copy(alpha = 0.7f),
+                color = color.copy(alpha = 0.85f),
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .width(64.dp),
@@ -224,9 +226,9 @@ fun PlaybackProgressSlider(
             }
             Text(
                 text = "-${formatMilliseconds(remainingSecs)}",
-                fontWeight = FontWeight.Normal,
+                fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.End,
-                color = color.copy(alpha = 0.7f),
+                color = color.copy(alpha = 0.85f),
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .width(64.dp),
@@ -259,6 +261,10 @@ internal fun PlayPauseButton(player: Player, color: Color, modifier: Modifier = 
     val icon = if (state.showPlay) Icons.Rounded.PlayArrow else ImageVector.vectorResource(R.drawable.media3_notification_pause)
     val contentDescription = if (state.showPlay) "play" else "pause"
 
+    val iconTint = remember(color) {
+        if (ColorUtils.calculateLuminance(color.toArgb()) > 0.5) Color(0xFF16130E) else Color.White
+    }
+
     Box(
         modifier = modifier
             .size(76.dp)
@@ -272,7 +278,7 @@ internal fun PlayPauseButton(player: Player, color: Color, modifier: Modifier = 
             imageVector = icon,
             contentDescription = contentDescription,
             modifier = Modifier.size(38.dp),
-            tint = Color(0xFF16130E)
+            tint = iconTint
         )
     }
 }
