@@ -50,9 +50,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -76,6 +78,7 @@ import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.craftworks.music.R
 import com.craftworks.music.data.repository.LyricsState
+import com.craftworks.music.fadingEdge
 import com.craftworks.music.managers.settings.AppearanceSettingsManager
 import com.craftworks.music.player.ChoraMediaLibraryService
 import com.gigamole.composefadingedges.marqueeHorizontalFadingEdges
@@ -110,6 +113,14 @@ fun NowPlayingPortrait(
         label = "Animated Accent Color"
     )
 
+    val imageFadingEdge = remember {
+        Brush.verticalGradient(
+            0.0f to Color.Red,
+            0.70f to Color.Red.copy(alpha = 0.95f),
+            1.0f to Color.Transparent
+        )
+    }
+
     val context = LocalContext.current
     val lyrics by LyricsState.lyrics.collectAsStateWithLifecycle()
     val loadingLyrics by LyricsState.loading.collectAsStateWithLifecycle()
@@ -120,13 +131,11 @@ fun NowPlayingPortrait(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(horizontal = 12.dp, vertical = 12.dp),
+            .navigationBarsPadding(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        //region Top Section: Large Elongated Artwork / Lyrics
+        //region Top Section: Full Bleed Artwork / Lyrics
         AnimatedContent(
             targetState = isLyricsActive,
             modifier = Modifier
@@ -143,7 +152,8 @@ fun NowPlayingPortrait(
                 Column(
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 8.dp)
+                        .statusBarsPadding()
+                        .padding(horizontal = 16.dp)
                         .padding(top = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -151,7 +161,7 @@ fun NowPlayingPortrait(
                         text = (metadata?.title ?: metadata?.displayTitle).toString(),
                         style = MaterialTheme.typography.headlineSmallEmphasized,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                        color = iconColor,
                         maxLines = 1,
                         overflow = TextOverflow.Visible,
                         softWrap = false,
@@ -164,7 +174,7 @@ fun NowPlayingPortrait(
                         text = metadata?.artist.toString(),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Normal,
-                        color = Color.White.copy(alpha = 0.75f),
+                        color = iconColor.copy(alpha = 0.75f),
                         maxLines = 1,
                         softWrap = false,
                         textAlign = TextAlign.Center,
@@ -173,19 +183,21 @@ fun NowPlayingPortrait(
                             .fillMaxWidth()
                             .marqueeHorizontalFadingEdges(marqueeProvider = { Modifier.basicMarquee() })
                     )
-                    LyricsView(Color.White, false, mediaController, onRefreshLyrics = onRefreshLyrics)
+                    LyricsView(iconColor, false, mediaController, onRefreshLyrics = onRefreshLyrics)
                 }
             } else {
+                val artworkHeight = (LocalConfiguration.current.screenHeightDp.dp * 0.44f).coerceAtLeast(340.dp)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 12.dp, bottom = 8.dp),
-                    contentAlignment = Alignment.Center
+                        .height(artworkHeight),
+                    contentAlignment = Alignment.TopCenter
                 ) {
                     Crossfade(
                         targetState = metadata?.artworkUri.toString().replace("size=128", "size=600"),
                         animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
-                        label = "Crossfade between albums"
+                        label = "Crossfade between albums",
+                        modifier = Modifier.fillMaxSize()
                     ) { artworkUri ->
                         SubcomposeAsyncImage(
                             model = ImageRequest.Builder(context)
@@ -197,11 +209,8 @@ fun NowPlayingPortrait(
                             contentScale = ContentScale.Crop,
                             alignment = Alignment.Center,
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(0.76f)
-                                .shadow(elevation = 16.dp, shape = RoundedCornerShape(16.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                                .clip(RoundedCornerShape(16.dp))
+                                .fillMaxSize()
+                                .fadingEdge(imageFadingEdge)
                         )
                     }
                 }
@@ -213,8 +222,8 @@ fun NowPlayingPortrait(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp)
-                .padding(top = 8.dp),
+                .padding(horizontal = 16.dp)
+                .padding(top = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
