@@ -151,7 +151,7 @@ fun TvAlbumDetails(
             ) {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
-                        .data(selectedAlbumImage.toString().replace("size=128", "size=500"))
+                        .data(selectedAlbumImage.toString().replace(Regex("size=\\d+"), "size=800"))
                         .diskCachePolicy(CachePolicy.DISABLED)
                         .placeholderMemoryCacheKey(selectedAlbumImage.toString())
                         .crossfade(true)

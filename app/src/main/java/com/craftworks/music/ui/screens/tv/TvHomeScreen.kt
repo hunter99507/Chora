@@ -300,7 +300,7 @@ private fun CarouselItem(
     LaunchedEffect(album.mediaMetadata.artworkUri) {
         val colorRequest = ImageRequest.Builder(context)
             .data(album.mediaMetadata.artworkUri.toString()
-                .replace("&size=128", "&size=32"))
+                .replace(Regex("size=\\d+"), "size=32"))
             .diskCacheKey(album.mediaMetadata.extras?.getString("navidromeID"))
             .diskCachePolicy(CachePolicy.READ_ONLY)
             .allowHardware(false)
@@ -328,7 +328,7 @@ private fun CarouselItem(
             model = ImageRequest.Builder(context)
                 .data(
                     album.mediaMetadata.artworkUri.toString()
-                        .replace("&size=128", "&size=1024")
+                        .replace(Regex("size=\\d+"), "size=1024")
                 )
                 .diskCacheKey(album.mediaMetadata.extras?.getString("navidromeID"))
                 .diskCachePolicy(CachePolicy.DISABLED)

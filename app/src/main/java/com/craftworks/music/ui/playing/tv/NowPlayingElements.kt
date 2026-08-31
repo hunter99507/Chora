@@ -350,17 +350,22 @@ fun DownloadButton(size: Dp, metadata: MediaMetadata?, enabled: Boolean) {
 @Composable
 fun ShuffleButton(player: Player, modifier: Modifier = Modifier) {
     val state = rememberShuffleButtonState(player)
+    val isActive = state.shuffleOn
     IconButton(
         onClick = state::onClick,
         modifier = modifier,
         enabled = state.isEnabled,
-        border = if (state.shuffleOn) IconButtonDefaults.border() else OutlinedIconButtonDefaults.border(),
-        colors = if (state.shuffleOn) IconButtonDefaults.colors() else OutlinedIconButtonDefaults.colors(),
-        scale = if (state.shuffleOn) IconButtonDefaults.scale() else OutlinedIconButtonDefaults.scale(),
+        colors = IconButtonDefaults.colors(
+            containerColor = if (isActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.25f) else Color.Transparent,
+            contentColor = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+            focusedContainerColor = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+            focusedContentColor = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+        ),
+        scale = IconButtonDefaults.scale(),
     ) {
         Icon(
             imageVector = ImageVector.vectorResource(R.drawable.round_shuffle_28),
-            contentDescription = "Shuffle",
+            contentDescription = if (isActive) "Shuffle On" else "Shuffle Off",
             modifier = Modifier.size(IconButtonDefaults.SmallIconSize),
         )
     }
@@ -370,18 +375,27 @@ fun ShuffleButton(player: Player, modifier: Modifier = Modifier) {
 @Composable
 fun RepeatButton(player: Player, modifier: Modifier = Modifier) {
     val state = rememberRepeatButtonState(player)
+    val isActive = state.repeatModeState != Player.REPEAT_MODE_OFF
     val icon = repeatModeIcon(state.repeatModeState)
     IconButton(
         onClick = state::onClick,
         modifier = modifier,
         enabled = state.isEnabled,
-        border = if (state.repeatModeState == Player.REPEAT_MODE_OFF) OutlinedIconButtonDefaults.border() else IconButtonDefaults.border(),
-        colors = if (state.repeatModeState == Player.REPEAT_MODE_OFF) OutlinedIconButtonDefaults.colors() else IconButtonDefaults.colors(),
-        scale = if (state.repeatModeState == Player.REPEAT_MODE_OFF) OutlinedIconButtonDefaults.scale() else IconButtonDefaults.scale(),
+        colors = IconButtonDefaults.colors(
+            containerColor = if (isActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.25f) else Color.Transparent,
+            contentColor = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+            focusedContainerColor = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+            focusedContentColor = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+        ),
+        scale = IconButtonDefaults.scale(),
     ) {
         Icon(
             imageVector = icon,
-            contentDescription = "Repeat",
+            contentDescription = when (state.repeatModeState) {
+                Player.REPEAT_MODE_ONE -> "Repeat One"
+                Player.REPEAT_MODE_ALL -> "Repeat All"
+                else -> "Repeat Off"
+            },
             modifier = Modifier.size(IconButtonDefaults.SmallIconSize),
         )
     }

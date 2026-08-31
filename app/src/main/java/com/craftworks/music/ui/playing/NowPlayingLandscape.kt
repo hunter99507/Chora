@@ -108,7 +108,7 @@ fun NowPlayingLandscape(
         ) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
-                    .data(metadata?.artworkUri.toString().replace("size=128", "size=500"))
+                    .data(metadata?.artworkUri.toString().replace(Regex("size=\\d+"), "size=600"))
                     .placeholderMemoryCacheKey(metadata?.artworkUri.toString())
                     .crossfade(true)
                     .diskCachePolicy(CachePolicy.DISABLED)

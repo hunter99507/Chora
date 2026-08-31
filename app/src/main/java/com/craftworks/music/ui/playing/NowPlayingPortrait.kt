@@ -203,47 +203,35 @@ fun NowPlayingPortrait(
                 }
             } else {
                 val artworkHeight = (LocalConfiguration.current.screenHeightDp.dp * 0.51f).coerceAtLeast(380.dp)
-                var dragOffsetX by remember { mutableFloatStateOf(0f) }
-                val animatedOffsetX by animateFloatAsState(
-                    targetValue = dragOffsetX,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioLowBouncy,
-                        stiffness = Spring.StiffnessMediumLow
-                    ),
-                    label = "artworkDragOffset"
-                )
+                var totalDrag by remember { mutableFloatStateOf(0f) }
 
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(artworkHeight)
-                        .graphicsLayer {
-                            translationX = animatedOffsetX
-                            rotationZ = (animatedOffsetX / 40f).coerceIn(-8f, 8f)
-                        }
                         .pointerInput(mediaController) {
                             detectHorizontalDragGestures(
-                                onDragStart = { dragOffsetX = 0f },
+                                onDragStart = { totalDrag = 0f },
                                 onDragEnd = {
-                                    if (dragOffsetX < -80f) {
+                                    if (totalDrag < -60f) {
                                         mediaController?.seekToNextMediaItem()
-                                    } else if (dragOffsetX > 80f) {
+                                    } else if (totalDrag > 60f) {
                                         mediaController?.seekToPreviousMediaItem()
                                     }
-                                    dragOffsetX = 0f
+                                    totalDrag = 0f
                                 },
                                 onDragCancel = {
-                                    dragOffsetX = 0f
+                                    totalDrag = 0f
                                 },
                                 onHorizontalDrag = { _, dragAmount ->
-                                    dragOffsetX = (dragOffsetX + dragAmount).coerceIn(-250f, 250f)
+                                    totalDrag += dragAmount
                                 }
                             )
                         },
                     contentAlignment = Alignment.TopCenter
                 ) {
                     AnimatedContent(
-                        targetState = metadata?.artworkUri.toString().replace("size=128", "size=600"),
+                        targetState = metadata?.artworkUri.toString().replace(Regex("size=\\d+"), "size=600"),
                         transitionSpec = {
                             (slideInHorizontally(
                                 animationSpec = spring(

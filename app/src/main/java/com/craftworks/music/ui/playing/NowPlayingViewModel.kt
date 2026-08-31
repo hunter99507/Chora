@@ -123,7 +123,7 @@ class NowPlayingViewModel @Inject constructor (
     private suspend fun extractColorsFromUri(uri: String, context: Context): List<Color?> = coroutineScope {
         val loader = context.imageLoader
         val request = ImageRequest.Builder(context)
-            .data(uri.replace("size=128", "size=32"))
+            .data(uri.replace(Regex("size=\\d+"), "size=32"))
             .allowHardware(false)
             .diskCachePolicy(CachePolicy.DISABLED)
             .build()

@@ -133,7 +133,7 @@ fun TvNowPlaying(
                                     model = ImageRequest.Builder(LocalContext.current)
                                         .data(
                                             metadata?.artworkUri.toString()
-                                                .replace("size=128", "size=500")
+                                                .replace(Regex("size=\\d+"), "size=800")
                                         )
                                         .diskCachePolicy(CachePolicy.DISABLED)
                                         .placeholderMemoryCacheKey(metadata?.artworkUri.toString())
