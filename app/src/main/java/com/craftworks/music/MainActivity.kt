@@ -226,7 +226,14 @@ class MainActivity : ComponentActivity() {
                                     launchSingleTop = true
                                 }
                             } else {
-                                scaffoldState.bottomSheetState.expand()
+                                try {
+                                    scaffoldState.bottomSheetState.expand()
+                                } catch (_: Exception) {
+                                    coroutineScope.launch {
+                                        kotlinx.coroutines.delay(100)
+                                        scaffoldState.bottomSheetState.expand()
+                                    }
+                                }
                             }
                         } catch (_: Exception) {}
                     }
