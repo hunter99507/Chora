@@ -62,15 +62,15 @@ class HomeScreenViewModel @Inject constructor(
         }
     }
 
-    fun loadHomeScreenData() {
+    fun loadHomeScreenData(forceRefresh: Boolean = false) {
         viewModelScope.launch {
             _isLoading.value = true
             coroutineScope {
-                val playlistsDeferred = async { playlistRepository.getPlaylists(true) }
-                val recentlyPlayedDeferred = async { albumRepository.getAlbums("recent", 20, 0, true) }
-                val recentDeferred = async { albumRepository.getAlbums("newest", 20, 0, true) }
-                val mostPlayedDeferred = async { albumRepository.getAlbums("frequent", 20, 0, true) }
-                val shuffledDeferred = async { albumRepository.getAlbums("random", 20, 0, true) }
+                val playlistsDeferred = async { playlistRepository.getPlaylists(forceRefresh) }
+                val recentlyPlayedDeferred = async { albumRepository.getAlbums("recent", 20, 0, forceRefresh) }
+                val recentDeferred = async { albumRepository.getAlbums("newest", 20, 0, forceRefresh) }
+                val mostPlayedDeferred = async { albumRepository.getAlbums("frequent", 20, 0, forceRefresh) }
+                val shuffledDeferred = async { albumRepository.getAlbums("random", 20, 0, forceRefresh) }
 
                 _playlists.value = playlistsDeferred.await()
                 _recentlyPlayedAlbums.value = recentlyPlayedDeferred.await()
