@@ -1,8 +1,11 @@
 package com.craftworks.music.ui.playing
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -21,6 +24,7 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -28,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -37,6 +42,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.UnstableApi
 import coil.compose.SubcomposeAsyncImage
@@ -51,25 +58,55 @@ import com.craftworks.music.player.ChoraMediaLibraryService
 fun NowPlayingMiniPlayer(
     scaffoldState: BottomSheetScaffoldState = rememberBottomSheetScaffoldState(),
     metadata: MediaMetadata? = null,
+    viewModel: NowPlayingViewModel = viewModel(),
     onClick: () -> Unit = { }
 ) {
     val expanded by remember { derivedStateOf { scaffoldState.bottomSheetState.targetValue == SheetValue.Expanded } }
+
+    val isDark = isSystemInDarkTheme()
+    LaunchedEffect(metadata?.artworkUri) {
+        viewModel.updatePaletteFromUri(metadata?.artworkUri, NowPlayingBackground.STATIC_BLUR, isDark)
+    }
+
+    val paletteColors by viewModel.paletteColors.collectAsStateWithLifecycle()
+    val accentColor = paletteColors.firstOrNull() ?: MaterialTheme.colorScheme.primary
+    val barColor = if (paletteColors.size >= 2) {
+        paletteColors[1]
+    } else if (paletteColors.isNotEmpty()) {
+        paletteColors[0].copy(alpha = 0.35f)
+    } else {
+        MaterialTheme.colorScheme.surfaceContainer
+    }
+
+    val animatedBarColor by animateColorAsState(
+        targetValue = barColor,
+        animationSpec = tween(durationMillis = 500),
+        label = "Mini Player Background"
+    )
+    val animatedAccentColor by animateColorAsState(
+        targetValue = accentColor,
+        animationSpec = tween(durationMillis = 500),
+        label = "Mini Player Accent"
+    )
 
     val yTrans by animateIntAsState(
         targetValue = if (expanded) dpToPx(72) else 0,
         label = "Fullscreen Translation"
     )
 
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier
-        .offset { IntOffset(x = 0, y = -yTrans) }
-        .zIndex(1f)
-        .background(MaterialTheme.colorScheme.surfaceContainer)
-        .height(72.dp)
-        .fillMaxWidth()
-        .padding(horizontal = 12.dp)
-        .clickable {
-            onClick.invoke()
-        }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .offset { IntOffset(x = 0, y = -yTrans) }
+            .zIndex(1f)
+            .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+            .background(animatedBarColor)
+            .height(72.dp)
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp)
+            .clickable {
+                onClick.invoke()
+            }
     ) {
         // Album Image
         SubcomposeAsyncImage(
@@ -81,11 +118,11 @@ fun NowPlayingMiniPlayer(
                 .crossfade(true)
                 .build(),
             contentDescription = "Album Cover",
-            contentScale = ContentScale.FillWidth,
+            contentScale = ContentScale.Crop,
             alignment = Alignment.Center,
             modifier = Modifier
                 .size(48.dp)
-                .clip(RoundedCornerShape(6.dp))
+                .clip(RoundedCornerShape(8.dp))
         )
 
         // Title + Artist
@@ -97,7 +134,7 @@ fun NowPlayingMiniPlayer(
             Text(
                 text = metadata?.title.toString(),
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onBackground,
+                color = Color.White,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Start,
@@ -108,7 +145,7 @@ fun NowPlayingMiniPlayer(
                     text = metadata?.artist.toString(),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Light,
-                    color = MaterialTheme.colorScheme.onBackground,
+                    color = Color.White.copy(alpha = 0.75f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Start,
@@ -119,7 +156,7 @@ fun NowPlayingMiniPlayer(
                         text = " • " + metadata?.recordingYear.toString(),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Light,
-                        color = MaterialTheme.colorScheme.onBackground,
+                        color = Color.White.copy(alpha = 0.65f),
                         maxLines = 1,
                         modifier = Modifier.wrapContentWidth()
                     )
@@ -130,8 +167,8 @@ fun NowPlayingMiniPlayer(
         ChoraMediaLibraryService.getInstance()?.player?.let {
             PlayPauseButton(
                 it,
-                MaterialTheme.colorScheme.onBackground,
-                Modifier.size(48.dp)
+                animatedAccentColor,
+                Modifier.size(44.dp)
             )
         }
     }
