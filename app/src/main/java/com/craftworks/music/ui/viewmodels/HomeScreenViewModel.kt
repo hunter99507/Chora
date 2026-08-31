@@ -46,14 +46,16 @@ class HomeScreenViewModel @Inject constructor(
 
         viewModelScope.launch {
             DataRefreshManager.dataSourceChangedEvent.collect {
-                loadHomeScreenData()
+                loadHomeScreenData(forceRefresh = true)
             }
+        }
 
+        viewModelScope.launch {
             combine(
                 NavidromeManager.currentServerId,
                 NavidromeManager.libraries
             ) { serverId, libs -> serverId to libs }
-                .distinctUntilChanged() // This is key!
+                .distinctUntilChanged()
                 .collect { (serverId, libs) ->
                     if (serverId != null && libs.isNotEmpty()) {
                         loadHomeScreenData()
@@ -66,17 +68,26 @@ class HomeScreenViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             coroutineScope {
-                val playlistsDeferred = async { playlistRepository.getPlaylists(forceRefresh) }
-                val recentlyPlayedDeferred = async { albumRepository.getAlbums("recent", 20, 0, forceRefresh) }
-                val recentDeferred = async { albumRepository.getAlbums("newest", 20, 0, forceRefresh) }
-                val mostPlayedDeferred = async { albumRepository.getAlbums("frequent", 20, 0, forceRefresh) }
-                val shuffledDeferred = async { albumRepository.getAlbums("random", 20, 0, forceRefresh) }
-
-                _playlists.value = playlistsDeferred.await()
-                _recentlyPlayedAlbums.value = recentlyPlayedDeferred.await()
-                _recentAlbums.value = recentDeferred.await()
-                _mostPlayedAlbums.value = mostPlayedDeferred.await()
-                _shuffledAlbums.value = shuffledDeferred.await()
+                launch {
+                    val data = playlistRepository.getPlaylists(forceRefresh)
+                    _playlists.value = data
+                }
+                launch {
+                    val data = albumRepository.getAlbums("recent", 20, 0, forceRefresh)
+                    _recentlyPlayedAlbums.value = data
+                }
+                launch {
+                    val data = albumRepository.getAlbums("newest", 20, 0, forceRefresh)
+                    _recentAlbums.value = data
+                }
+                launch {
+                    val data = albumRepository.getAlbums("frequent", 20, 0, forceRefresh)
+                    _mostPlayedAlbums.value = data
+                }
+                launch {
+                    val data = albumRepository.getAlbums("random", 20, 0, forceRefresh)
+                    _shuffledAlbums.value = data
+                }
             }
             _isLoading.value = false
         }

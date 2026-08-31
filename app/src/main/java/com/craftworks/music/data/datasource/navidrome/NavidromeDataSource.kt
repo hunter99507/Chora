@@ -65,7 +65,7 @@ class NavidromeDataSource @Inject constructor() {
             }
             install(HttpCache)
             install(Logging) {
-                level = LogLevel.ALL
+                level = LogLevel.INFO
                 logger = Logger.SIMPLE
             }
         }
@@ -111,7 +111,7 @@ class NavidromeDataSource @Inject constructor() {
             }
             install(HttpCache)
             install(Logging) {
-                level = LogLevel.ALL
+                level = LogLevel.INFO
                 logger = Logger.SIMPLE
             }
         }
