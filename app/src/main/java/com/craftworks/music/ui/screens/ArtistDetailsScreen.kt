@@ -130,17 +130,16 @@ fun ArtistDetails(
         visible = artist?.name?.isNotBlank() == true,
         enter = fadeIn()
     ) {
+        val headerHeight = (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp * 0.40f).coerceAtLeast(360.dp)
+
         LazyVerticalGrid(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(
-                    top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
-                )
                 .dialogFocusable(),
             columns = GridCells.Adaptive(96.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(12.dp)
+            contentPadding = PaddingValues(bottom = 80.dp)
         ) {
             // Group songs by their source (Local or Navidrome)
             val groupedAlbums =
@@ -151,7 +150,7 @@ fun ArtistDetails(
                 Column {
                     Box(
                         modifier = Modifier
-                            .height(192.dp)
+                            .height(headerHeight)
                             .fillMaxWidth()
                     ) {
                         //Image and Name
@@ -165,21 +164,12 @@ fun ArtistDetails(
                                 .build(),
                             placeholder = painterResource(R.drawable.s_a_username),
                             fallback = painterResource(R.drawable.s_a_username),
-                            contentScale = ContentScale.FillWidth,
+                            contentScale = ContentScale.Crop,
                             contentDescription = "Artist Image",
                             modifier = Modifier
-                                .fillMaxWidth()
+                                .fillMaxSize()
                                 .fadingEdge(imageFadingEdge)
-                                .clip(
-                                    if (artist?.description != "") RoundedCornerShape(
-                                        12.dp,
-                                        12.dp,
-                                        0.dp,
-                                        0.dp
-                                    )
-                                    else RoundedCornerShape(12.dp)
-                                )
-                                .blur(12.dp)
+                                .blur(10.dp)
                         )
                         Button(
                             onClick = {
@@ -187,11 +177,14 @@ fun ArtistDetails(
                             },
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
-                                .padding(top = 12.dp, start = 12.dp)
-                                .size(32.dp),
+                                .padding(
+                                    top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp,
+                                    start = 16.dp
+                                )
+                                .size(36.dp),
                             contentPadding = PaddingValues(4.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.background,
+                                containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.7f),
                                 contentColor = MaterialTheme.colorScheme.onBackground
                             )
                         ) {
@@ -200,14 +193,19 @@ fun ArtistDetails(
                                 tint = MaterialTheme.colorScheme.primary,
                                 contentDescription = "Go Back",
                                 modifier = Modifier
-                                    .height(32.dp)
-                                    .size(32.dp)
+                                    .height(28.dp)
+                                    .size(28.dp)
                             )
                         }
 
 
                         // Album Name and Artist
-                        Column(modifier = Modifier.align(Alignment.BottomCenter)) {
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+                        ) {
                             Text(
                                 text = artist?.name.toString(),
                                 color = MaterialTheme.colorScheme.onBackground,

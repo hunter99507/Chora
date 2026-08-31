@@ -143,6 +143,8 @@ fun PlaylistDetails(
         visible = !isLoading && playlistSongs.isNotEmpty(),
         enter = fadeIn()
     ) {
+        val headerHeight = (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp * 0.40f).coerceAtLeast(360.dp)
+
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -152,7 +154,7 @@ fun PlaylistDetails(
             item {
                 Box(
                     modifier = Modifier
-                        .height(300.dp)
+                        .height(headerHeight)
                         .fillMaxWidth()
                 ) {
                     SubcomposeAsyncImage(

@@ -157,17 +157,19 @@ fun AlbumDetails(
             requester.requestFocus()
         }
 
+        val headerHeight = (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp * 0.40f).coerceAtLeast(360.dp)
+
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .dialogFocusable(),
             contentPadding = PaddingValues(bottom = 80.dp),
         ) {
-            // Header (Edge-to-edge, filling top 33%)
+            // Header (Edge-to-edge, filling top 40%)
             item {
                 Box(
                     modifier = Modifier
-                        .height(300.dp)
+                        .height(headerHeight)
                         .fillMaxWidth()
                 ) {
                     AsyncImage(
