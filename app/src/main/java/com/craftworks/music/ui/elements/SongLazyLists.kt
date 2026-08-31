@@ -102,7 +102,7 @@ fun SongsHorizontalColumn(
     ) {
         // Group songs by their source (Local or Navidrome)
         val groupedSongs = songList.groupBy { song ->
-            if (song.mediaMetadata.extras?.getString("navidromeID")!!.startsWith("Local_")) "Local" else "Navidrome"
+            if (song.mediaMetadata.extras?.getString("navidromeID")?.startsWith("Local_") == true) "Local" else "Navidrome"
         }
 
         groupedSongs.forEach { (groupName, songsInGroup) ->
@@ -166,7 +166,7 @@ fun AlbumGrid(
 
     // Group songs by their source (Local or Navidrome)
     val groupedAlbums = albums.groupBy { song ->
-        if (song.mediaMetadata.extras?.getString("navidromeID")!!.startsWith("Local_")) "Local" else "Navidrome"
+        if (song.mediaMetadata.extras?.getString("navidromeID")?.startsWith("Local_") == true) "Local" else "Navidrome"
     }
 
     if (NavidromeManager.checkActiveServers() && isSearch == false) {
@@ -283,7 +283,7 @@ fun AlbumGrid(
 
     // Group songs by their source (Local or Navidrome)
     val groupedAlbums = albums.groupBy { song ->
-        if (song.mediaMetadata.extras?.getString("navidromeID")!!.startsWith("Local_")) "Local" else "Navidrome"
+        if (song.mediaMetadata.extras?.getString("navidromeID")?.startsWith("Local_") == true) "Local" else "Navidrome"
     }
 
     LazyVerticalGrid(
@@ -375,7 +375,7 @@ fun AlbumRow(
     onPlay: (album: MediaItem) -> Unit,
 ){
     val showProviderDividers by AppearanceSettingsManager(LocalContext.current).showProviderDividersFlow.collectAsStateWithLifecycle(true)
-    val dividerIndex = albums.indexOfFirst { it.mediaMetadata.extras?.getString("navidromeID")!!.startsWith("Local_") }
+    val dividerIndex = albums.indexOfFirst { it.mediaMetadata.extras?.getString("navidromeID")?.startsWith("Local_") == true }
 
     LazyRow(
         modifier = Modifier

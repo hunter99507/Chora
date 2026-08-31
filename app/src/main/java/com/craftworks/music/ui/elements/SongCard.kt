@@ -262,7 +262,7 @@ fun HorizontalSongCard(
                         }
                     )
                     DropdownMenuItem(
-                        enabled = !song.mediaMetadata.extras?.getString("navidromeID")!!.startsWith("Local_"),
+                        enabled = song.mediaMetadata.extras?.getString("navidromeID")?.startsWith("Local_") != true,
                         text = {
                             Text(stringResource(R.string.Action_Download))
                         },

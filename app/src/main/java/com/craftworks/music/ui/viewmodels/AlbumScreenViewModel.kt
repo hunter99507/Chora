@@ -72,7 +72,7 @@ class AlbumScreenViewModel @Inject constructor(
                     val allAlbumsDeferred = async { albumRepository.getAlbums(_sortOrder.value.key, 50, 0, true, _showFavoritesOnly.value) }
 
                     _allAlbums.value = allAlbumsDeferred.await().sortedByDescending {
-                        it.mediaMetadata.extras?.getString("navidromeID")!!.startsWith("Local_")
+                        it.mediaMetadata.extras?.getString("navidromeID")?.startsWith("Local_") == true
                     }
                 }
                 _isLoading.value = false
