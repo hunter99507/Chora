@@ -26,7 +26,7 @@ class SongHelper {
 
             withContext(Dispatchers.Main) {
                 mediaController?.repeatMode = androidx.media3.common.Player.REPEAT_MODE_ALL
-                mediaController?.shuffleModeEnabled = false
+                mediaController?.shuffleModeEnabled = true
                 mediaController?.setMediaItems(playableItems, safeIndex, 0)
                 mediaController?.prepare()
                 mediaController?.play()
