@@ -113,7 +113,8 @@ fun AlbumScreen(
                                             if (albums.isNotEmpty()) {
                                                 val randomAlbum = albums.random()
                                                 val albumId = randomAlbum.mediaMetadata.extras?.getString("navidromeID") ?: randomAlbum.mediaId
-                                                val songs = viewModel.getAlbum(albumId)
+                                                val albumItems = viewModel.getAlbum(albumId)
+                                                val songs = if (albumItems.size > 1) albumItems.subList(1, albumItems.size) else albumItems
                                                 if (songs.isNotEmpty()) {
                                                     SongHelper.play(songs.shuffled(), 0, mediaController)
                                                 }

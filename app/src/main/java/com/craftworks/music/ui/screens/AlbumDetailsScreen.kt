@@ -350,11 +350,14 @@ fun AlbumDetails(
                     Button(
                         onClick = {
                             coroutineScope.launch {
-                                SongHelper.play(
-                                    currentAlbum.subList(1, currentAlbum.size),
-                                    0,
-                                    mediaController
-                                )
+                                val songs = if (currentAlbum.size > 1) currentAlbum.subList(1, currentAlbum.size) else currentAlbum
+                                if (songs.isNotEmpty()) {
+                                    SongHelper.play(
+                                        songs,
+                                        0,
+                                        mediaController
+                                    )
+                                }
                             }
                         },
                         modifier = Modifier
@@ -372,14 +375,15 @@ fun AlbumDetails(
                     }
                     OutlinedButton(
                         onClick = {
-                            mediaController?.shuffleModeEnabled = true
                             coroutineScope.launch {
-                                val random = currentAlbum.subList(1, currentAlbum.size).indices.random()
-                                SongHelper.play(
-                                    currentAlbum.subList(1, currentAlbum.size),
-                                    random,
-                                    mediaController
-                                )
+                                val songs = if (currentAlbum.size > 1) currentAlbum.subList(1, currentAlbum.size) else currentAlbum
+                                if (songs.isNotEmpty()) {
+                                    SongHelper.play(
+                                        songs.shuffled(),
+                                        0,
+                                        mediaController
+                                    )
+                                }
                             }
                         },
                         modifier = Modifier.weight(1f)

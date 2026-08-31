@@ -100,7 +100,8 @@ fun ArtistsScreen(
                                             val randomArtist = allArtistList.random()
                                             val albums = viewModel.getArtistAlbums(randomArtist.navidromeID)
                                             if (albums.isNotEmpty()) {
-                                                val songs = viewModel.getAlbum(albums.random().mediaId)
+                                                val albumItems = viewModel.getAlbum(albums.random().mediaId)
+                                                val songs = if (albumItems.size > 1) albumItems.subList(1, albumItems.size) else albumItems
                                                 if (songs.isNotEmpty()) {
                                                     SongHelper.play(songs.shuffled(), 0, mediaController)
                                                 }

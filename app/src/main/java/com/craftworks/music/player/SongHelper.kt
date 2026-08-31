@@ -16,11 +16,16 @@ class SongHelper {
         val expandNowPlayingSheet = _expandNowPlayingSheet.asSharedFlow()
 
         suspend fun play(mediaItems: List<MediaItem>, index: Int, mediaController: MediaController?) {
-            if (mediaItems.isEmpty())
+            val playableItems = mediaItems.filter {
+                it.mediaMetadata.isPlayable != false && !it.mediaId.startsWith("folder_album_") && it.mediaId.isNotBlank()
+            }
+            if (playableItems.isEmpty())
                 return
 
+            val safeIndex = index.coerceIn(0, playableItems.size - 1)
+
             withContext(Dispatchers.Main) {
-                mediaController?.setMediaItems(mediaItems, index, 0)
+                mediaController?.setMediaItems(playableItems, safeIndex, 0)
                 mediaController?.prepare()
                 mediaController?.play()
                 _expandNowPlayingSheet.tryEmit(Unit)
