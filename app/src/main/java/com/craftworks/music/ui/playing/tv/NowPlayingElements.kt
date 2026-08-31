@@ -8,11 +8,14 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
@@ -149,26 +152,37 @@ fun PlaybackProgressSlider(
         }
     }
 
-    Column(
-        Modifier.focusable(false)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        Text(
+            text = remember(currentValue) { formatMilliseconds(currentValue.toInt() / 1000) },
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Start,
+            color = color.copy(alpha = 0.75f),
+            modifier = Modifier.width(48.dp),
+            maxLines = 1
+        )
+
         Slider(
             enabled = metadata?.mediaType != MediaMetadata.MEDIA_TYPE_RADIO_STATION,
             modifier = Modifier
-                .fillMaxWidth()
+                .weight(1f)
                 .onFocusChanged {
                     focused.value = it.isFocused
                 }
                 .onKeyEvent { keyEvent ->
                     when {
                         keyEvent.key == Key.DirectionRight && keyEvent.type == KeyEventType.KeyDown -> {
-                            //currentValue = (currentValue + 5000)
                             mediaController?.seekForward()
                             true
                         }
 
                         keyEvent.key == Key.DirectionLeft && keyEvent.type == KeyEventType.KeyDown -> {
-                            //currentValue = (currentValue - 5000)
                             mediaController?.seekBack()
                             true
                         }
@@ -194,36 +208,18 @@ fun PlaybackProgressSlider(
             interactionSource = interactionSource,
         )
 
-        // Time thingies
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-        ) {
-            Text(
-                text = remember(currentValue) { formatMilliseconds(currentValue.toInt() / 1000) },
-                fontWeight = FontWeight.Light,
-                textAlign = TextAlign.Start,
-                color = color.copy(alpha = 0.5f),
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .width(64.dp),
-                maxLines = 1
-            )
-            Text(
-                text = remember(currentDuration) {
-                    formatMilliseconds(
-                        currentDuration?.toInt()?.div(1000) ?: (currentValue / 1000).toInt()
-                    )
-                },
-                fontWeight = FontWeight.Light,
-                textAlign = TextAlign.End,
-                color = color.copy(alpha = 0.5f),
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .width(64.dp),
-                maxLines = 1
-            )
-        }
+        Text(
+            text = remember(currentDuration) {
+                formatMilliseconds(
+                    currentDuration?.toInt()?.div(1000) ?: (currentValue / 1000).toInt()
+                )
+            },
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.End,
+            color = color.copy(alpha = 0.75f),
+            modifier = Modifier.width(48.dp),
+            maxLines = 1
+        )
     }
 }
 
