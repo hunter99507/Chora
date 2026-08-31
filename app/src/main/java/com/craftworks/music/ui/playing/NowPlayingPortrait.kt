@@ -132,15 +132,12 @@ fun NowPlayingPortrait(
         modifier = Modifier
             .fillMaxSize()
             .navigationBarsPadding(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         //region Top Section: Full Bleed Artwork / Lyrics
         AnimatedContent(
             targetState = isLyricsActive,
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f, fill = false),
+            modifier = Modifier.fillMaxWidth(),
             label = "Crossfade between artwork and lyrics view",
             transitionSpec = {
                 (fadeIn(tween(300)) + slideInVertically { it / 4 }) togetherWith
@@ -218,75 +215,56 @@ fun NowPlayingPortrait(
         }
         //endregion
 
-        //region Middle Section: Metadata & Seekbar
-        Column(
+        //region Middle Section: Center of Title Area Exactly In Between Artwork & Controls
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(top = 44.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+                .weight(1f),
+            contentAlignment = Alignment.Center
         ) {
-            Crossfade(
-                targetState = metadata?.title.toString(),
-                animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
-                label = "Animated Song Title",
-                modifier = Modifier.fillMaxWidth()
-            ) { title ->
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.headlineMediumEmphasized.copy(
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    color = iconColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Visible,
-                    softWrap = false,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .marqueeHorizontalFadingEdges(marqueeProvider = { Modifier.basicMarquee() })
-                )
-            }
-
-            Crossfade(
-                targetState = metadata?.artist.toString(),
-                animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
-                label = "Animated Artist",
-                modifier = Modifier.fillMaxWidth()
-            ) { artistInfo ->
-                Text(
-                    text = artistInfo,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Normal
-                    ),
-                    color = iconColor.copy(alpha = 0.85f),
-                    maxLines = 1,
-                    softWrap = false,
-                    textAlign = TextAlign.Center,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .marqueeHorizontalFadingEdges(marqueeProvider = { Modifier.basicMarquee() })
-                )
-            }
-
-            if (metadata?.albumTitle != null && metadata.albumTitle.toString().isNotBlank()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 Crossfade(
-                    targetState = metadata.albumTitle.toString(),
+                    targetState = metadata?.title.toString(),
                     animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
-                    label = "Animated Album",
+                    label = "Animated Song Title",
                     modifier = Modifier.fillMaxWidth()
-                ) { albumInfo ->
+                ) { title ->
                     Text(
-                        text = albumInfo,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontSize = 15.sp,
+                        text = title,
+                        style = MaterialTheme.typography.headlineMediumEmphasized.copy(
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = iconColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Visible,
+                        softWrap = false,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .marqueeHorizontalFadingEdges(marqueeProvider = { Modifier.basicMarquee() })
+                    )
+                }
+
+                Crossfade(
+                    targetState = metadata?.artist.toString(),
+                    animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+                    label = "Animated Artist",
+                    modifier = Modifier.fillMaxWidth()
+                ) { artistInfo ->
+                    Text(
+                        text = artistInfo,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontSize = 17.sp,
                             fontWeight = FontWeight.Normal
                         ),
-                        color = iconColor.copy(alpha = 0.65f),
+                        color = iconColor.copy(alpha = 0.85f),
                         maxLines = 1,
                         softWrap = false,
                         textAlign = TextAlign.Center,
@@ -296,14 +274,39 @@ fun NowPlayingPortrait(
                             .marqueeHorizontalFadingEdges(marqueeProvider = { Modifier.basicMarquee() })
                     )
                 }
-            }
 
-            if (!isRadio) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Box(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    PlaybackProgressSlider(iconColor, mediaController, metadata)
+                if (metadata?.albumTitle != null && metadata.albumTitle.toString().isNotBlank()) {
+                    Crossfade(
+                        targetState = metadata.albumTitle.toString(),
+                        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+                        label = "Animated Album",
+                        modifier = Modifier.fillMaxWidth()
+                    ) { albumInfo ->
+                        Text(
+                            text = albumInfo,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Normal
+                            ),
+                            color = iconColor.copy(alpha = 0.65f),
+                            maxLines = 1,
+                            softWrap = false,
+                            textAlign = TextAlign.Center,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .marqueeHorizontalFadingEdges(marqueeProvider = { Modifier.basicMarquee() })
+                        )
+                    }
+                }
+
+                if (!isRadio) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Box(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        PlaybackProgressSlider(iconColor, mediaController, metadata)
+                    }
                 }
             }
         }
