@@ -218,14 +218,14 @@ fun NowPlayingPortrait(
         }
         //endregion
 
-        //region Lower Section: Shifted Down Metadata, Seekbar & Controls
+        //region Lower Section: Balanced Track Information & Controls
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                .padding(bottom = 20.dp),
+                .padding(bottom = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(32.dp)
         ) {
             // Track Info & Progress Slider
             Column(
