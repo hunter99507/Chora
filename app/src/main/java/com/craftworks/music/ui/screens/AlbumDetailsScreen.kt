@@ -72,6 +72,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.craftworks.music.R
 import com.craftworks.music.fadingEdge
+import com.craftworks.music.formatDurationSummary
 import com.craftworks.music.formatMilliseconds
 import com.craftworks.music.managers.settings.AppearanceSettingsManager
 import com.craftworks.music.player.SongHelper
@@ -216,8 +217,8 @@ fun AlbumDetails(
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            text = currentAlbum[0].mediaMetadata.artist.toString() + " • " + formatMilliseconds(currentAlbum[0].mediaMetadata.durationMs?.div(1000)?.toInt() ?: 0),
-                            color = MaterialTheme.colorScheme.onBackground,
+                            text = "${currentAlbum[0].mediaMetadata.artist} • ${currentAlbum.size} tracks • ${formatDurationSummary((currentAlbum.sumOf { it.mediaMetadata.durationMs ?: 0 } / 1000).toInt())}",
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.75f),
                             fontWeight = FontWeight.Normal,
                             fontSize = MaterialTheme.typography.titleMedium.fontSize,
                             textAlign = TextAlign.Center,

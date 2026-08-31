@@ -68,6 +68,7 @@ import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.craftworks.music.R
 import com.craftworks.music.fadingEdge
+import com.craftworks.music.formatDurationSummary
 import com.craftworks.music.formatMilliseconds
 import com.craftworks.music.player.SongHelper
 import com.craftworks.music.player.rememberManagedMediaController
@@ -237,10 +238,14 @@ fun PlaylistDetails(
                             lineHeight = 32.sp,
                         )
                         Text(
-                            text = formatMilliseconds((playlistDuration / 1000).toInt()),
-                            color = MaterialTheme.colorScheme.onBackground,
+                            text = if (playlistSongs.isNotEmpty()) {
+                                "${playlistSongs.size} tracks • ${formatDurationSummary((playlistDuration / 1000).toInt())}"
+                            } else {
+                                formatDurationSummary((playlistDuration / 1000).toInt())
+                            },
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.75f),
                             fontWeight = FontWeight.Normal,
-                            fontSize = MaterialTheme.typography.headlineSmall.fontSize,
+                            fontSize = MaterialTheme.typography.titleMedium.fontSize,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth()
                         )
