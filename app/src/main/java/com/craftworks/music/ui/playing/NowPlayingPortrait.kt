@@ -198,7 +198,7 @@ fun NowPlayingPortrait(
                             alignment = Alignment.Center,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .aspectRatio(0.88f)
+                                .aspectRatio(0.76f)
                                 .shadow(elevation = 16.dp, shape = RoundedCornerShape(16.dp))
                                 .background(MaterialTheme.colorScheme.surfaceVariant)
                                 .clip(RoundedCornerShape(16.dp))
@@ -227,7 +227,7 @@ fun NowPlayingPortrait(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.headlineMediumEmphasized.copy(
-                        fontSize = 24.sp,
+                        fontSize = 28.sp,
                         fontWeight = FontWeight.Bold
                     ),
                     color = Color.White,
@@ -250,7 +250,7 @@ fun NowPlayingPortrait(
                 Text(
                     text = artistInfo,
                     style = MaterialTheme.typography.titleMedium.copy(
-                        fontSize = 16.sp,
+                        fontSize = 17.sp,
                         fontWeight = FontWeight.Normal
                     ),
                     color = Color.White.copy(alpha = 0.85f),
@@ -274,7 +274,7 @@ fun NowPlayingPortrait(
                     Text(
                         text = albumInfo,
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            fontSize = 14.sp,
+                            fontSize = 15.sp,
                             fontWeight = FontWeight.Normal
                         ),
                         color = Color.White.copy(alpha = 0.65f),
