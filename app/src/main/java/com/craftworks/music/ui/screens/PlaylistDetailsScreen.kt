@@ -164,13 +164,10 @@ fun PlaylistDetails(
                                         ?.startsWith("Local") == true
                                 )
                                     playlistMetadata.artworkData else
-                                    playlistMetadata?.artworkUri
+                                    playlistMetadata?.artworkUri.toString().replace(Regex("size=\\d+"), "size=800")
                             )
+                            .diskCachePolicy(coil.request.CachePolicy.DISABLED)
                             .crossfade(true)
-                            .diskCacheKey(
-                                playlistMetadata?.extras?.getString("navidromeID")
-                                    ?: playlistMetadata?.title.toString()
-                            )
                             .build(),
                         contentScale = ContentScale.Crop,
                         contentDescription = "Playlist cover art",

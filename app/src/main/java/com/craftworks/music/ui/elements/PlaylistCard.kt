@@ -60,12 +60,10 @@ fun PlaylistCard(
                 .data(
                     if (metadata.extras?.getString("navidromeID")?.startsWith("Local") == true)
                         metadata.artworkData else
-                        metadata.artworkUri
+                        metadata.artworkUri.toString().replace(Regex("size=\\d+"), "size=512")
                 )
+                .diskCachePolicy(coil.request.CachePolicy.DISABLED)
                 .crossfade(true)
-                .diskCacheKey(
-                    metadata.extras?.getString("navidromeID") ?: playlist.mediaId
-                )
                 .build(),
             contentScale = ContentScale.Crop,
             contentDescription = "Playlist Cover Art",

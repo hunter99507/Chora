@@ -118,8 +118,8 @@ fun TvPlaylistDetails(
             ) {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
-                        .data(playlistMetadata?.artworkUri)
-                        .diskCacheKey(playlistMetadata?.extras?.getString("navidromeID"))
+                        .data(playlistMetadata?.artworkUri.toString().replace(Regex("size=\\d+"), "size=800"))
+                        .diskCachePolicy(coil.request.CachePolicy.DISABLED)
                         .crossfade(true)
                         .build(),
                     placeholder = painterResource(R.drawable.placeholder),
