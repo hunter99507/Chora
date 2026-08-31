@@ -211,6 +211,7 @@ fun PlaybackProgressSlider(
                         activeTrackColor = color,
                         inactiveTrackColor = color.copy(alpha = 0.30f)
                     ),
+                    thumbTrackGapSize = 3.dp,
                     drawStopIndicator = null
                 )
             },
