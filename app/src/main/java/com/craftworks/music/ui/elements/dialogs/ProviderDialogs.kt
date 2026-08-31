@@ -13,8 +13,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -169,7 +171,6 @@ fun CreateMediaProviderDialog(
     var allowCerts: Boolean by remember { mutableStateOf(false) }
 
     var dir: String by remember { mutableStateOf("/Music/") }
-
     val coroutineScope = rememberCoroutineScope()
 
     Dialog(onDismissRequest = { setShowDialog(false) }) {
@@ -179,7 +180,8 @@ fun CreateMediaProviderDialog(
                 .clip(RoundedCornerShape(24.dp))
                 .background(MaterialTheme.colorScheme.surface)
                 .padding(24.dp)
-                .widthIn(max = 320.dp)
+                .widthIn(max = 340.dp)
+                .verticalScroll(rememberScrollState())
                 .dialogFocusable()
                 .selectableGroup(),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -375,7 +377,6 @@ fun CreateMediaProviderDialog(
                                 },
                                 modifier = Modifier
                                     .height(50.dp)
-                                    .weight(1f)
                                     .fillMaxWidth()
                                     .bounceClick(),
                                 enabled = navidromeStatus.value == "ok"
@@ -402,7 +403,6 @@ fun CreateMediaProviderDialog(
                                 },
                                 modifier = Modifier
                                     .height(50.dp)
-                                    .weight(1f)
                                     .fillMaxWidth()
                                     .bounceClick()
                             ) {
