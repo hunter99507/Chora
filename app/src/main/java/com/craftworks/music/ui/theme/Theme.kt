@@ -21,26 +21,34 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.tv.material3.MaterialTheme
 
+private val DarkGreyBackground = Color(0xFF1E1F22)
+private val DarkGreySurface = Color(0xFF232428)
+private val DarkGreySurfaceContainer = Color(0xFF2B2D31)
+private val DarkGreySurfaceContainerLow = Color(0xFF232428)
+private val DarkGreySurfaceContainerHigh = Color(0xFF313338)
+private val DarkGreySurfaceContainerHighest = Color(0xFF383A40)
+private val DarkGreySurfaceVariant = Color(0xFF2E3035)
+
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
     secondary = PurpleGrey80,
-    tertiary = Pink80
+    tertiary = Pink80,
+    background = DarkGreyBackground,
+    surface = DarkGreySurface,
+    surfaceContainer = DarkGreySurfaceContainer,
+    surfaceContainerLow = DarkGreySurfaceContainerLow,
+    surfaceContainerHigh = DarkGreySurfaceContainerHigh,
+    surfaceContainerHighest = DarkGreySurfaceContainerHighest,
+    surfaceVariant = DarkGreySurfaceVariant,
+    onBackground = Color(0xFFE3E5E8),
+    onSurface = Color(0xFFE3E5E8),
+    onSurfaceVariant = Color(0xFFC4C7C5)
 )
 
 private val LightColorScheme = lightColorScheme(
     primary = Purple40,
     secondary = PurpleGrey40,
     tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
 )
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -60,7 +68,6 @@ fun MusicPlayerTheme(
         SideEffect {
             val window = (view.context as Activity).window
             window.statusBarColor = Color.Transparent.toArgb()
-            /*window.navigationBarColor = colorScheme.surfaceColorAtElevation(3.dp).toArgb()*/
             window.navigationBarColor = Color.Transparent.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }
@@ -81,13 +88,32 @@ fun MusicPlayerTheme(
         )
     }
     else {
-        val colorScheme = when {
+        val baseColorScheme = when {
             dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
                 val context = LocalContext.current
                 if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
             }
             darkTheme -> DarkColorScheme
             else -> LightColorScheme
+        }
+
+        val colorScheme = if (darkTheme) {
+            baseColorScheme.copy(
+                background = DarkGreyBackground,
+                surface = DarkGreySurface,
+                surfaceContainer = DarkGreySurfaceContainer,
+                surfaceContainerLow = DarkGreySurfaceContainerLow,
+                surfaceContainerHigh = DarkGreySurfaceContainerHigh,
+                surfaceContainerHighest = DarkGreySurfaceContainerHighest,
+                surfaceVariant = DarkGreySurfaceVariant,
+                surfaceDim = Color(0xFF191A1D),
+                surfaceBright = Color(0xFF383A40),
+                onBackground = Color(0xFFE3E5E8),
+                onSurface = Color(0xFFE3E5E8),
+                onSurfaceVariant = Color(0xFFC4C7C5)
+            )
+        } else {
+            baseColorScheme
         }
 
         MaterialExpressiveTheme (
