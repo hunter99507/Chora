@@ -176,7 +176,7 @@ fun CreateMediaProviderDialog(
     var dir: String by remember { mutableStateOf("/Music/") }
     val coroutineScope = rememberCoroutineScope()
     val configuration = LocalConfiguration.current
-    val maxDialogHeight = (configuration.screenHeightDp * 0.88f).dp
+    val maxDialogHeight = (configuration.screenHeightDp * 0.70f).dp.coerceAtMost(520.dp)
 
     Dialog(
         onDismissRequest = { setShowDialog(false) },
