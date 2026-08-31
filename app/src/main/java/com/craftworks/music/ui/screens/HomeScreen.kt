@@ -8,6 +8,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -127,41 +128,36 @@ fun HomeScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             Row(
-                verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(
-                        top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        start = 16.dp,
+                        end = 8.dp,
+                        top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp,
+                        bottom = 4.dp
                     )
             ) {
-                Row (Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                    val username = AppearanceSettingsManager(context).usernameFlow.collectAsState("Username")
-                    val showNavidromeLogo =
-                        AppearanceSettingsManager(context).showNavidromeLogoFlow.collectAsState(true).value && NavidromeManager.checkActiveServers()
-
-                    if (showNavidromeLogo) NavidromeLogo()
-
-                    Text(
-                        text = "${stringResource(R.string.welcome_text)},\n${username.value}!",
-                        color = MaterialTheme.colorScheme.onBackground,
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier
-                            .padding(start = 12.dp)
-                            .offset(x = if (showNavidromeLogo) (-36).dp else 0.dp),
-                    )
-                }
+                Text(
+                    text = "Chora",
+                    color = MaterialTheme.colorScheme.onBackground,
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                )
                 IconButton(
                     onClick = {
                         navHostController.navigate(Screen.Setting.route) {
                             launchSingleTop = true
                             restoreState = true
                         }
-                    }, modifier = Modifier
-                        .padding(end = 12.dp)
-                        .size(48.dp)
+                    },
+                    modifier = Modifier.size(48.dp)
                 ) {
                     Icon(
                         ImageVector.vectorResource(R.drawable.rounded_settings_24),
                         contentDescription = "Settings",
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(28.dp)
                     )
                 }
             }
