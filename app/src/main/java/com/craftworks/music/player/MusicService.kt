@@ -57,6 +57,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -187,7 +188,7 @@ class ChoraMediaLibraryService : MediaLibraryService() {
         )
         .build()
 
-    private var rootHierarchy = mutableListOf<MediaItem>()
+    private var rootHierarchy = mutableListOf(homeItem, albumsItem, artistsItem, radiosItem, playlistsItem)
 
     private val serviceMainScope = CoroutineScope(Dispatchers.Main)
     private val serviceIOScope = CoroutineScope(Dispatchers.IO)
@@ -603,57 +604,69 @@ class ChoraMediaLibraryService : MediaLibraryService() {
             mediaItems: List<MediaItem>
         ): ListenableFuture<List<MediaItem>> {
             // Android Auto uses the legacy MediaController, so we need to do some very weird hacks to make it work nicely.
+            val settable = SettableFuture.create<List<MediaItem>>()
+            serviceIOScope.launch {
+                try {
+                    // If only one item is requested, check if it belongs to a folder we've already loaded
+                    if (mediaItems.size == 1) {
+                        val requestedId = mediaItems[0].mediaId
+                        // Try to find the full item in the last browsed folder
+                        val fullItem = aFolderSongs.find { it.mediaId == requestedId }
+                        if (fullItem != null) {
+                            val startIndex = aFolderSongs.indexOf(fullItem)
+                            val folderQueue = aFolderSongs.subList(startIndex, aFolderSongs.size).map { item ->
+                                item.buildUpon()
+                                    .setUri(item.mediaId)
+                                    .build()
+                            }
+                            settable.set(folderQueue)
+                            return@launch
+                        }
 
-            // If only one item is requested, check if it belongs to a folder we've already loaded
-            if (mediaItems.size == 1) {
-                val requestedId = mediaItems[0].mediaId
-                // Try to find the full item in the last browsed folder
-                val fullItem = aFolderSongs.find { it.mediaId == requestedId }
-                if (fullItem != null) {
-                    val startIndex = aFolderSongs.indexOf(fullItem)
-                    val folderQueue = aFolderSongs.subList(startIndex, aFolderSongs.size).map { item ->
+                        // Check if it's an album that needs its songs loaded
+                        val albumSongs = albumRepository.getAlbum(requestedId)
+                        if (!albumSongs.isNullOrEmpty()) {
+                            val songsList = if (albumSongs.size > 1) albumSongs.subList(1, albumSongs.size) else albumSongs
+                            val queue = songsList.map { it.buildUpon().setUri(it.mediaId).build() }
+                            settable.set(queue)
+                            return@launch
+                        }
+
+                        // Check if it's a playlist
+                        val playlistSongs = playlistRepository.getPlaylistSongs(requestedId)
+                        if (playlistSongs.isNotEmpty()) {
+                            val queue = playlistSongs.map { it.buildUpon().setUri(it.mediaId).build() }
+                            settable.set(queue)
+                            return@launch
+                        }
+
+                        // Not found in folder, check other cached items
+                        val cachedItem = aPlaylistScreenItems.find { it.mediaId == requestedId }
+                            ?: aRadioScreenItems.find { it.mediaId == requestedId }
+                            ?: aAlbumScreenItems.find { it.mediaId == requestedId }
+                            ?: aArtistsScreenItems.find { it.mediaId == requestedId }
+
+                        if (cachedItem != null) {
+                            val enrichedItem = cachedItem.buildUpon()
+                                .setUri(cachedItem.mediaId)
+                                .build()
+                            settable.set(listOf(enrichedItem))
+                            return@launch
+                        }
+                    }
+
+                    val updatedMediaItems = mediaItems.map { item ->
                         item.buildUpon()
                             .setUri(item.mediaId)
                             .build()
                     }
-                    return Futures.immediateFuture(folderQueue)
-                }
-
-                // Check if it's an album that needs its songs loaded
-                val albumSongs = runBlocking { albumRepository.getAlbum(requestedId) }
-                if (!albumSongs.isNullOrEmpty()) {
-                    val songsList = if (albumSongs.size > 1) albumSongs.subList(1, albumSongs.size) else albumSongs
-                    val queue = songsList.map { it.buildUpon().setUri(it.mediaId).build() }
-                    return Futures.immediateFuture(queue)
-                }
-
-                // Check if it's a playlist
-                val playlistSongs = runBlocking { playlistRepository.getPlaylistSongs(requestedId) }
-                if (playlistSongs.isNotEmpty()) {
-                    val queue = playlistSongs.map { it.buildUpon().setUri(it.mediaId).build() }
-                    return Futures.immediateFuture(queue)
-                }
-
-                // Not found in folder, check other cached items
-                val cachedItem = aPlaylistScreenItems.find { it.mediaId == requestedId }
-                    ?: aRadioScreenItems.find { it.mediaId == requestedId }
-                    ?: aAlbumScreenItems.find { it.mediaId == requestedId }
-                    ?: aArtistsScreenItems.find { it.mediaId == requestedId }
-
-                if (cachedItem != null) {
-                    val enrichedItem = cachedItem.buildUpon()
-                        .setUri(cachedItem.mediaId)
-                        .build()
-                    return Futures.immediateFuture(listOf(enrichedItem))
+                    settable.set(updatedMediaItems)
+                } catch (e: Exception) {
+                    Log.e("AA", "Error in onAddMediaItems", e)
+                    settable.set(mediaItems)
                 }
             }
-
-            val updatedMediaItems = mediaItems.map { item ->
-                item.buildUpon()
-                    .setUri(item.mediaId)
-                    .build()
-            }
-            return Futures.immediateFuture(updatedMediaItems)
+            return settable
         }
 
         override fun onSetRating(
@@ -707,33 +720,36 @@ class ChoraMediaLibraryService : MediaLibraryService() {
             pageSize: Int,
             params: LibraryParams?
         ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
-            return Futures.immediateFuture(
+            val settable = SettableFuture.create<LibraryResult<ImmutableList<MediaItem>>>()
+            serviceIOScope.launch {
                 try {
-                    LibraryResult.ofItemList(
-                        when (parentId) {
-                            "nodeROOT" -> rootHierarchy
-                            "nodeHOME" -> getHomeScreenItems()
-                            "nodeALBUMS" -> getAlbumScreenItems()
-                            "nodeARTISTS" -> getArtistScreenItems()
-                            "nodeRADIOS" -> getRadioItems()
-                            "nodePLAYLISTS" -> getPlaylistItems()
-                            else -> {
-                                val mediaItem =
-                                    aHomeScreenItems.find { it.mediaId == parentId }
-                                        ?: aPlaylistScreenItems.find { it.mediaId == parentId }
-                                        ?: aAlbumScreenItems.find { it.mediaId == parentId }
-                                        ?: aArtistsScreenItems.find { it.mediaId == parentId }
-                                getFolderItems(
-                                    parentId,
-                                    mediaItem?.mediaMetadata?.mediaType
-                                        ?: MediaMetadata.MEDIA_TYPE_ALBUM
-                                )
-                            }
-                        }, params)
-                } catch (_: Exception) {
-                    LibraryResult.ofError(SessionError.ERROR_UNKNOWN)
+                    val items = when (parentId) {
+                        "nodeROOT" -> rootHierarchy
+                        "nodeHOME" -> getHomeScreenItems()
+                        "nodeALBUMS" -> getAlbumScreenItems()
+                        "nodeARTISTS" -> getArtistScreenItems()
+                        "nodeRADIOS" -> getRadioItems()
+                        "nodePLAYLISTS" -> getPlaylistItems()
+                        else -> {
+                            val mediaItem =
+                                aHomeScreenItems.find { it.mediaId == parentId }
+                                    ?: aPlaylistScreenItems.find { it.mediaId == parentId }
+                                    ?: aAlbumScreenItems.find { it.mediaId == parentId }
+                                    ?: aArtistsScreenItems.find { it.mediaId == parentId }
+                            getFolderItems(
+                                parentId,
+                                mediaItem?.mediaMetadata?.mediaType
+                                    ?: MediaMetadata.MEDIA_TYPE_ALBUM
+                            )
+                        }
+                    }
+                    settable.set(LibraryResult.ofItemList(items, params))
+                } catch (e: Exception) {
+                    Log.e("AA", "Error in onGetChildren for parentId: $parentId", e)
+                    settable.set(LibraryResult.ofError(SessionError.ERROR_UNKNOWN))
                 }
-            )
+            }
+            return settable
         }
 
 
@@ -943,63 +959,65 @@ class ChoraMediaLibraryService : MediaLibraryService() {
     }
 
     //region getChildren
-    private fun getHomeScreenItems(): MutableList<MediaItem> {
-        println("GETTING ANDROID AUTO SCREEN ITEMS")
-        runBlocking {
-            if (aHomeScreenItems.isEmpty()) {
-                val recentlyPlayedAlbums = async { albumRepository.getAlbums("recent", 6) }.await()
-                val mostPlayedAlbums = async { albumRepository.getAlbums("frequent", 6) }.await()
+    private suspend fun getHomeScreenItems(): MutableList<MediaItem> {
+        Log.d("AA", "GETTING ANDROID AUTO SCREEN ITEMS")
+        if (aHomeScreenItems.isEmpty()) {
+            try {
+                coroutineScope {
+                    val recentlyPlayedDeferred = async { albumRepository.getAlbums("recent", 6) }
+                    val mostPlayedDeferred = async { albumRepository.getAlbums("frequent", 6) }
 
-                recentlyPlayedAlbums.forEach { album ->
-                    aHomeScreenItems.add(
-                        album.withHighResArtwork().apply {
-                            this.mediaMetadata.extras?.putString(
-                                MediaConstants.EXTRAS_KEY_CONTENT_STYLE_GROUP_TITLE,
-                                this@ChoraMediaLibraryService.getString(R.string.recently_played)
-                            )
-                        }
-                    )
-                }
+                    val recentlyPlayedAlbums = recentlyPlayedDeferred.await()
+                    val mostPlayedAlbums = mostPlayedDeferred.await()
 
-                mostPlayedAlbums.forEach { album ->
-                    aHomeScreenItems.add(
-                        album.withHighResArtwork().apply {
-                            this.mediaMetadata.extras?.putString(
-                                MediaConstants.EXTRAS_KEY_CONTENT_STYLE_GROUP_TITLE,
-                                this@ChoraMediaLibraryService.getString(R.string.most_played)
-                            )
-                        }
-                    )
+                    recentlyPlayedAlbums.forEach { album ->
+                        aHomeScreenItems.add(
+                            album.withHighResArtwork().apply {
+                                this.mediaMetadata.extras?.putString(
+                                    MediaConstants.EXTRAS_KEY_CONTENT_STYLE_GROUP_TITLE,
+                                    this@ChoraMediaLibraryService.getString(R.string.recently_played)
+                                )
+                            }
+                        )
+                    }
+
+                    mostPlayedAlbums.forEach { album ->
+                        aHomeScreenItems.add(
+                            album.withHighResArtwork().apply {
+                                this.mediaMetadata.extras?.putString(
+                                    MediaConstants.EXTRAS_KEY_CONTENT_STYLE_GROUP_TITLE,
+                                    this@ChoraMediaLibraryService.getString(R.string.most_played)
+                                )
+                            }
+                        )
+                    }
                 }
+            } catch (e: Exception) {
+                Log.e("AA", "Error loading home screen items", e)
             }
         }
         return aHomeScreenItems
     }
 
-    private fun getAlbumScreenItems() : MutableList<MediaItem> {
-        println("GETTING ANDROID AUTO ALBUM SCREEN ITEMS")
-        runBlocking {
-            if (aAlbumScreenItems.isEmpty()) {
-                while (true) {
-                    val albums = async { albumRepository.getAlbums("alphabeticalByName", 250, aAlbumScreenItems.size) }.await()
-                    aAlbumScreenItems.addAll(albums.map { it.withHighResArtwork() })
-                    if (albums.isEmpty()) {
-                        break
-                    }
-                }
+    private suspend fun getAlbumScreenItems(): MutableList<MediaItem> {
+        Log.d("AA", "GETTING ANDROID AUTO ALBUM SCREEN ITEMS")
+        if (aAlbumScreenItems.isEmpty()) {
+            try {
+                val albums = albumRepository.getAlbums("alphabeticalByName", 100, 0)
+                aAlbumScreenItems.addAll(albums.map { it.withHighResArtwork() })
+            } catch (e: Exception) {
+                Log.e("AA", "Error loading album screen items", e)
             }
         }
-        println("Got ALL albums. Should be 492, is ${aAlbumScreenItems.size}")
         return aAlbumScreenItems
     }
 
-    private fun getArtistScreenItems() : MutableList<MediaItem> {
-        println("GETTING ANDROID AUTO ARTIST SCREEN ITEMS")
-        runBlocking {
-            if (aArtistsScreenItems.isEmpty()) {
-                val albums = async { artistRepository.getArtists() }.await()
-
-                albums.forEach {
+    private suspend fun getArtistScreenItems(): MutableList<MediaItem> {
+        Log.d("AA", "GETTING ANDROID AUTO ARTIST SCREEN ITEMS")
+        if (aArtistsScreenItems.isEmpty()) {
+            try {
+                val artists = artistRepository.getArtists()
+                artists.forEach {
                     val highResArt = if (it.artistImageUrl?.contains("size=") == true)
                         it.artistImageUrl.replace(Regex("size=\\d+"), "size=800")
                     else
@@ -1020,41 +1038,45 @@ class ChoraMediaLibraryService : MediaLibraryService() {
                             .build()
                     )
                 }
+            } catch (e: Exception) {
+                Log.e("AA", "Error loading artist screen items", e)
             }
         }
         return aArtistsScreenItems
     }
 
-    private fun getRadioItems(): MutableList<MediaItem> {
-        runBlocking {
-            if (aRadioScreenItems.isEmpty()) {
+    private suspend fun getRadioItems(): MutableList<MediaItem> {
+        if (aRadioScreenItems.isEmpty()) {
+            try {
                 aRadioScreenItems.addAll(
                     radioRepository.getRadios().map { radio ->
-                        Log.d("MediaItemTransition", radio.toString())
                         radio.toMediaItem().withHighResArtwork()
                     }
                 )
-                Log.d("MediaItemTransition", "aRadioScreenItems: ${aRadioScreenItems.map { it.mediaMetadata }}")
+            } catch (e: Exception) {
+                Log.e("AA", "Error loading radio screen items", e)
             }
         }
         return aRadioScreenItems
     }
 
-    private fun getPlaylistItems(): MutableList<MediaItem> {
-        runBlocking {
-            if (aPlaylistScreenItems.isEmpty()) {
+    private suspend fun getPlaylistItems(): MutableList<MediaItem> {
+        if (aPlaylistScreenItems.isEmpty()) {
+            try {
                 aPlaylistScreenItems.addAll(playlistRepository.getPlaylists().map { it.withHighResArtwork() })
+            } catch (e: Exception) {
+                Log.e("AA", "Error loading playlist screen items", e)
             }
         }
         return aPlaylistScreenItems
     }
 
-    private fun getFolderItems(parentId: String, type: Int): MutableList<MediaItem> {
-        runBlocking {
-            aFolderSongs.clear()
+    private suspend fun getFolderItems(parentId: String, type: Int): MutableList<MediaItem> {
+        aFolderSongs.clear()
+        try {
             when (type) {
                 MediaMetadata.MEDIA_TYPE_ALBUM -> {
-                    val albumSongs = async { albumRepository.getAlbum(parentId) }.await()
+                    val albumSongs = albumRepository.getAlbum(parentId)
                     aFolderSongs.addAll(
                         albumSongs?.subList(1, albumSongs.size)?.map { it.withHighResArtwork() } ?: emptyList()
                     )
@@ -1074,8 +1096,9 @@ class ChoraMediaLibraryService : MediaLibraryService() {
 
                 else -> aFolderSongs.clear()
             }
+        } catch (e: Exception) {
+            Log.e("AA", "Error loading folder items for $parentId", e)
         }
-
         return aFolderSongs
     }
     //endregion
