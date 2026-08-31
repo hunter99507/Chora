@@ -58,6 +58,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -204,6 +206,14 @@ fun NowPlayingPortrait(
             } else {
                 val artworkHeight = (LocalConfiguration.current.screenHeightDp.dp * 0.51f).coerceAtLeast(380.dp)
                 var totalDrag by remember { mutableFloatStateOf(0f) }
+                var isForward by remember { mutableStateOf(true) }
+                var lastMediaIndex by remember { mutableIntStateOf(mediaController?.currentMediaItemIndex ?: 0) }
+
+                val currentIndex = mediaController?.currentMediaItemIndex ?: 0
+                if (currentIndex != lastMediaIndex) {
+                    isForward = currentIndex >= lastMediaIndex
+                    lastMediaIndex = currentIndex
+                }
 
                 Box(
                     modifier = Modifier
@@ -214,8 +224,10 @@ fun NowPlayingPortrait(
                                 onDragStart = { totalDrag = 0f },
                                 onDragEnd = {
                                     if (totalDrag < -60f) {
+                                        isForward = true
                                         mediaController?.seekToNextMediaItem()
                                     } else if (totalDrag > 60f) {
+                                        isForward = false
                                         mediaController?.seekToPreviousMediaItem()
                                     }
                                     totalDrag = 0f
@@ -233,12 +245,13 @@ fun NowPlayingPortrait(
                     AnimatedContent(
                         targetState = metadata?.artworkUri.toString().replace(Regex("size=\\d+"), "size=600"),
                         transitionSpec = {
+                            val direction = if (isForward) 1 else -1
                             (slideInHorizontally(
                                 animationSpec = spring(
                                     dampingRatio = Spring.DampingRatioNoBouncy,
                                     stiffness = Spring.StiffnessMediumLow
-                                ),
-                                initialOffsetX = { fullWidth -> (fullWidth * 0.35f).toInt() }
+                               ),
+                                initialOffsetX = { fullWidth -> (fullWidth * 0.4f * direction).toInt() }
                             ) + fadeIn(animationSpec = tween(350)) + scaleIn(initialScale = 0.92f, animationSpec = tween(350)))
                                 .togetherWith(
                                     slideOutHorizontally(
@@ -246,7 +259,7 @@ fun NowPlayingPortrait(
                                             dampingRatio = Spring.DampingRatioNoBouncy,
                                             stiffness = Spring.StiffnessMediumLow
                                         ),
-                                        targetOffsetX = { fullWidth -> (-fullWidth * 0.35f).toInt() }
+                                        targetOffsetX = { fullWidth -> (-fullWidth * 0.4f * direction).toInt() }
                                     ) + fadeOut(animationSpec = tween(250)) + scaleOut(targetScale = 0.92f, animationSpec = tween(250))
                                 )
                         },
