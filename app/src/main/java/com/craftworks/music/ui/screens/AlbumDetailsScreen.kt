@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -156,21 +157,19 @@ fun AlbumDetails(
             requester.requestFocus()
         }
 
-        LazyColumn(modifier = Modifier
-            .fillMaxWidth()
-            .padding(
-                horizontal = 12.dp
-            )
-            .dialogFocusable(),
-            contentPadding = PaddingValues(bottom = 16.dp, top = WindowInsets.statusBars
-                .asPaddingValues()
-                .calculateTopPadding()),
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .dialogFocusable(),
+            contentPadding = PaddingValues(bottom = 80.dp),
         ) {
-            // Header
+            // Header (Edge-to-edge, filling top 33%)
             item {
-                Box (modifier = Modifier
-                    .height(224.dp)
-                    .fillMaxWidth()) {
+                Box(
+                    modifier = Modifier
+                        .height(300.dp)
+                        .fillMaxWidth()
+                ) {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(selectedAlbumImage)
@@ -179,43 +178,56 @@ fun AlbumDetails(
                             .build(),
                         placeholder = painterResource(R.drawable.placeholder),
                         fallback = painterResource(R.drawable.placeholder),
-                        contentScale = ContentScale.FillWidth,
+                        contentScale = ContentScale.Crop,
                         contentDescription = "Album Image",
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .fillMaxSize()
                             .fadingEdge(imageFadingEdge)
-                            .clip(RoundedCornerShape(12.dp, 12.dp, 0.dp, 0.dp))
-                            .blur(8.dp)
+                            .blur(10.dp)
                     )
+
                     Button(
                         onClick = { navHostController.popBackStack() },
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
-                            .padding(top = 12.dp, start = 12.dp)
-                            .size(32.dp),
+                            .padding(
+                                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp,
+                                start = 16.dp
+                            )
+                            .size(36.dp),
                         contentPadding = PaddingValues(4.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.onBackground)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.7f),
+                            contentColor = MaterialTheme.colorScheme.onBackground
+                        )
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                             tint = MaterialTheme.colorScheme.primary,
-                            contentDescription = "Settings",
+                            contentDescription = "Back",
                             modifier = Modifier
-                                .height(32.dp)
-                                .size(32.dp)
+                                .height(28.dp)
+                                .size(28.dp)
                         )
                     }
+
                     // Album Name and Artist
-                    Column(modifier = Modifier.align(Alignment.BottomCenter)){
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+                    ) {
                         Text(
                             text = currentAlbum[0].mediaMetadata.title.toString(),
                             color = MaterialTheme.colorScheme.onBackground,
                             style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth(),
                             lineHeight = 32.sp,
                         )
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(6.dp))
                         Text(
                             text = "${currentAlbum[0].mediaMetadata.artist} • ${currentAlbum.size} tracks • ${formatDurationSummary((currentAlbum.sumOf { it.mediaMetadata.durationMs ?: 0 } / 1000).toInt())}",
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.75f),
@@ -226,8 +238,12 @@ fun AlbumDetails(
                         )
 
                         // Genres
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                            if (!currentAlbum[0].mediaMetadata.genre.isNullOrEmpty()) {
+                        if (!currentAlbum[0].mediaMetadata.genre.isNullOrEmpty()) {
+                            Spacer(Modifier.height(4.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center
+                            ) {
                                 currentAlbum[0].mediaMetadata.genre?.split(",")?.forEach {
                                     GenrePill(it.toString())
                                 }
@@ -255,10 +271,16 @@ fun AlbumDetails(
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
-                                .padding(top = 12.dp, end = 12.dp)
-                                .size(32.dp),
+                                .padding(
+                                    top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp,
+                                    end = 16.dp
+                                )
+                                .size(36.dp),
                             contentPadding = PaddingValues(4.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.onBackground)
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.7f),
+                                contentColor = MaterialTheme.colorScheme.onBackground
+                            )
                         ) {
                             Crossfade(
                                 targetState = isStarred
@@ -267,8 +289,8 @@ fun AlbumDetails(
                                     imageVector = ImageVector.vectorResource(R.drawable.round_favorite_24),
                                     contentDescription = null,
                                     modifier = Modifier
-                                        .height(28.dp)
-                                        .size(28.dp)
+                                        .height(26.dp)
+                                        .size(26.dp)
                                 )
                                 else
                                     Icon(
@@ -276,8 +298,8 @@ fun AlbumDetails(
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier
-                                            .height(28.dp)
-                                            .size(28.dp)
+                                            .height(26.dp)
+                                            .size(26.dp)
                                     )
                             }
                         }
@@ -291,18 +313,24 @@ fun AlbumDetails(
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
-                                .padding(top = 12.dp, end = 52.dp)
-                                .size(32.dp),
+                                .padding(
+                                    top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp,
+                                    end = 60.dp
+                                )
+                                .size(36.dp),
                             contentPadding = PaddingValues(4.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.onBackground)
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.7f),
+                                contentColor = MaterialTheme.colorScheme.onBackground
+                            )
                         ) {
                             Icon(
                                 imageVector = ImageVector.vectorResource(R.drawable.rounded_download_24),
-                                contentDescription = "Unstar Album",
+                                contentDescription = "Download Album",
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier
-                                    .height(28.dp)
-                                    .size(28.dp)
+                                    .height(26.dp)
+                                    .size(26.dp)
                             )
                         }
                     }
@@ -312,11 +340,13 @@ fun AlbumDetails(
 
             // Play and shuffle buttons
             item {
-                Row (modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Button(
                         onClick = {
                             coroutineScope.launch {
@@ -328,13 +358,15 @@ fun AlbumDetails(
                             }
                         },
                         modifier = Modifier
-                            .widthIn(min = 128.dp, max = 320.dp)
+                            .weight(1f)
                             .focusRequester(requester)
                     ) {
-                        Row (verticalAlignment = Alignment.CenterVertically,
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.height(24.dp)
                         ) {
                             Icon(Icons.Rounded.PlayArrow, "Play Album")
+                            Spacer(Modifier.width(6.dp))
                             Text(stringResource(R.string.Action_Play), maxLines = 1)
                         }
                     }
@@ -342,18 +374,22 @@ fun AlbumDetails(
                         onClick = {
                             mediaController?.shuffleModeEnabled = true
                             coroutineScope.launch {
-                            val random = currentAlbum.subList(1, currentAlbum.size).indices.random()
-                            SongHelper.play(
-                                currentAlbum.subList(1, currentAlbum.size),
-                                random,
-                                mediaController
-                            )
-                                }
+                                val random = currentAlbum.subList(1, currentAlbum.size).indices.random()
+                                SongHelper.play(
+                                    currentAlbum.subList(1, currentAlbum.size),
+                                    random,
+                                    mediaController
+                                )
+                            }
                         },
-                        modifier = Modifier.widthIn(min = 128.dp, max = 320.dp)
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height(24.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.height(24.dp)
+                        ) {
                             Icon(ImageVector.vectorResource(R.drawable.round_shuffle_28), "Shuffle Album")
+                            Spacer(Modifier.width(6.dp))
                             Text(stringResource(R.string.Action_Shuffle), maxLines = 1)
                         }
                     }

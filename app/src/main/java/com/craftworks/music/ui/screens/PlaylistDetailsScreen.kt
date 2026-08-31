@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -143,18 +145,14 @@ fun PlaylistDetails(
     ) {
         LazyColumn(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .dialogFocusable(),
-            contentPadding = PaddingValues(
-                top = WindowInsets.statusBars
-                    .asPaddingValues()
-                    .calculateTopPadding(), bottom = 16.dp, start = 12.dp, end = 12.dp
-            )
+            contentPadding = PaddingValues(bottom = 80.dp),
         ) {
             item {
                 Box(
                     modifier = Modifier
-                        .height(192.dp)
+                        .height(300.dp)
                         .fillMaxWidth()
                 ) {
                     SubcomposeAsyncImage(
@@ -172,33 +170,35 @@ fun PlaylistDetails(
                                     ?: playlistMetadata?.title.toString()
                             )
                             .build(),
-                        contentScale = ContentScale.FillWidth,
+                        contentScale = ContentScale.Crop,
                         contentDescription = "Playlist cover art",
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .fillMaxSize()
                             .fadingEdge(imageFadingEdge)
-                            .clip(RoundedCornerShape(12.dp, 12.dp, 0.dp, 0.dp))
-                            .blur(8.dp)
+                            .blur(10.dp)
                     )
                     Button(
                         onClick = { navHostController.popBackStack() },
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
-                            .padding(top = 12.dp, start = 12.dp)
-                            .size(32.dp),
+                            .padding(
+                                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp,
+                                start = 16.dp
+                            )
+                            .size(36.dp),
                         contentPadding = PaddingValues(4.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.background,
+                            containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.7f),
                             contentColor = MaterialTheme.colorScheme.onBackground
                         )
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                             tint = MaterialTheme.colorScheme.primary,
-                            contentDescription = "Settings",
+                            contentDescription = "Back",
                             modifier = Modifier
-                                .height(32.dp)
-                                .size(32.dp)
+                                .height(28.dp)
+                                .size(28.dp)
                         )
                     }
 
@@ -211,23 +211,34 @@ fun PlaylistDetails(
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .padding(top = 12.dp, end = 12.dp)
-                            .size(32.dp),
+                            .padding(
+                                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp,
+                                end = 16.dp
+                            )
+                            .size(36.dp),
                         contentPadding = PaddingValues(4.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.onBackground)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.7f),
+                            contentColor = MaterialTheme.colorScheme.onBackground
+                        )
                     ) {
                         Icon(
                             imageVector = ImageVector.vectorResource(R.drawable.rounded_download_24),
-                            contentDescription = "Unstar Album",
+                            contentDescription = "Download Playlist",
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier
-                                .height(28.dp)
-                                .size(28.dp)
+                                .height(26.dp)
+                                .size(26.dp)
                         )
                     }
 
                     // Playlist name
-                    Column(modifier = Modifier.align(Alignment.BottomCenter)) {
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+                    ) {
                         Text(
                             text = playlistMetadata?.title.toString(),
                             color = MaterialTheme.colorScheme.onBackground,
@@ -237,6 +248,7 @@ fun PlaylistDetails(
                             modifier = Modifier.fillMaxWidth(),
                             lineHeight = 32.sp,
                         )
+                        Spacer(Modifier.height(6.dp))
                         Text(
                             text = if (playlistSongs.isNotEmpty()) {
                                 "${playlistSongs.size} tracks • ${formatDurationSummary((playlistDuration / 1000).toInt())}"
@@ -258,8 +270,8 @@ fun PlaylistDetails(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(64.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Button(
@@ -269,7 +281,7 @@ fun PlaylistDetails(
                             }
                         },
                         modifier = Modifier
-                            .widthIn(min = 128.dp, max = 320.dp)
+                            .weight(1f)
                             .focusRequester(requester)
                     ) {
                         Row(
@@ -277,10 +289,11 @@ fun PlaylistDetails(
                             modifier = Modifier.height(24.dp)
                         ) {
                             Icon(Icons.Rounded.PlayArrow, "Play Album")
+                            Spacer(Modifier.width(6.dp))
                             Text(stringResource(R.string.Action_Play), maxLines = 1)
                         }
                     }
-                    OutlinedButton (
+                    OutlinedButton(
                         onClick = {
                             mediaController?.shuffleModeEnabled = true
                             coroutineScope.launch {
@@ -288,7 +301,7 @@ fun PlaylistDetails(
                                 SongHelper.play(playlistSongs, random, mediaController)
                             }
                         },
-                        modifier = Modifier.widthIn(min = 128.dp, max = 320.dp)
+                        modifier = Modifier.weight(1f)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -298,6 +311,7 @@ fun PlaylistDetails(
                                 ImageVector.vectorResource(R.drawable.round_shuffle_28),
                                 "Shuffle Album"
                             )
+                            Spacer(Modifier.width(6.dp))
                             Text(stringResource(R.string.Action_Shuffle), maxLines = 1)
                         }
                     }
