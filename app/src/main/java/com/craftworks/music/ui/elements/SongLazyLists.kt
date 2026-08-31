@@ -223,7 +223,8 @@ fun AlbumGrid(
 
                 }
                 itemsIndexed(albumsInGroup) { index, album ->
-                    AlbumCard(album = album,
+                    AlbumCard(
+                        album = album,
                         onClick = {
                             onAlbumSelected(album.toAlbum())
                         },
@@ -237,7 +238,8 @@ fun AlbumGrid(
                                         mediaController = mediaController
                                     )
                             }
-                        }
+                        },
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
@@ -247,7 +249,8 @@ fun AlbumGrid(
                 items = albums,
                 key = { it.mediaId }
             ) { album ->
-                AlbumCard(album = album,
+                AlbumCard(
+                    album = album,
                     onClick = {
                         onAlbumSelected(album.toAlbum())
                     },
@@ -261,7 +264,8 @@ fun AlbumGrid(
                                     mediaController = mediaController
                                 )
                         }
-                    }
+                    },
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }
@@ -322,7 +326,8 @@ fun AlbumGrid(
 
                 }
                 itemsIndexed(albumsInGroup) { index, album ->
-                    AlbumCard(album = album,
+                    AlbumCard(
+                        album = album,
                         onClick = {
                             onAlbumSelected(album.toAlbum())
                         },
@@ -336,7 +341,8 @@ fun AlbumGrid(
                                         mediaController = mediaController
                                     )
                             }
-                        }
+                        },
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
@@ -346,7 +352,8 @@ fun AlbumGrid(
                 items = albums,
                 key = { it.mediaId }
             ) { album ->
-                AlbumCard(album = album,
+                AlbumCard(
+                    album = album,
                     onClick = {
                         onAlbumSelected(album.toAlbum())
                     },
@@ -360,7 +367,8 @@ fun AlbumGrid(
                                     mediaController = mediaController
                                 )
                         }
-                    }
+                    },
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }
@@ -421,7 +429,9 @@ fun AlbumRow(
                 onPlay = {
                     onPlay(album)
                 },
-                modifier = Modifier.animateItem()
+                modifier = Modifier
+                    .width(128.dp)
+                    .animateItem()
             )
         }
     }

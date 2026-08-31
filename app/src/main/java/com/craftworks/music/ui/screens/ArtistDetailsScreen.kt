@@ -324,7 +324,8 @@ fun ArtistDetails(
                                         mediaController = mediaController
                                     )
                             }
-                        }
+                        },
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }

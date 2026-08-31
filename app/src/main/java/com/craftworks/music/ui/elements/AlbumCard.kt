@@ -48,7 +48,6 @@ fun AlbumCard(
     val context = LocalContext.current
     Column(
         modifier = modifier
-            .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally
