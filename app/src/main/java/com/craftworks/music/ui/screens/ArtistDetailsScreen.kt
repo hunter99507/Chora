@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -217,56 +219,6 @@ fun ArtistDetails(
                             )
                         }
                     }
-
-                    // Description
-                    artist?.description?.let { description ->
-                        var expanded by remember { mutableStateOf(false) }
-
-                        val regex = Regex("""<a\s+(?:[^>]*?\s+)?href="([^"]*)"""")
-                        val matchResult = regex.find(description)
-                        val extractedUrl = matchResult?.groups?.get(1)?.value
-
-                        Column (
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = if (description.isBlank()) 0.dp else 32.dp)
-                                .clip(RoundedCornerShape(0.dp, 0.dp, 12.dp, 12.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                                .animateContentSize()
-                                .clickable {
-                                    expanded = !expanded
-                                },
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            if (description.isNotBlank()) {
-                                Text(
-                                    text = description.split("<a target").first(),
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                    fontWeight = FontWeight.Light,
-                                    fontSize = MaterialTheme.typography.bodyLarge.fontSize,
-                                    textAlign = TextAlign.Start,
-                                    maxLines = if (expanded) 100 else 2,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.padding(6.dp, 6.dp, 6.dp, 0.dp)
-                                )
-
-                                // Show more on last.fm  button
-                                if (extractedUrl != null && expanded) {
-                                    Button(
-                                        onClick = {
-                                            val intent = Intent(Intent.ACTION_VIEW, extractedUrl.toUri())
-                                            context.startActivity(intent)
-                                        },
-                                        modifier = Modifier.widthIn(128.dp).padding(vertical = 6.dp),
-                                    ) {
-                                        Text(
-                                            text = "Last.FM",
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
             }
 
@@ -275,73 +227,56 @@ fun ArtistDetails(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(64.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Button(
                         onClick = {
                             coroutineScope.launch {
-                                val allArtistSongsList = artistAlbums.map {
-                                    it.mediaMetadata.extras?.getString("navidromeID").let {
-                                        val album = viewModel.getAlbum(it ?: "")
-                                        if (album.isNotEmpty())
-                                            album.subList(1, album.size)
-                                        else
-                                            emptyList()
-                                    }
+                                val allArtistSongsList = artistAlbums.flatMap {
+                                    val albumId = it.mediaMetadata.extras?.getString("navidromeID") ?: it.mediaId
+                                    val album = viewModel.getAlbum(albumId)
+                                    if (album.size > 1) album.subList(1, album.size) else album
                                 }
-
-                                SongHelper.play(
-                                    allArtistSongsList.flatten(),
-                                    0,
-                                    mediaController
-                                )
+                                if (allArtistSongsList.isNotEmpty()) {
+                                    SongHelper.play(allArtistSongsList, 0, mediaController)
+                                }
                             }
                         },
-                        modifier = Modifier.widthIn(min = 128.dp, max = 320.dp)
+                        modifier = Modifier.weight(1f)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.height(24.dp)
                         ) {
-                            Icon(Icons.Rounded.PlayArrow, "Play Album")
-                            Text(stringResource(R.string.Action_Play))
+                            Icon(Icons.Rounded.PlayArrow, "Play Artist")
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.Action_Play), maxLines = 1)
                         }
                     }
-                    OutlinedButton (
+                    OutlinedButton(
                         onClick = {
                             coroutineScope.launch {
-                                val allArtistSongsList = artistAlbums.map {
-                                    it.mediaMetadata.extras?.getString("navidromeID").let {
-                                        val album = viewModel.getAlbum(it ?: "")
-                                        if (album.isNotEmpty())
-                                            album.subList(1, album.size)
-                                        else
-                                            emptyList()
-                                    }
+                                val allArtistSongsList = artistAlbums.flatMap {
+                                    val albumId = it.mediaMetadata.extras?.getString("navidromeID") ?: it.mediaId
+                                    val album = viewModel.getAlbum(albumId)
+                                    if (album.size > 1) album.subList(1, album.size) else album
                                 }
-
-                                mediaController?.shuffleModeEnabled = true
-                                val random = allArtistSongsList.indices.random()
-                                SongHelper.play(
-                                    allArtistSongsList.flatten(),
-                                    random,
-                                    mediaController
-                                )
+                                if (allArtistSongsList.isNotEmpty()) {
+                                    SongHelper.play(allArtistSongsList.shuffled(), 0, mediaController)
+                                }
                             }
                         },
-                        modifier = Modifier.widthIn(min = 128.dp, max = 320.dp)
+                        modifier = Modifier.weight(1f)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.height(24.dp)
                         ) {
-                            Icon(
-                                ImageVector.vectorResource(R.drawable.round_shuffle_28),
-                                "Shuffle Album"
-                            )
-                            Text(stringResource(R.string.Action_Shuffle))
+                            Icon(ImageVector.vectorResource(R.drawable.round_shuffle_28), "Shuffle Artist")
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.Action_Shuffle), maxLines = 1)
                         }
                     }
                 }
