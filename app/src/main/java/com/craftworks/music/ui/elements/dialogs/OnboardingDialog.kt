@@ -33,6 +33,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -203,15 +204,16 @@ private fun OverviewStep(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 24.dp),
+            .padding(horizontal = 24.dp)
+            .padding(bottom = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(24.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Icon(
             imageVector = ImageVector.vectorResource(R.drawable.ic_banner_foreground),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onPrimaryContainer,
-            modifier = Modifier
+            modifier = Modifier.size(48.dp)
         )
 
         Text(
@@ -223,7 +225,8 @@ private fun OverviewStep(
         )
 
         LazyColumn(
-            contentPadding = PaddingValues(16.dp),
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(localProviders) { local ->
@@ -234,36 +237,38 @@ private fun OverviewStep(
             }
         }
 
-        Button(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp),
-            onClick = onAddProvider,
-            shape = MaterialTheme.shapes.large
+                .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Outlined.Add,
-                contentDescription = null,
+            OutlinedButton(
                 modifier = Modifier
-                    .size(20.dp)
-                    .padding(end = 4.dp)
-            )
-            Text(
-                text = stringResource(R.string.Action_Add),
-                style = MaterialTheme.typography.labelLarge
-            )
-        }
+                    .weight(1f)
+                    .height(50.dp),
+                onClick = onAddProvider,
+                shape = MaterialTheme.shapes.large
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Add,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .padding(end = 4.dp)
+                )
+                Text(
+                    text = stringResource(R.string.Action_Add),
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
 
-        Spacer(Modifier.weight(1f))
-
-        Crossfade(
-            targetState = hasProviders
-        ) {
-            if (it) {
+            if (hasProviders) {
                 Button(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
+                        .weight(1f)
+                        .height(50.dp),
                     onClick = onNext,
                     shape = MaterialTheme.shapes.large
                 ) {
@@ -274,7 +279,9 @@ private fun OverviewStep(
                 }
             } else {
                 TextButton(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(50.dp),
                     onClick = onSkip,
                     colors = ButtonDefaults.textButtonColors(
                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -298,28 +305,36 @@ private fun DoneStep(onFinish: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp),
+            .padding(horizontal = 24.dp)
+            .padding(bottom = 16.dp),
+        verticalArrangement = Arrangement.SpaceBetween,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(
-            imageVector = ImageVector.vectorResource(R.drawable.ic_banner_foreground),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-        )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.padding(top = 24.dp)
+        ) {
+            Icon(
+                imageVector = ImageVector.vectorResource(R.drawable.ic_banner_foreground),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(56.dp)
+            )
 
-        Text(
-            text = stringResource(R.string.No_Providers_Done),
-            style = MaterialTheme.typography.headlineSmall,
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.fillMaxWidth()
-        )
+            Text(
+                text = stringResource(R.string.No_Providers_Done),
+                style = MaterialTheme.typography.headlineSmall,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
 
         Button(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp),
+                .height(50.dp),
             onClick = onFinish,
             shape = MaterialTheme.shapes.large
         ) {
