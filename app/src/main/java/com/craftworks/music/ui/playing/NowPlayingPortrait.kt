@@ -2,6 +2,7 @@
 
 package com.craftworks.music.ui.playing
 
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
@@ -25,6 +26,7 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,9 +36,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -122,18 +128,22 @@ fun NowPlayingPortrait(
     }
 
     val context = LocalContext.current
+    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
     val lyrics by LyricsState.lyrics.collectAsStateWithLifecycle()
     val loadingLyrics by LyricsState.loading.collectAsStateWithLifecycle()
 
     val isLyricsActive = lyricsOpen && (lyrics.isNotEmpty() || loadingLyrics)
     val isRadio = metadata?.mediaType == MediaMetadata.MEDIA_TYPE_RADIO_STATION
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .navigationBarsPadding(),
-        horizontalAlignment = Alignment.CenterHorizontally
+    Box(
+        modifier = Modifier.fillMaxSize()
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .navigationBarsPadding(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
         //region Top Section: Full Bleed Artwork / Lyrics
         AnimatedContent(
             targetState = isLyricsActive,
@@ -331,5 +341,31 @@ fun NowPlayingPortrait(
             }
         }
         //endregion
+        }
+
+        // Back Button on top left
+        Button(
+            onClick = {
+                backDispatcher?.onBackPressed()
+            },
+            shape = CircleShape,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .statusBarsPadding()
+                .padding(top = 8.dp, start = 16.dp)
+                .size(40.dp),
+            contentPadding = PaddingValues(4.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color.Black.copy(alpha = 0.45f),
+                contentColor = iconColor
+            )
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                tint = iconColor,
+                contentDescription = "Back",
+                modifier = Modifier.size(24.dp)
+            )
+        }
     }
 }
