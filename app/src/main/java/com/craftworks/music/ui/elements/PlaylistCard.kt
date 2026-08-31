@@ -28,14 +28,21 @@ import coil.request.ImageRequest
 import com.craftworks.music.ui.elements.dialogs.playlistToDelete
 import com.craftworks.music.ui.elements.dialogs.showDeletePlaylistDialog
 
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.text.font.FontWeight
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun PlaylistCard(playlist: MediaItem, onClick: () -> Unit) {
+fun PlaylistCard(
+    playlist: MediaItem,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     val metadata = playlist.mediaMetadata
     val context = LocalContext.current
     Column(
-        modifier = Modifier
-            //.padding(12.dp)
+        modifier = modifier
+            .width(128.dp)
             .clip(RoundedCornerShape(12.dp))
             .combinedClickable(
                 onClick = { onClick() },
@@ -45,9 +52,8 @@ fun PlaylistCard(playlist: MediaItem, onClick: () -> Unit) {
                     showDeletePlaylistDialog.value = true
                 },
                 onLongClickLabel = "Delete Playlist"
-            )
-            .widthIn(min = 128.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            ),
+        horizontalAlignment = Alignment.Start
     ) {
         SubcomposeAsyncImage(
             model = ImageRequest.Builder(context)
@@ -61,26 +67,26 @@ fun PlaylistCard(playlist: MediaItem, onClick: () -> Unit) {
                     metadata.extras?.getString("navidromeID") ?: playlist.mediaId
                 )
                 .build(),
-            contentScale = ContentScale.FillWidth,
-            contentDescription = "Album Image",
+            contentScale = ContentScale.Crop,
+            contentDescription = "Playlist Cover Art",
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
-                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
         )
 
         Text(
             text = metadata.title.toString(),
             style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier
-                .fillMaxSize()
-                .padding(vertical = 4.dp)
-                .wrapContentHeight(align = Alignment.CenterVertically),
+                .fillMaxWidth()
+                .padding(top = 4.dp),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Start
         )
     }
 }
