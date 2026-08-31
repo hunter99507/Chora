@@ -48,6 +48,7 @@ import com.craftworks.music.data.repository.LyricsState
 import com.craftworks.music.managers.settings.AppearanceSettingsManager
 import com.craftworks.music.managers.settings.LocalDataSettingsManager
 import com.craftworks.music.managers.settings.MediaProviderSettingsManager
+import com.craftworks.music.ui.elements.SwipeableTabContent
 import com.craftworks.music.ui.playing.NowPlayingContent
 import com.craftworks.music.ui.playing.NowPlayingViewModel
 import com.craftworks.music.ui.playing.dpToPx
@@ -143,7 +144,9 @@ fun SetupNavGraph(
                     TvHomeScreen(navController, mediaController, viewModel)
                 }
             else
-                HomeScreen(navController, mediaController, viewModel)
+                SwipeableTabContent(navController, Screen.Home.route) {
+                    HomeScreen(navController, mediaController, viewModel)
+                }
         }
         composable(
             route = Screen.HomeLists.route + "/{category}",
@@ -182,7 +185,9 @@ fun SetupNavGraph(
                     TvSongsScreen(mediaController, navController, viewModel)
                 }
             else
-                SongsScreen(mediaController, viewModel)
+                SwipeableTabContent(navController, Screen.Song.route) {
+                    SongsScreen(mediaController, viewModel)
+                }
         }
         composable(route = Screen.Radio.route) { backStackEntry ->
             val parentEntry = remember(backStackEntry) {
@@ -208,7 +213,9 @@ fun SetupNavGraph(
                     TvAlbumScreen(navController, viewModel)
                 }
             else
-                AlbumScreen(navController, mediaController, viewModel)
+                SwipeableTabContent(navController, Screen.Albums.route) {
+                    AlbumScreen(navController, mediaController, viewModel)
+                }
         }
         composable(
             route = Screen.AlbumDetails.route + "/{album}/{image}",
@@ -251,7 +258,9 @@ fun SetupNavGraph(
                         TvArtistScreen(navController, viewModel)
                     }
                 else
-                    ArtistsScreen(navController, mediaController, viewModel)
+                    SwipeableTabContent(navController, Screen.Artists.route) {
+                        ArtistsScreen(navController, mediaController, viewModel)
+                    }
             }
             composable(route = Screen.ArtistDetails.route) { backStackEntry ->
                 val parentEntry = remember(backStackEntry) {
@@ -279,7 +288,9 @@ fun SetupNavGraph(
                         TvPlaylistScreen(navController, viewModel)
                     }
                 else
-                    PlaylistScreen(navController, viewModel)
+                    SwipeableTabContent(navController, Screen.Playlists.route) {
+                        PlaylistScreen(navController, viewModel)
+                    }
             }
             composable(route = Screen.PlaylistDetails.route) { backStackEntry ->
                 val parentEntry = remember(backStackEntry) {

@@ -21,14 +21,17 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.ResolvingDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.session.CommandButton
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaConstants
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.MediaItemsWithStartPosition
+import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
 import com.craftworks.music.MainActivity
@@ -97,6 +100,9 @@ class ChoraMediaLibraryService : MediaLibraryService() {
     @Inject lateinit var lyricsRepository: LyricsRepository
 
     companion object {
+        const val CUSTOM_ACTION_SHUFFLE = "com.craftworks.chora.CUSTOM_ACTION_SHUFFLE"
+        const val CUSTOM_ACTION_REPEAT = "com.craftworks.chora.CUSTOM_ACTION_REPEAT"
+
         private var instance: ChoraMediaLibraryService? = null
 
         fun getInstance(): ChoraMediaLibraryService? {
@@ -256,8 +262,20 @@ class ChoraMediaLibraryService : MediaLibraryService() {
             }
         )
 
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                30_000,
+                120_000,
+                1_000,
+                2_500
+            )
+            .setPrioritizeTimeOverSizeThresholds(true)
+            .setBackBuffer(30_000, true)
+            .build()
+
         player = ExoPlayer.Builder(this)
             .setSeekParameters(SeekParameters.EXACT)
+            .setLoadControl(loadControl)
             .setMediaSourceFactory(DefaultMediaSourceFactory(resolvingDataSourceFactory))
             .setWakeMode(
                 if (NavidromeManager.checkActiveServers())
@@ -275,6 +293,16 @@ class ChoraMediaLibraryService : MediaLibraryService() {
         var playerScrobbled = false
 
         player.addListener(object : Player.Listener {
+            override fun onRepeatModeChanged(repeatMode: Int) {
+                updateCustomLayout()
+                super.onRepeatModeChanged(repeatMode)
+            }
+
+            override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+                updateCustomLayout()
+                super.onShuffleModeEnabledChanged(shuffleModeEnabled)
+            }
+
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 // Apply ReplayGain
                 if (mediaItem?.mediaMetadata?.extras?.getFloat("replayGain") != null) {
@@ -294,16 +322,36 @@ class ChoraMediaLibraryService : MediaLibraryService() {
                     lyricsRepository.getLyrics(mediaItem?.mediaMetadata)
                     val mediaId = mediaItem?.mediaMetadata?.extras?.getString("navidromeID") ?: return@launch
                     songRepository.scrobbleSong(mediaId, false)
-                }
 
-                /*
-                serviceMainScope.launch {
-                    playbackSettingsManager.autoPlayFlow.collect {
-                        if (it && player.currentMediaItemIndex == player.mediaItemCount - 1)
-                            player.addMediaItems(songRepository.getSimilarSongs(mediaItem?.mediaMetadata?.extras?.getString("navidromeID")!!, 1))
+                    // Preload next track in queue for instant skipping
+                    try {
+                        val nextIndex = player.currentMediaItemIndex + 1
+                        if (nextIndex < player.mediaItemCount) {
+                            val nextItem = player.getMediaItemAt(nextIndex)
+                            val nextUri = nextItem.requestMetadata.mediaUri ?: nextItem.mediaId.toUri()
+                            if (nextUri.toString().startsWith("http")) {
+                                val url = java.net.URL(nextUri.toString())
+                                val connection = url.openConnection() as java.net.HttpURLConnection
+                                connection.setRequestProperty("Range", "bytes=0-1048576")
+                                connection.connectTimeout = 5000
+                                connection.readTimeout = 5000
+                                connection.connect()
+                                val buffer = ByteArray(32768)
+                                val inputStream = connection.inputStream
+                                var read = 0
+                                var total = 0
+                                while (inputStream.read(buffer).also { read = it } != -1 && total < 1048576) {
+                                    total += read
+                                }
+                                inputStream.close()
+                                connection.disconnect()
+                                Log.d("PRELOAD", "Preloaded $total bytes for next track: ${nextItem.mediaMetadata.title}")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.d("PRELOAD", "Preload exception: ${e.message}")
                     }
                 }
-                */
             }
 
             override fun onPlayerError(error: PlaybackException) {
@@ -376,11 +424,85 @@ class ChoraMediaLibraryService : MediaLibraryService() {
         Log.d("AA", "Initialized MediaLibraryService.")
     }
 
+    private fun buildCustomLayout(): ImmutableList<CommandButton> {
+        val isShuffle = if (::player.isInitialized) player.shuffleModeEnabled else true
+        val shuffleButton = CommandButton.Builder()
+            .setDisplayName(if (isShuffle) "Shuffle: On" else "Shuffle: Off")
+            .setIconResId(R.drawable.round_shuffle_28)
+            .setSessionCommand(SessionCommand(CUSTOM_ACTION_SHUFFLE, Bundle.EMPTY))
+            .setEnabled(true)
+            .build()
+
+        val repeatMode = if (::player.isInitialized) player.repeatMode else Player.REPEAT_MODE_ALL
+        val repeatIcon = when (repeatMode) {
+            Player.REPEAT_MODE_ONE -> R.drawable.rounded_repeat1_24
+            else -> R.drawable.rounded_repeat_24
+        }
+        val repeatButton = CommandButton.Builder()
+            .setDisplayName(if (repeatMode != Player.REPEAT_MODE_OFF) "Repeat: On" else "Repeat: Off")
+            .setIconResId(repeatIcon)
+            .setSessionCommand(SessionCommand(CUSTOM_ACTION_REPEAT, Bundle.EMPTY))
+            .setEnabled(true)
+            .build()
+
+        return ImmutableList.of(shuffleButton, repeatButton)
+    }
+
+    private fun updateCustomLayout() {
+        session?.setCustomLayout(buildCustomLayout())
+    }
+
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
         return session
     }
 
     private inner class LibrarySessionCallback : MediaLibrarySession.Callback {
+        override fun onConnect(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo
+        ): MediaSession.ConnectionResult {
+            val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
+                .add(SessionCommand(CUSTOM_ACTION_SHUFFLE, Bundle.EMPTY))
+                .add(SessionCommand(CUSTOM_ACTION_REPEAT, Bundle.EMPTY))
+                .build()
+
+            val playerCommands = MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
+                .add(Player.COMMAND_SET_SHUFFLE_MODE)
+                .add(Player.COMMAND_SET_REPEAT_MODE)
+                .build()
+
+            return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                .setAvailableSessionCommands(sessionCommands)
+                .setAvailablePlayerCommands(playerCommands)
+                .setCustomLayout(buildCustomLayout())
+                .build()
+        }
+
+        override fun onCustomCommand(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            customCommand: SessionCommand,
+            args: Bundle
+        ): ListenableFuture<SessionResult> {
+            when (customCommand.customAction) {
+                CUSTOM_ACTION_SHUFFLE -> {
+                    player.shuffleModeEnabled = !player.shuffleModeEnabled
+                    updateCustomLayout()
+                    return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                }
+                CUSTOM_ACTION_REPEAT -> {
+                    player.repeatMode = when (player.repeatMode) {
+                        Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+                        Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+                        else -> Player.REPEAT_MODE_OFF
+                    }
+                    updateCustomLayout()
+                    return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                }
+            }
+            return super.onCustomCommand(session, controller, customCommand, args)
+        }
+
         override fun onPostConnect(session: MediaSession, controller: MediaSession.ControllerInfo) {
             serviceIOScope.launch {
                 println("ONPOSTCONNTECT MUSIC SERVICE!")
@@ -783,6 +905,18 @@ class ChoraMediaLibraryService : MediaLibraryService() {
         }
     }
 
+    private fun MediaItem.withHighResArtwork(): MediaItem {
+        val artUri = this.mediaMetadata.artworkUri?.toString() ?: return this
+        val highResUri = if (artUri.contains("size=")) artUri.replace(Regex("size=\\d+"), "size=800") else artUri
+        return this.buildUpon()
+            .setMediaMetadata(
+                this.mediaMetadata.buildUpon()
+                    .setArtworkUri(highResUri.toUri())
+                    .build()
+            )
+            .build()
+    }
+
     //region getChildren
     private fun getHomeScreenItems(): MutableList<MediaItem> {
         println("GETTING ANDROID AUTO SCREEN ITEMS")
@@ -793,7 +927,7 @@ class ChoraMediaLibraryService : MediaLibraryService() {
 
                 recentlyPlayedAlbums.forEach { album ->
                     aHomeScreenItems.add(
-                        album.apply {
+                        album.withHighResArtwork().apply {
                             this.mediaMetadata.extras?.putString(
                                 MediaConstants.EXTRAS_KEY_CONTENT_STYLE_GROUP_TITLE,
                                 this@ChoraMediaLibraryService.getString(R.string.recently_played)
@@ -804,7 +938,7 @@ class ChoraMediaLibraryService : MediaLibraryService() {
 
                 mostPlayedAlbums.forEach { album ->
                     aHomeScreenItems.add(
-                        album.apply {
+                        album.withHighResArtwork().apply {
                             this.mediaMetadata.extras?.putString(
                                 MediaConstants.EXTRAS_KEY_CONTENT_STYLE_GROUP_TITLE,
                                 this@ChoraMediaLibraryService.getString(R.string.most_played)
@@ -823,7 +957,7 @@ class ChoraMediaLibraryService : MediaLibraryService() {
             if (aAlbumScreenItems.isEmpty()) {
                 while (true) {
                     val albums = async { albumRepository.getAlbums("alphabeticalByName", 250, aAlbumScreenItems.size) }.await()
-                    aAlbumScreenItems.addAll(albums)
+                    aAlbumScreenItems.addAll(albums.map { it.withHighResArtwork() })
                     if (albums.isEmpty()) {
                         break
                     }
@@ -841,13 +975,17 @@ class ChoraMediaLibraryService : MediaLibraryService() {
                 val albums = async { artistRepository.getArtists() }.await()
 
                 albums.forEach {
+                    val highResArt = if (it.artistImageUrl?.contains("size=") == true)
+                        it.artistImageUrl.replace(Regex("size=\\d+"), "size=800")
+                    else
+                        it.artistImageUrl
                     aArtistsScreenItems.add(
                         MediaItem.Builder()
                             .setMediaMetadata(
                                 MediaMetadata.Builder()
                                     .setTitle(it.name)
                                     .setMediaType(MediaMetadata.MEDIA_TYPE_ARTIST)
-                                    .setArtworkUri(it.artistImageUrl?.toUri())
+                                    .setArtworkUri(highResArt?.toUri())
                                     .setIsBrowsable(true)
                                     .setIsPlayable(false)
                                     .build()
@@ -868,7 +1006,7 @@ class ChoraMediaLibraryService : MediaLibraryService() {
                 aRadioScreenItems.addAll(
                     radioRepository.getRadios().map { radio ->
                         Log.d("MediaItemTransition", radio.toString())
-                        radio.toMediaItem()
+                        radio.toMediaItem().withHighResArtwork()
                     }
                 )
                 Log.d("MediaItemTransition", "aRadioScreenItems: ${aRadioScreenItems.map { it.mediaMetadata }}")
@@ -880,7 +1018,7 @@ class ChoraMediaLibraryService : MediaLibraryService() {
     private fun getPlaylistItems(): MutableList<MediaItem> {
         runBlocking {
             if (aPlaylistScreenItems.isEmpty()) {
-                aPlaylistScreenItems.addAll(playlistRepository.getPlaylists())
+                aPlaylistScreenItems.addAll(playlistRepository.getPlaylists().map { it.withHighResArtwork() })
             }
         }
         return aPlaylistScreenItems
@@ -893,19 +1031,19 @@ class ChoraMediaLibraryService : MediaLibraryService() {
                 MediaMetadata.MEDIA_TYPE_ALBUM -> {
                     val albumSongs = async { albumRepository.getAlbum(parentId) }.await()
                     aFolderSongs.addAll(
-                        albumSongs?.subList(1, albumSongs.size) ?: emptyList()
+                        albumSongs?.subList(1, albumSongs.size)?.map { it.withHighResArtwork() } ?: emptyList()
                     )
                 }
 
                 MediaMetadata.MEDIA_TYPE_PLAYLIST -> {
                     aFolderSongs.addAll(
-                        playlistRepository.getPlaylistSongs(parentId)
+                        playlistRepository.getPlaylistSongs(parentId).map { it.withHighResArtwork() }
                     )
                 }
 
                 MediaMetadata.MEDIA_TYPE_ARTIST -> {
                     aFolderSongs.addAll(
-                        artistRepository.getArtistAlbums(parentId)
+                        artistRepository.getArtistAlbums(parentId).map { it.withHighResArtwork() }
                     )
                 }
 

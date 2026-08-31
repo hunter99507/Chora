@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -202,6 +203,24 @@ fun PlaybackProgressSlider(
                 thumbColor = color
             ),
             interactionSource = interactionSource,
+            track = { sliderState ->
+                SliderDefaults.Track(
+                    sliderState = sliderState,
+                    modifier = Modifier.height(6.dp),
+                    colors = SliderDefaults.colors(
+                        activeTrackColor = color,
+                        inactiveTrackColor = color.copy(alpha = 0.30f)
+                    ),
+                    drawStopIndicator = null
+                )
+            },
+            thumb = {
+                SliderDefaults.Thumb(
+                    interactionSource = interactionSource,
+                    colors = SliderDefaults.colors(thumbColor = color),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         )
 
         // Time thingies

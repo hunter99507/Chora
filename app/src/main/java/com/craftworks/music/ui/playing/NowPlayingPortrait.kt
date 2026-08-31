@@ -23,6 +23,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,6 +59,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -193,11 +195,27 @@ fun NowPlayingPortrait(
                     LyricsView(iconColor, false, mediaController, onRefreshLyrics = onRefreshLyrics)
                 }
             } else {
-                val artworkHeight = (LocalConfiguration.current.screenHeightDp.dp * 0.44f).coerceAtLeast(340.dp)
+                val artworkHeight = (LocalConfiguration.current.screenHeightDp.dp * 0.51f).coerceAtLeast(380.dp)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(artworkHeight),
+                        .height(artworkHeight)
+                        .pointerInput(mediaController) {
+                            var totalDragX = 0f
+                            detectHorizontalDragGestures(
+                                onDragStart = { totalDragX = 0f },
+                                onDragEnd = {
+                                    if (totalDragX < -60f) {
+                                        mediaController?.seekToNextMediaItem()
+                                    } else if (totalDragX > 60f) {
+                                        mediaController?.seekToPreviousMediaItem()
+                                    }
+                                },
+                                onHorizontalDrag = { _, dragAmount ->
+                                    totalDragX += dragAmount
+                                }
+                            )
+                        },
                     contentAlignment = Alignment.TopCenter
                 ) {
                     Crossfade(
