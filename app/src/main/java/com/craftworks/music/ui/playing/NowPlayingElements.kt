@@ -7,6 +7,8 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -15,7 +17,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Badge
@@ -205,19 +209,24 @@ fun PlaybackProgressSlider(
         ) {
             Text(
                 text = remember(currentValue) { formatMilliseconds(currentValue.toInt() / 1000) },
-                fontWeight = FontWeight.Light,
+                fontWeight = FontWeight.Normal,
                 textAlign = TextAlign.Start,
-                color = color.copy(alpha = 0.5f),
+                color = color.copy(alpha = 0.7f),
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .width(64.dp),
                 maxLines = 1
             )
+            val remainingSecs = remember(currentValue, currentDuration) {
+                val total = currentDuration ?: currentValue
+                val diff = (total - currentValue).coerceAtLeast(0L) / 1000
+                diff.toInt()
+            }
             Text(
-                text = remember(currentDuration) { formatMilliseconds(currentDuration?.toInt()?.div(1000) ?: (currentValue/1000).toInt()) },
-                fontWeight = FontWeight.Light,
+                text = "-${formatMilliseconds(remainingSecs)}",
+                fontWeight = FontWeight.Normal,
                 textAlign = TextAlign.End,
-                color = color.copy(alpha = 0.5f),
+                color = color.copy(alpha = 0.7f),
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .width(64.dp),
@@ -248,24 +257,24 @@ internal fun PreviousSongButton(player: Player, color: Color, modifier: Modifier
 internal fun PlayPauseButton(player: Player, color: Color, modifier: Modifier = Modifier) {
     val state = rememberPlayPauseButtonState(player)
     val icon = if (state.showPlay) Icons.Rounded.PlayArrow else ImageVector.vectorResource(R.drawable.media3_notification_pause)
-    val contentDescription =
-        if (state.showPlay) "play"
-        else "pause"
+    val contentDescription = if (state.showPlay) "play" else "pause"
 
-    IconButton(onClick = state::onClick, modifier = modifier.bounceClick(state.isEnabled), enabled = state.isEnabled) {
-        Icon(icon, contentDescription = contentDescription, modifier = modifier, tint = if (state.isEnabled) color else color.copy(0.5f))
+    Box(
+        modifier = modifier
+            .size(76.dp)
+            .clip(CircleShape)
+            .background(if (state.isEnabled) color else color.copy(alpha = 0.5f))
+            .bounceClick(state.isEnabled)
+            .clickable(enabled = state.isEnabled) { state.onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            modifier = Modifier.size(38.dp),
+            tint = Color(0xFF16130E)
+        )
     }
-//    ToggleButton(
-//        checked = state.showPlay,
-//        onCheckedChange = { state.onClick() },
-//        modifier = modifier,
-//        enabled = state.isEnabled
-//    ) {
-//        Icon(icon,
-//            contentDescription = contentDescription,
-//            modifier = modifier
-//        )
-//    }
 }
 
 @androidx.annotation.OptIn(UnstableApi::class)

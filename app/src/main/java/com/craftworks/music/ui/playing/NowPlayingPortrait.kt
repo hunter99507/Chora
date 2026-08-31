@@ -266,111 +266,51 @@ fun NowPlayingPortrait(
 
                             Column(
                                 Modifier.padding(horizontal = 24.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-//                                Crossfade(
-//                                    targetState = metadata?.title.toString(),
-//                                    animationSpec = tween(
-//                                        durationMillis = 400,
-//                                        easing = FastOutSlowInEasing
-//                                    ),
-//                                    label = "Animated Song Title",
-//                                    modifier = Modifier
-//                                ) { title ->
-//                                    Text(
-//                                        text = title,
-//                                        style = MaterialTheme.typography.headlineMediumEmphasized,
-//                                        fontWeight = FontWeight.Bold,
-//                                        color = iconTextColor,
-//                                        maxLines = 1,
-//                                        overflow = TextOverflow.Visible,
-//                                        softWrap = false,
-//                                        textAlign = when (titleAlignment) {
-//                                            NowPlayingAlignment.LEFT -> TextAlign.Start
-//                                            NowPlayingAlignment.CENTER -> TextAlign.Center
-//                                            NowPlayingAlignment.RIGHT -> TextAlign.End
-//                                        },
-//                                        modifier = Modifier
-//                                            .fillMaxWidth()
-//                                            .marqueeHorizontalFadingEdges(
-//                                                marqueeProvider = { Modifier.basicMarquee() })
-//                                    )
-//                                }
-
-                                CompositionLocalProvider(
-                                    LocalLayoutDirection provides
-                                            if (titleAlignment == NowPlayingAlignment.RIGHT)
-                                                LayoutDirection.Rtl
-                                            else LayoutDirection.Ltr
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                                            Crossfade(
-                                                targetState = metadata?.title.toString(),
-                                                animationSpec = tween(
-                                                    durationMillis = 400,
-                                                    easing = FastOutSlowInEasing
-                                                ),
-                                                label = "Animated Song Title",
-                                                modifier = Modifier.weight(1f)
-                                            ) { title ->
-                                                Text(
-                                                    text = title,
-                                                    style = MaterialTheme.typography.headlineMediumEmphasized,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = iconTextColor,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Visible,
-                                                    softWrap = false,
-                                                    textAlign = when (titleAlignment) {
-                                                        NowPlayingAlignment.LEFT -> TextAlign.Start
-                                                        NowPlayingAlignment.CENTER -> TextAlign.Center
-                                                        NowPlayingAlignment.RIGHT -> TextAlign.End
-                                                    },
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .marqueeHorizontalFadingEdges(
-                                                            marqueeProvider = { Modifier.basicMarquee() })
-                                                )
-                                            }
-
-                                            if (!isRadio)
-                                                IconButton(onClick = onToggleDetails) {
-                                                    Icon(
-                                                        Icons.Rounded.MoreVert,
-                                                        tint = iconTextColor.copy(alpha = 0.8f),
-                                                        contentDescription = null
-                                                    )
-                                                }
-                                        }
-                                    }
+                                Crossfade(
+                                    targetState = metadata?.title.toString(),
+                                    animationSpec = tween(
+                                        durationMillis = 400,
+                                        easing = FastOutSlowInEasing
+                                    ),
+                                    label = "Animated Song Title",
+                                    modifier = Modifier.fillMaxWidth()
+                                ) { title ->
+                                    Text(
+                                        text = title,
+                                        style = MaterialTheme.typography.headlineMediumEmphasized,
+                                        fontWeight = FontWeight.Bold,
+                                        color = iconTextColor,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Visible,
+                                        softWrap = false,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .marqueeHorizontalFadingEdges(
+                                                marqueeProvider = { Modifier.basicMarquee() })
+                                    )
                                 }
 
-                                // Artist + year
                                 Crossfade(
                                     targetState = metadata?.artist.toString(),
                                     animationSpec = tween(
                                         durationMillis = 400,
                                         easing = FastOutSlowInEasing
                                     ),
-                                    label = "Animated Artist"
+                                    label = "Animated Artist",
+                                    modifier = Modifier.fillMaxWidth()
                                 ) { artistInfo ->
                                     Text(
                                         text = artistInfo,
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Normal,
-                                        color = iconTextColor.copy(alpha = 0.7f),
+                                        color = iconTextColor.copy(alpha = 0.85f),
                                         maxLines = 1,
                                         softWrap = false,
-                                        textAlign = when (titleAlignment) {
-                                            NowPlayingAlignment.LEFT -> TextAlign.Start
-                                            NowPlayingAlignment.CENTER -> TextAlign.Center
-                                            NowPlayingAlignment.RIGHT -> TextAlign.End
-                                        },
+                                        textAlign = TextAlign.Center,
                                         overflow = TextOverflow.Ellipsis,
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -378,34 +318,30 @@ fun NowPlayingPortrait(
                                     )
                                 }
 
-                                if (showMoreInfo && !isRadio) {
-                                    Text(
-                                        text = buildString {
-                                            append(
-                                                metadata?.extras?.getString("format")?.uppercase()
-                                                    ?: ""
-                                            )
-                                            append(" · ")
-                                            append(metadata?.extras?.getLong("bitrate") ?: "")
-                                            append(" · ")
-                                            append(
-                                                if (metadata?.extras?.getString("navidromeID")
-                                                        ?.startsWith("Local_") == true
-                                                ) stringResource(R.string.Source_Local)
-                                                else stringResource(R.string.Source_Navidrome)
-                                            )
-                                        },
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Medium,
-                                        color = iconTextColor.copy(alpha = 0.45f),
-                                        maxLines = 1,
-                                        textAlign = when (titleAlignment) {
-                                            NowPlayingAlignment.LEFT -> TextAlign.Start
-                                            NowPlayingAlignment.CENTER -> TextAlign.Center
-                                            NowPlayingAlignment.RIGHT -> TextAlign.End
-                                        },
+                                if (metadata?.albumTitle != null && metadata.albumTitle.toString().isNotBlank()) {
+                                    Crossfade(
+                                        targetState = metadata.albumTitle.toString(),
+                                        animationSpec = tween(
+                                            durationMillis = 400,
+                                            easing = FastOutSlowInEasing
+                                        ),
+                                        label = "Animated Album",
                                         modifier = Modifier.fillMaxWidth()
-                                    )
+                                    ) { albumInfo ->
+                                        Text(
+                                            text = albumInfo,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Normal,
+                                            color = iconTextColor.copy(alpha = 0.65f),
+                                            maxLines = 1,
+                                            softWrap = false,
+                                            textAlign = TextAlign.Center,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .marqueeHorizontalFadingEdges(marqueeProvider = { Modifier.basicMarquee() })
+                                        )
+                                    }
                                 }
                             }
 
@@ -413,7 +349,7 @@ fun NowPlayingPortrait(
                                 Box(
                                     Modifier.padding(horizontal = 24.dp)
                                 ) {
-                                    PlaybackProgressSlider(iconTextColor, mediaController)
+                                    PlaybackProgressSlider(iconTextColor, mediaController, metadata)
                                 }
                             }
                         }
@@ -429,28 +365,14 @@ fun NowPlayingPortrait(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     ChoraMediaLibraryService.getInstance()?.player?.let { player ->
-                        ShuffleButton(player, iconTextColor, Modifier.size(24.dp))
-                        PreviousSongButton(player, iconTextColor, Modifier.size(40.dp))
-                        PlayPauseButton(player, iconTextColor, Modifier.size(88.dp))
-                        NextSongButton(player, iconTextColor, Modifier.size(40.dp))
-                        RepeatButton(player, iconTextColor, Modifier.size(24.dp))
+                        RepeatButton(player, iconTextColor, Modifier.size(28.dp))
+                        PreviousSongButton(player, iconTextColor, Modifier.size(34.dp))
+                        PlayPauseButton(player, iconTextColor, Modifier.size(76.dp))
+                        NextSongButton(player, iconTextColor, Modifier.size(34.dp))
+                        ShuffleButton(player, iconTextColor, Modifier.size(28.dp))
                     }
                 }
             }
-        }
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .requiredHeightIn(min = 48.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            DownloadButton(iconTextColor, 32.dp, metadata, !(metadata?.extras?.getString("navidromeID")?.startsWith("Local_") ?: true))
-            SleepTimerButton(iconTextColor, 32.dp, sleepTimerMinutes,onOpenSleepTimer)
-            LyricsButton(iconTextColor, 32.dp, lyricsOpen, onToggleLyrics)
-            PlayQueueButton(iconTextColor, 32.dp, onToggleQueue)
         }
     }
 }
