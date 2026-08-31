@@ -218,13 +218,12 @@ fun NowPlayingPortrait(
         }
         //endregion
 
-        Spacer(modifier = Modifier.weight(1f))
-
-        //region Middle Section: Track Info & Progress Slider (Centered halfway)
+        //region Middle Section: Metadata & Seekbar
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp)
+                .padding(top = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -300,7 +299,7 @@ fun NowPlayingPortrait(
             }
 
             if (!isRadio) {
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 Box(
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -310,14 +309,12 @@ fun NowPlayingPortrait(
         }
         //endregion
 
-        Spacer(modifier = Modifier.weight(1f))
-
-        //region Bottom Section: Playback Controls
+        //region Bottom Section: Playback Controls (Shifted upward)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                .padding(bottom = 20.dp),
+                .padding(bottom = 44.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
