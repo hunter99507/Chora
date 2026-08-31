@@ -240,10 +240,18 @@ class MainActivity : ComponentActivity() {
 
                     onBackPressedDispatcher.addCallback(this, backCallback)
 
-                    LaunchedEffect(scaffoldState) {
+                    val isWideScreen = LocalWindowInfo.current.containerSize.width >= dpToPx(640)
+
+                    LaunchedEffect(scaffoldState, isWideScreen) {
                         SongHelper.expandNowPlayingSheet.collect {
                             try {
-                                scaffoldState.bottomSheetState.expand()
+                                if (isWideScreen) {
+                                    navController.navigate(Screen.NowPlayingLandscape.route) {
+                                        launchSingleTop = true
+                                    }
+                                } else {
+                                    scaffoldState.bottomSheetState.expand()
+                                }
                             } catch (_: Exception) {}
                         }
                     }
