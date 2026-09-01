@@ -281,7 +281,7 @@ fun PlaybackProgressSlider(
                 text = remember(currentValue) { formatMilliseconds(currentValue.toInt() / 1000) },
                 fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Start,
-                color = if (focused.value) color else color.copy(alpha = 0.75f),
+                color = if (focused.value) vibrantColor else vibrantColor.copy(alpha = 0.90f),
                 style = MaterialTheme.typography.labelMedium.copy(
                     fontFeatureSettings = "tnum"
                 ),
@@ -294,7 +294,7 @@ fun PlaybackProgressSlider(
                     text = queueStatus,
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center,
-                    color = color.copy(alpha = 0.70f),
+                    color = vibrantColor.copy(alpha = 0.85f),
                     style = MaterialTheme.typography.labelMedium.copy(
                         fontFeatureSettings = "tnum"
                     ),
@@ -311,7 +311,7 @@ fun PlaybackProgressSlider(
                 },
                 fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.End,
-                color = if (focused.value) color else color.copy(alpha = 0.75f),
+                color = if (focused.value) vibrantColor else vibrantColor.copy(alpha = 0.90f),
                 style = MaterialTheme.typography.labelMedium.copy(
                     fontFeatureSettings = "tnum"
                 ),
