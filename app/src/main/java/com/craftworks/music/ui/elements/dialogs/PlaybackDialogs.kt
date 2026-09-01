@@ -204,3 +204,73 @@ fun TranscodingFormatDialog(
         }
     }
 }
+
+@OptIn(ExperimentalComposeUiApi::class, ExperimentalFoundationApi::class)
+@Composable
+fun DefaultRepeatModeDialog(
+    setShowDialog: (Boolean) -> Unit
+) {
+    val context = LocalContext.current
+    val currentRepeatMode by PlaybackSettingsManager(context).defaultRepeatFlow.collectAsState(androidx.media3.common.Player.REPEAT_MODE_ALL)
+
+    val repeatModes = listOf(
+        androidx.media3.common.Player.REPEAT_MODE_ALL to "Repeat All",
+        androidx.media3.common.Player.REPEAT_MODE_ONE to "Repeat One",
+        androidx.media3.common.Player.REPEAT_MODE_OFF to "Off"
+    )
+
+    Dialog(onDismissRequest = { setShowDialog(false) }) {
+        Column(
+            modifier = Modifier
+                .shadow(12.dp, RoundedCornerShape(24.dp))
+                .clip(RoundedCornerShape(24.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(24.dp)
+                .dialogFocusable()
+                .selectableGroup()
+        ) {
+            Text(
+                text = "Default Repeat Mode",
+                fontWeight = FontWeight.SemiBold,
+                fontSize = MaterialTheme.typography.headlineSmall.fontSize,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
+            for ((mode, name) in repeatModes) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .selectable(
+                            selected = mode == currentRepeatMode,
+                            onClick = {
+                                runBlocking {
+                                    PlaybackSettingsManager(context).setDefaultRepeat(mode)
+                                }
+                                setShowDialog(false)
+                            },
+                            role = Role.RadioButton
+                        ),
+                ) {
+                    RadioButton(
+                        selected = mode == currentRepeatMode,
+                        onClick = {
+                            runBlocking {
+                                PlaybackSettingsManager(context).setDefaultRepeat(mode)
+                            }
+                            setShowDialog(false)
+                        },
+                        modifier = Modifier.bounceClick()
+                    )
+                    Text(
+                        text = name,
+                        fontWeight = FontWeight.Normal,
+                        fontSize = MaterialTheme.typography.titleMedium.fontSize,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+}

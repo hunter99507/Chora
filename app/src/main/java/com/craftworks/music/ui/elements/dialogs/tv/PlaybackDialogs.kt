@@ -57,3 +57,28 @@ fun TranscodingFormatDialog(setShowDialog: (Boolean) -> Unit) {
         }
     )
 }
+
+@Composable
+fun DefaultRepeatModeDialog(setShowDialog: (Boolean) -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val manager = PlaybackSettingsManager(context)
+    val currentRepeat by manager.defaultRepeatFlow.collectAsState(androidx.media3.common.Player.REPEAT_MODE_ALL)
+
+    val options = listOf(
+        androidx.media3.common.Player.REPEAT_MODE_ALL to "Repeat All",
+        androidx.media3.common.Player.REPEAT_MODE_ONE to "Repeat One",
+        androidx.media3.common.Player.REPEAT_MODE_OFF to "Off"
+    )
+
+    GenericListDialog(
+        setShowDialog = setShowDialog,
+        titleRes = R.string.Setting_Default_Repeat,
+        options = options.map { it.first },
+        selectedOption = currentRepeat,
+        label = { mode -> options.firstOrNull { it.first == mode }?.second ?: "Repeat All" },
+        onOptionSelected = { mode ->
+            scope.launch { manager.setDefaultRepeat(mode) }
+        }
+    )
+}

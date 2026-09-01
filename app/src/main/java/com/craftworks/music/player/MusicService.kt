@@ -610,6 +610,17 @@ class ChoraMediaLibraryService : MediaLibraryService() {
                     // If only one item is requested, check if it belongs to a folder we've already loaded
                     if (mediaItems.size == 1) {
                         val requestedId = mediaItems[0].mediaId
+                        if (requestedId == "action_shuffle_all_songs") {
+                            val allSongs = songRepository.getSongs().map { it.withHighResArtwork().buildUpon().setUri(it.mediaId).build() }
+                            val shuffled = allSongs.shuffled()
+                            withContext(Dispatchers.Main) {
+                                player.shuffleModeEnabled = true
+                                player.repeatMode = Player.REPEAT_MODE_ALL
+                            }
+                            settable.set(shuffled)
+                            return@launch
+                        }
+
                         // Try to find the full item in the last browsed folder
                         val fullItem = aFolderSongs.find { it.mediaId == requestedId }
                         if (fullItem != null) {
@@ -1063,6 +1074,19 @@ class ChoraMediaLibraryService : MediaLibraryService() {
     private suspend fun getPlaylistItems(): MutableList<MediaItem> {
         if (aPlaylistScreenItems.isEmpty()) {
             try {
+                val shuffleAllItem = MediaItem.Builder()
+                    .setMediaId("action_shuffle_all_songs")
+                    .setMediaMetadata(
+                        MediaMetadata.Builder()
+                            .setTitle("🔀 Shuffle All Songs")
+                            .setArtist("Library")
+                            .setIsBrowsable(false)
+                            .setIsPlayable(true)
+                            .setMediaType(MediaMetadata.MEDIA_TYPE_PLAYLIST)
+                            .build()
+                    )
+                    .build()
+                aPlaylistScreenItems.add(shuffleAllItem)
                 aPlaylistScreenItems.addAll(playlistRepository.getPlaylists().map { it.withHighResArtwork() })
             } catch (e: Exception) {
                 Log.e("AA", "Error loading playlist screen items", e)

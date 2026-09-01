@@ -44,9 +44,11 @@ import com.craftworks.music.R
 import com.craftworks.music.data.model.Screen
 import com.craftworks.music.managers.NavidromeManager
 import com.craftworks.music.managers.settings.PlaybackSettingsManager
+import com.craftworks.music.ui.elements.dialogs.DefaultRepeatModeDialog
 import com.craftworks.music.ui.elements.dialogs.TranscodingBitrateDialog
 import com.craftworks.music.ui.elements.dialogs.TranscodingFormatDialog
 import com.craftworks.music.ui.elements.dialogs.dialogFocusable
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlin.math.roundToInt
 
@@ -62,6 +64,7 @@ fun S_PlaybackScreen(navHostController: NavHostController = rememberNavControlle
     var showDataTranscodingDialog by remember { mutableStateOf(false) }
 
     var showTranscodingFormatDialog by remember { mutableStateOf(false) }
+    var showDefaultRepeatDialog by remember { mutableStateOf(false) }
 
     val currentNavidromeServer by NavidromeManager.currentServerId.collectAsStateWithLifecycle()
 
@@ -152,24 +155,37 @@ fun S_PlaybackScreen(navHostController: NavHostController = rememberNavControlle
                     )
                 }
 
-                /*
+                // Default Playback Behavior
                 Column(
                     modifier = Modifier.clip(RoundedCornerShape(16.dp)),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    val autoPlay by PlaybackSettingsManager(context).autoPlayFlow.collectAsStateWithLifecycle(true)
+                    val defaultShuffle by PlaybackSettingsManager(context).defaultShuffleFlow.collectAsStateWithLifecycle(true)
                     SettingsSwitch(
-                        autoPlay,
-                        stringResource(R.string.Setting_LyricsAutoscroll),
-                        ImageVector.vectorResource(R.drawable.rounded_text_select_move_down_24),
+                        defaultShuffle,
+                        "Default Shuffle Mode",
+                        ImageVector.vectorResource(R.drawable.round_shuffle_28),
                         toggleEvent = {
                             coroutineScope.launch {
-                                PlaybackSettingsManager(context).setAutoPlay(!autoPlay)
+                                PlaybackSettingsManager(context).setDefaultShuffle(!defaultShuffle)
                             }
                         }
                     )
+
+                    val defaultRepeat by PlaybackSettingsManager(context).defaultRepeatFlow.collectAsStateWithLifecycle(androidx.media3.common.Player.REPEAT_MODE_ALL)
+                    val defaultRepeatLabel = when (defaultRepeat) {
+                        androidx.media3.common.Player.REPEAT_MODE_ALL -> "Repeat All"
+                        androidx.media3.common.Player.REPEAT_MODE_ONE -> "Repeat One"
+                        else -> "Off"
+                    }
+
+                    SettingsDialogButton(
+                        settingsName = "Default Repeat Mode",
+                        settingsSubtitle = defaultRepeatLabel,
+                        settingsIcon = ImageVector.vectorResource(R.drawable.rounded_repeat_24),
+                        toggleEvent = { showDefaultRepeatDialog = true }
+                    )
                 }
-                */
 
                 // Scrobble Percent
                 Column(
@@ -202,6 +218,9 @@ fun S_PlaybackScreen(navHostController: NavHostController = rememberNavControlle
         }, false)
         if (showTranscodingFormatDialog) TranscodingFormatDialog(setShowDialog = {
             showTranscodingFormatDialog = it
+        })
+        if (showDefaultRepeatDialog) DefaultRepeatModeDialog(setShowDialog = {
+            showDefaultRepeatDialog = it
         })
     }
 }

@@ -1,14 +1,16 @@
-@file:OptIn(UnstableApi::class) package com.craftworks.music.player
+package com.craftworks.music.player
 
 import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
+import com.craftworks.music.managers.settings.PlaybackSettingsManager
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 
 class SongHelper {
     companion object{
@@ -24,9 +26,14 @@ class SongHelper {
 
             val safeIndex = index.coerceIn(0, playableItems.size - 1)
 
+            val service = ChoraMediaLibraryService.getInstance()
+            val playbackSettings = service?.playbackSettingsManager ?: service?.applicationContext?.let { PlaybackSettingsManager(it) }
+            val defaultShuffle = playbackSettings?.defaultShuffleFlow?.first() ?: true
+            val defaultRepeat = playbackSettings?.defaultRepeatFlow?.first() ?: Player.REPEAT_MODE_ALL
+
             withContext(Dispatchers.Main) {
-                mediaController?.repeatMode = androidx.media3.common.Player.REPEAT_MODE_ALL
-                mediaController?.shuffleModeEnabled = true
+                mediaController?.repeatMode = defaultRepeat
+                mediaController?.shuffleModeEnabled = defaultShuffle
                 mediaController?.setMediaItems(playableItems, safeIndex, 0)
                 mediaController?.prepare()
                 mediaController?.play()

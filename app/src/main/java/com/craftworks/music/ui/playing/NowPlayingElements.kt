@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -96,6 +97,18 @@ fun PlaybackProgressSlider(
     val currentDuration by remember(mediaController?.duration) {
         derivedStateOf {
             mediaController?.duration?.coerceAtLeast(0L)
+        }
+    }
+
+    val queueStatus by remember(mediaController?.currentMediaItemIndex, mediaController?.mediaItemCount) {
+        derivedStateOf {
+            val total = mediaController?.mediaItemCount ?: 0
+            val current = (mediaController?.currentMediaItemIndex ?: -1) + 1
+            if (total > 0 && current > 0) {
+                "$current / $total"
+            } else {
+                ""
+            }
         }
     }
 
@@ -199,19 +212,19 @@ fun PlaybackProgressSlider(
             valueRange = 0f..(currentDuration?.toFloat() ?: 0f),
             colors = SliderDefaults.colors(
                 activeTrackColor = color,
-                inactiveTrackColor = color.copy(alpha = 0.35f),
+                inactiveTrackColor = color.copy(alpha = 0.25f),
                 thumbColor = color
             ),
             interactionSource = interactionSource,
             track = { sliderState ->
                 SliderDefaults.Track(
                     sliderState = sliderState,
-                    modifier = Modifier.height(6.dp),
+                    modifier = Modifier.height(4.dp),
                     colors = SliderDefaults.colors(
                         activeTrackColor = color,
-                        inactiveTrackColor = color.copy(alpha = 0.30f)
+                        inactiveTrackColor = color.copy(alpha = 0.25f)
                     ),
-                    thumbTrackGapSize = 1.5.dp,
+                    thumbTrackGapSize = 0.dp,
                     drawStopIndicator = null
                 )
             },
@@ -219,26 +232,45 @@ fun PlaybackProgressSlider(
                 SliderDefaults.Thumb(
                     interactionSource = interactionSource,
                     colors = SliderDefaults.colors(thumbColor = color),
-                    modifier = Modifier.size(width = 4.dp, height = 16.dp)
+                    modifier = Modifier.size(12.dp)
                 )
             }
         )
 
-        // Time thingies
+        // Time thingies & Queue status
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(horizontal = 4.dp)
         ) {
             Text(
                 text = remember(currentValue) { formatMilliseconds(currentValue.toInt() / 1000) },
                 fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Start,
                 color = color.copy(alpha = 0.85f),
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontFeatureSettings = "tnum"
+                ),
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .width(64.dp),
                 maxLines = 1
             )
+
+            if (queueStatus.isNotBlank()) {
+                Text(
+                    text = queueStatus,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                    color = color.copy(alpha = 0.70f),
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontFeatureSettings = "tnum"
+                    ),
+                    modifier = Modifier.align(Alignment.Center),
+                    maxLines = 1
+                )
+            }
+
             val remainingSecs = remember(currentValue, currentDuration) {
                 val total = currentDuration ?: currentValue
                 val diff = (total - currentValue).coerceAtLeast(0L) / 1000
@@ -249,6 +281,9 @@ fun PlaybackProgressSlider(
                 fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.End,
                 color = color.copy(alpha = 0.85f),
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontFeatureSettings = "tnum"
+                ),
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .width(64.dp),

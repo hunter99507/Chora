@@ -32,6 +32,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.craftworks.music.R
 import com.craftworks.music.managers.settings.PlaybackSettingsManager
+import com.craftworks.music.ui.elements.dialogs.tv.DefaultRepeatModeDialog
 import com.craftworks.music.ui.elements.dialogs.tv.TranscodingBitrateDialog
 import com.craftworks.music.ui.elements.dialogs.tv.TranscodingFormatDialog
 import kotlinx.coroutines.launch
@@ -43,9 +44,18 @@ fun TvS_PlaybackScreen() {
     var showWifiTranscodingDialog by remember { mutableStateOf(false) }
     var showDataTranscodingDialog by remember { mutableStateOf(false) }
     var showTranscodingFormatDialog by remember { mutableStateOf(false) }
+    var showDefaultRepeatDialog by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+
+    val defaultShuffle by PlaybackSettingsManager(context).defaultShuffleFlow.collectAsState(true)
+    val defaultRepeat by PlaybackSettingsManager(context).defaultRepeatFlow.collectAsState(androidx.media3.common.Player.REPEAT_MODE_ALL)
+    val defaultRepeatLabel = when (defaultRepeat) {
+        androidx.media3.common.Player.REPEAT_MODE_ALL -> "Repeat All"
+        androidx.media3.common.Player.REPEAT_MODE_ONE -> "Repeat One"
+        else -> "Off"
+    }
 
     val transcodingBitrateWifi by PlaybackSettingsManager(context).wifiTranscodingBitrateFlow.collectAsState("")
     val transcodingBitrateData by PlaybackSettingsManager(context).mobileDataTranscodingBitrateFlow.collectAsState("")
@@ -62,6 +72,28 @@ fun TvS_PlaybackScreen() {
         contentPadding = PaddingValues(horizontal = 32.dp, vertical = 24.dp)
     ) {
         item {
+            SettingsSwitchItem(
+                title = "Default Shuffle Mode",
+                icon = ImageVector.vectorResource(R.drawable.round_shuffle_28),
+                checked = defaultShuffle,
+                onCheckedChange = {
+                    coroutineScope.launch {
+                        PlaybackSettingsManager(context).setDefaultShuffle(it)
+                    }
+                }
+            )
+        }
+
+        item {
+            SettingsButtonItem(
+                title = "Default Repeat Mode",
+                subtitle = defaultRepeatLabel,
+                icon = ImageVector.vectorResource(R.drawable.rounded_repeat_24),
+                onClick = { showDefaultRepeatDialog = true }
+            )
+        }
+
+        item {
             SettingsButtonItem(
                 title = stringResource(R.string.Setting_Transcoding_Wifi),
                 subtitle = if (transcodingBitrateWifi != "No Transcoding") "$transcodingBitrateWifi Kbps" else transcodingBitrateWifi,
@@ -75,7 +107,7 @@ fun TvS_PlaybackScreen() {
                 title = stringResource(R.string.Setting_Transcoding_Wifi),
                 subtitle = if (transcodingBitrateData != "No Transcoding") "$transcodingBitrateData Kbps" else transcodingBitrateData,
                 icon = ImageVector.vectorResource(R.drawable.s_p_transcoding),
-                onClick = { showWifiTranscodingDialog = true }
+                onClick = { showDataTranscodingDialog = true }
             )
         }
 
@@ -151,5 +183,8 @@ fun TvS_PlaybackScreen() {
     }, false)
     if (showTranscodingFormatDialog) TranscodingFormatDialog(setShowDialog = {
         showTranscodingFormatDialog = it
+    })
+    if (showDefaultRepeatDialog) DefaultRepeatModeDialog(setShowDialog = {
+        showDefaultRepeatDialog = it
     })
 }

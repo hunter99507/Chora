@@ -78,6 +78,7 @@ import kotlinx.coroutines.launch
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.shadow
 
@@ -93,6 +94,18 @@ fun PlaybackProgressSlider(
     val currentDuration by remember(mediaController?.duration) {
         derivedStateOf {
             mediaController?.duration?.coerceAtLeast(0L)
+        }
+    }
+
+    val queueStatus by remember(mediaController?.currentMediaItemIndex, mediaController?.mediaItemCount) {
+        derivedStateOf {
+            val total = mediaController?.mediaItemCount ?: 0
+            val current = (mediaController?.currentMediaItemIndex ?: -1) + 1
+            if (total > 0 && current > 0) {
+                "$current / $total"
+            } else {
+                ""
+            }
         }
     }
 
@@ -157,26 +170,16 @@ fun PlaybackProgressSlider(
         }
     }
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Text(
-            text = remember(currentValue) { formatMilliseconds(currentValue.toInt() / 1000) },
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Start,
-            color = if (focused.value) color else color.copy(alpha = 0.75f),
-            modifier = Modifier.width(48.dp),
-            maxLines = 1
-        )
-
         Slider(
             enabled = metadata?.mediaType != MediaMetadata.MEDIA_TYPE_RADIO_STATION,
             modifier = Modifier
-                .weight(1f)
+                .fillMaxWidth()
                 .onFocusChanged {
                     focused.value = it.isFocused
                 }
@@ -206,24 +209,20 @@ fun PlaybackProgressSlider(
             },
             valueRange = 0f..(currentDuration?.toFloat() ?: 0f),
             thumb = {
-                val thumbWidth by animateDpAsState(
-                    targetValue = if (focused.value) 8.dp else 4.dp,
+                val isFocused = focused.value
+                val dotSize by animateDpAsState(
+                    targetValue = if (isFocused) 16.dp else 10.dp,
                     animationSpec = spring(stiffness = Spring.StiffnessMedium),
-                    label = "Thumb Width"
-                )
-                val thumbHeight by animateDpAsState(
-                    targetValue = if (focused.value) 20.dp else 14.dp,
-                    animationSpec = spring(stiffness = Spring.StiffnessMedium),
-                    label = "Thumb Height"
+                    label = "Thumb Dot Size"
                 )
                 Box(
                     modifier = Modifier
-                        .size(width = thumbWidth, height = thumbHeight)
+                        .size(dotSize)
+                        .shadow(if (isFocused) 8.dp else 2.dp, CircleShape)
                         .background(
-                            color = if (focused.value) MaterialTheme.colorScheme.primary else color,
-                            shape = RoundedCornerShape(100)
+                            color = if (isFocused) MaterialTheme.colorScheme.primary else color,
+                            shape = CircleShape
                         )
-                        .shadow(if (focused.value) 6.dp else 0.dp, RoundedCornerShape(100))
                 )
             },
             track = { sliderState ->
@@ -234,24 +233,59 @@ fun PlaybackProgressSlider(
                         activeTrackColor = color,
                         inactiveTrackColor = color.copy(alpha = 0.2f)
                     ),
-                    thumbTrackGapSize = 1.dp
+                    thumbTrackGapSize = 0.dp
                 )
             },
             interactionSource = interactionSource,
         )
 
-        Text(
-            text = remember(currentDuration) {
-                formatMilliseconds(
-                    currentDuration?.toInt()?.div(1000) ?: (currentValue / 1000).toInt()
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp)
+        ) {
+            Text(
+                text = remember(currentValue) { formatMilliseconds(currentValue.toInt() / 1000) },
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Start,
+                color = if (focused.value) color else color.copy(alpha = 0.75f),
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontFeatureSettings = "tnum"
+                ),
+                modifier = Modifier.align(Alignment.CenterStart),
+                maxLines = 1
+            )
+
+            if (queueStatus.isNotBlank()) {
+                Text(
+                    text = queueStatus,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                    color = color.copy(alpha = 0.70f),
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontFeatureSettings = "tnum"
+                    ),
+                    modifier = Modifier.align(Alignment.Center),
+                    maxLines = 1
                 )
-            },
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.End,
-            color = if (focused.value) color else color.copy(alpha = 0.75f),
-            modifier = Modifier.width(48.dp),
-            maxLines = 1
-        )
+            }
+
+            Text(
+                text = remember(currentDuration) {
+                    formatMilliseconds(
+                        currentDuration?.toInt()?.div(1000) ?: (currentValue / 1000).toInt()
+                    )
+                },
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.End,
+                color = if (focused.value) color else color.copy(alpha = 0.75f),
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontFeatureSettings = "tnum"
+                ),
+                modifier = Modifier.align(Alignment.CenterEnd),
+                maxLines = 1
+            )
+        }
     }
 }
 

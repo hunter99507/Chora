@@ -26,6 +26,33 @@ class PlaybackSettingsManager @Inject constructor(
         private val AUTOPLAY_SONGS = booleanPreferencesKey("autoplay")
 
         private val SCROBBLE_PERCENT_KEY = intPreferencesKey("scrobble_percent")
+
+        private val DEFAULT_SHUFFLE_KEY = booleanPreferencesKey("default_shuffle")
+        private val DEFAULT_REPEAT_KEY = intPreferencesKey("default_repeat")
+    }
+
+    val defaultShuffleFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[DEFAULT_SHUFFLE_KEY] ?: true
+    }
+
+    suspend fun setDefaultShuffle(shuffle: Boolean) {
+        withContext(NonCancellable) {
+            context.dataStore.edit { preferences ->
+                preferences[DEFAULT_SHUFFLE_KEY] = shuffle
+            }
+        }
+    }
+
+    val defaultRepeatFlow: Flow<Int> = context.dataStore.data.map { preferences ->
+        preferences[DEFAULT_REPEAT_KEY] ?: androidx.media3.common.Player.REPEAT_MODE_ALL
+    }
+
+    suspend fun setDefaultRepeat(repeatMode: Int) {
+        withContext(NonCancellable) {
+            context.dataStore.edit { preferences ->
+                preferences[DEFAULT_REPEAT_KEY] = repeatMode
+            }
+        }
     }
 
     val wifiTranscodingBitrateFlow: Flow<String> = context.dataStore.data.map { preferences ->
