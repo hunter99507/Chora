@@ -224,18 +224,14 @@ fun TvNowPlaying(
             }
         }
 
-        // --- Static Sleek Bottom Playback Bar ---
+        // --- Sleek Floating Playback Controls ---
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .shadow(12.dp, RoundedCornerShape(24.dp))
-                .background(
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
-                    shape = RoundedCornerShape(24.dp)
-                )
-                .padding(horizontal = 24.dp, vertical = 10.dp)
+                .widthIn(max = 600.dp)
+                .fillMaxWidth(0.60f)
+                .padding(bottom = 8.dp)
                 .focusGroup(),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (metadata?.mediaType != MediaMetadata.MEDIA_TYPE_RADIO_STATION) {
@@ -251,34 +247,34 @@ fun TvNowPlaying(
             ) {
                 ChoraMediaLibraryService.getInstance()?.player?.let { player ->
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         ShuffleButton(
                             player,
-                            Modifier.size(40.dp)
+                            Modifier.size(36.dp)
                         )
 
                         PreviousSongButton(
                             player,
-                            Modifier.size(48.dp)
+                            Modifier.size(42.dp)
                         )
 
                         PlayPauseButton(
                             player,
                             Modifier
-                                .size(56.dp)
+                                .size(50.dp)
                                 .requestFocusOnFirstGainingVisibility()
                         )
 
                         NextSongButton(
                             player,
-                            Modifier.size(48.dp)
+                            Modifier.size(42.dp)
                         )
 
                         RepeatButton(
                             player,
-                            Modifier.size(40.dp)
+                            Modifier.size(36.dp)
                         )
                     }
                 }
