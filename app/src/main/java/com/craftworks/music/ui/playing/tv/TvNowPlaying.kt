@@ -132,7 +132,7 @@ fun TvNowPlaying(
                         imageCard = {
                             Box(
                                 Modifier
-                                    .height(250.dp)
+                                    .height(210.dp)
                                     .fillMaxWidth(),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -210,7 +210,7 @@ fun TvNowPlaying(
                     .weight(1.2f)
                     .fillMaxHeight(
                         if (oledProtectionMode == OLEDProtectionMode.LYRICS_ONLY) 0.6f
-                        else 1f
+                        else 0.85f
                     )
             ) {
                 Box(
@@ -238,7 +238,7 @@ fun TvNowPlaying(
                 .fillMaxWidth(0.85f)
                 .padding(bottom = 8.dp)
                 .focusGroup(),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (metadata?.mediaType != MediaMetadata.MEDIA_TYPE_RADIO_STATION) {

@@ -76,6 +76,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
+import com.craftworks.music.ui.playing.getVibrantSeekbarColor
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
@@ -90,6 +91,10 @@ fun PlaybackProgressSlider(
     mediaController: MediaController? = null,
     metadata: MediaMetadata? = null
 ) {
+    val vibrantColor = remember(color) {
+        getVibrantSeekbarColor(color, true)
+    }
+
     var currentValue by remember { mutableLongStateOf(0L) }
     val currentDuration by remember(mediaController?.duration) {
         derivedStateOf {
@@ -211,16 +216,16 @@ fun PlaybackProgressSlider(
             thumb = {
                 val isFocused = focused.value
                 val dotSize by animateDpAsState(
-                    targetValue = if (isFocused) 14.dp else 10.dp,
+                    targetValue = if (isFocused) 16.dp else 12.dp,
                     animationSpec = spring(stiffness = Spring.StiffnessMedium),
                     label = "Thumb Dot Size"
                 )
                 Box(
                     modifier = Modifier
                         .size(dotSize)
-                        .shadow(if (isFocused) 4.dp else 1.dp, CircleShape)
+                        .shadow(if (isFocused) 4.dp else 2.dp, CircleShape)
                         .background(
-                            color = color,
+                            color = vibrantColor,
                             shape = CircleShape
                         )
                 )
@@ -228,10 +233,10 @@ fun PlaybackProgressSlider(
             track = { sliderState ->
                 SliderDefaults.Track(
                     sliderState = sliderState,
-                    modifier = Modifier.height(if (focused.value) 6.dp else 4.dp),
+                    modifier = Modifier.height(12.dp),
                     colors = SliderDefaults.colors(
-                        activeTrackColor = color,
-                        inactiveTrackColor = color.copy(alpha = 0.2f)
+                        activeTrackColor = vibrantColor,
+                        inactiveTrackColor = vibrantColor.copy(alpha = 0.30f)
                     ),
                     thumbTrackGapSize = 0.dp
                 )

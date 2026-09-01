@@ -86,6 +86,19 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
+fun getVibrantSeekbarColor(accentColor: Color, isDarkTheme: Boolean = true): Color {
+    val hsl = FloatArray(3)
+    ColorUtils.colorToHSL(accentColor.toArgb(), hsl)
+    if (isDarkTheme) {
+        hsl[1] = hsl[1].coerceIn(0.65f, 1.0f)
+        hsl[2] = hsl[2].coerceIn(0.72f, 0.88f)
+    } else {
+        hsl[1] = hsl[1].coerceIn(0.70f, 1.0f)
+        hsl[2] = hsl[2].coerceIn(0.20f, 0.35f)
+    }
+    return Color(ColorUtils.HSLToColor(hsl))
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true)
 @Composable
@@ -94,6 +107,10 @@ fun PlaybackProgressSlider(
     mediaController: MediaController? = null,
     metadata: MediaMetadata? = null
 ) {
+    val vibrantColor = remember(color) {
+        getVibrantSeekbarColor(color, true)
+    }
+
     var currentValue by remember { mutableLongStateOf(0L) }
     val currentDuration by remember(mediaController?.duration) {
         derivedStateOf {
@@ -212,18 +229,18 @@ fun PlaybackProgressSlider(
             },
             valueRange = 0f..(currentDuration?.toFloat() ?: 0f),
             colors = SliderDefaults.colors(
-                activeTrackColor = color,
-                inactiveTrackColor = color.copy(alpha = 0.25f),
-                thumbColor = color
+                activeTrackColor = vibrantColor,
+                inactiveTrackColor = vibrantColor.copy(alpha = 0.30f),
+                thumbColor = vibrantColor
             ),
             interactionSource = interactionSource,
             track = { sliderState ->
                 SliderDefaults.Track(
                     sliderState = sliderState,
-                    modifier = Modifier.height(4.dp),
+                    modifier = Modifier.height(12.dp),
                     colors = SliderDefaults.colors(
-                        activeTrackColor = color,
-                        inactiveTrackColor = color.copy(alpha = 0.25f)
+                        activeTrackColor = vibrantColor,
+                        inactiveTrackColor = vibrantColor.copy(alpha = 0.30f)
                     ),
                     thumbTrackGapSize = 0.dp,
                     drawStopIndicator = null
@@ -233,8 +250,8 @@ fun PlaybackProgressSlider(
                 Box(
                     modifier = Modifier
                         .size(12.dp)
-                        .shadow(2.dp, CircleShape)
-                        .background(color, CircleShape)
+                        .shadow(3.dp, CircleShape)
+                        .background(vibrantColor, CircleShape)
                 )
             }
         )
