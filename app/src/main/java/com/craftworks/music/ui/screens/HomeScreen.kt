@@ -217,70 +217,12 @@ fun HomeScreen(
                 }
             }
 
-            // Playlists Row (First Entry)
-            if (playlists.isNotEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 6.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 12.dp)
-                            .clickable {
-                                navHostController.navigate(Screen.Playlists.route) {
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            }
-                    ) {
-                        Text(
-                            text = stringResource(R.string.playlists),
-                            color = MaterialTheme.colorScheme.onBackground,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = MaterialTheme.typography.headlineSmall.fontSize
-                        )
-
-                        Spacer(modifier = Modifier.weight(1f))
-
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onBackground,
-                            modifier = Modifier
-                                .size(MaterialTheme.typography.headlineSmall.fontSize.value.dp * 1.2f)
-                        )
-                    }
-
-                    LazyRow(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 172.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(
-                            items = playlists,
-                            key = { it.mediaId }
-                        ) { playlist ->
-                            PlaylistCard(
-                                playlist = playlist,
-                                onClick = {
-                                    playlistViewModel.setCurrentPlaylist(playlist)
-                                    navHostController.navigate(Screen.PlaylistDetails.route) {
-                                        launchSingleTop = true
-                                    }
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-
             val orderedHomeItems = AppearanceSettingsManager(context).homeItemsItemsFlow.collectAsState(
                 initial = listOf(
+                    HomeItem(
+                        "playlists",
+                        true
+                    ),
                     HomeItem(
                         "recently_played",
                         true
@@ -302,31 +244,94 @@ fun HomeScreen(
 
             orderedHomeItems.forEach { item ->
                 if (item.enabled) {
-                    val albums = when (item.key) {
-                        "recently_played" -> recentlyPlayedAlbums
-                        "recently_added" -> recentAlbums
-                        "most_played" -> mostPlayedAlbums
-                        "random_songs" -> shuffledAlbums
-                        else -> emptyList()
-                    }
+                    if (item.key == "playlists") {
+                        if (playlists.isNotEmpty()) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 6.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 12.dp)
+                                        .clickable {
+                                            navHostController.navigate(Screen.Playlists.route) {
+                                                launchSingleTop = true
+                                                restoreState = true
+                                            }
+                                        }
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.playlists),
+                                        color = MaterialTheme.colorScheme.onBackground,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = MaterialTheme.typography.headlineSmall.fontSize
+                                    )
 
-                    val titleMap = remember {
-                        mapOf(
-                            "recently_played" to R.string.recently_played,
-                            "recently_added" to R.string.recently_added,
-                            "most_played" to R.string.most_played,
-                            "random_songs" to R.string.random_songs
+                                    Spacer(modifier = Modifier.weight(1f))
+
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onBackground,
+                                        modifier = Modifier
+                                            .size(MaterialTheme.typography.headlineSmall.fontSize.value.dp * 1.2f)
+                                    )
+                                }
+
+                                LazyRow(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = 172.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    items(
+                                        items = playlists,
+                                        key = { it.mediaId }
+                                    ) { playlist ->
+                                        PlaylistCard(
+                                            playlist = playlist,
+                                            onClick = {
+                                                playlistViewModel.setCurrentPlaylist(playlist)
+                                                navHostController.navigate(Screen.PlaylistDetails.route) {
+                                                    launchSingleTop = true
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        val albums = when (item.key) {
+                            "recently_played" -> recentlyPlayedAlbums
+                            "recently_added" -> recentAlbums
+                            "most_played" -> mostPlayedAlbums
+                            "random_songs" -> shuffledAlbums
+                            else -> emptyList()
+                        }
+
+                        val titleMap = remember {
+                            mapOf(
+                                "recently_played" to R.string.recently_played,
+                                "recently_added" to R.string.recently_added,
+                                "most_played" to R.string.most_played,
+                                "random_songs" to R.string.random_songs
+                            )
+                        }
+
+                        AlbumRow(
+                            item.key,
+                            titleMap[item.key],
+                            albums,
+                            mediaController,
+                            navHostController,
+                            viewModel
                         )
                     }
-
-                    AlbumRow(
-                        item.key,
-                        titleMap[item.key],
-                        albums,
-                        mediaController,
-                        navHostController,
-                        viewModel
-                    )
                 }
             }
         }

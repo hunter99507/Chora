@@ -343,6 +343,7 @@ fun HomeItemsDialog(setShowDialog: (Boolean) -> Unit) {
 
     val titleMap = remember {
         mapOf(
+            "playlists" to R.string.playlists,
             "recently_played" to R.string.recently_played,
             "recently_added" to R.string.recently_added,
             "most_played" to R.string.most_played,
@@ -367,6 +368,10 @@ fun HomeItemsDialog(setShowDialog: (Boolean) -> Unit) {
                 AppearanceSettingsManager(context).setHomeItems(
                     mutableStateListOf(
                         HomeItem(
+                            "playlists",
+                            true
+                        ),
+                        HomeItem(
                             "recently_played",
                             true
                         ),
@@ -376,6 +381,10 @@ fun HomeItemsDialog(setShowDialog: (Boolean) -> Unit) {
                         ),
                         HomeItem(
                             "most_played",
+                            true
+                        ),
+                        HomeItem(
+                            "random_songs",
                             true
                         )
                     )

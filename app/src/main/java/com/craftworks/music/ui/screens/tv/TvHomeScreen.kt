@@ -81,8 +81,10 @@ import com.craftworks.music.formatMilliseconds
 import com.craftworks.music.managers.settings.AppearanceSettingsManager
 import com.craftworks.music.player.SongHelper
 import com.craftworks.music.ui.elements.tv.TvAlbumCard
+import com.craftworks.music.ui.elements.tv.TvPlaylistCard
 import com.craftworks.music.ui.screens.HomeItem
 import com.craftworks.music.ui.viewmodels.HomeScreenViewModel
+import com.craftworks.music.ui.viewmodels.PlaylistScreenViewModel
 import kotlinx.coroutines.launch
 import java.net.URLEncoder
 
@@ -91,12 +93,12 @@ import java.net.URLEncoder
 fun TvHomeScreen(
     navHostController: NavHostController = rememberNavController(),
     mediaController: MediaController? = null,
-    viewModel: HomeScreenViewModel = hiltViewModel()
+    viewModel: HomeScreenViewModel = hiltViewModel(),
+    playlistViewModel: PlaylistScreenViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
 
-    //val libraries by NavidromeManager.libraries.collectAsStateWithLifecycle()
-
+    val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val recentlyPlayedAlbums by viewModel.recentlyPlayedAlbums.collectAsStateWithLifecycle()
     val recentAlbums by viewModel.recentAlbums.collectAsStateWithLifecycle()
     val mostPlayedAlbums by viewModel.mostPlayedAlbums.collectAsStateWithLifecycle()
@@ -104,17 +106,21 @@ fun TvHomeScreen(
 
     val orderedHomeItems = AppearanceSettingsManager(context).homeItemsItemsFlow.collectAsState(
         initial = listOf(
+            HomeItem("playlists", true),
             HomeItem("recently_played", true),
             HomeItem("recently_added", true),
-            HomeItem("most_played", true)
+            HomeItem("most_played", true),
+            HomeItem("random_songs", true)
         )
     ).value
 
     val titleMap = remember {
         mapOf(
+            "playlists" to R.string.playlists,
             "recently_played" to R.string.recently_played,
             "recently_added" to R.string.recently_added,
-            "most_played" to R.string.most_played
+            "most_played" to R.string.most_played,
+            "random_songs" to R.string.random_songs
         )
     }
 
@@ -226,42 +232,77 @@ fun TvHomeScreen(
             orderedHomeItems.filter { it.enabled },
             key = { it.key }
         ) { item ->
-            val albums = when (item.key) {
-                "recently_played" -> recentlyPlayedAlbums
-                "recently_added" -> recentAlbums
-                "most_played" -> mostPlayedAlbums
-                else -> emptyList()
-            }
-            if (albums.isEmpty()) return@items
-
-            Column (
-                Modifier.focusGroup()
-            ) {
-                Text(
-                    text = stringResource(titleMap[item.key] ?: R.string.recently_played),
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(horizontal = 48.dp, vertical = 8.dp)
-                )
-
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(24.dp),
-                    modifier = Modifier
-                        .focusGroup(),
-                    contentPadding = PaddingValues(horizontal = 48.dp)
-                ) {
-                    items(albums, key = {it.mediaId} ) { album ->
-                        TvAlbumCard(
-                            album = album,
-                            onClick = {
-                                val albumEncoded = album.toAlbum()
-                                val encodedImage = URLEncoder.encode(albumEncoded.coverArt, "UTF-8")
-                                navHostController.navigate(Screen.AlbumDetails.route + "/${albumEncoded.navidromeID}/$encodedImage") {
-                                    launchSingleTop = true
-                                }
-                            }
+            if (item.key == "playlists") {
+                if (playlists.isNotEmpty()) {
+                    Column(
+                        Modifier.focusGroup()
+                    ) {
+                        Text(
+                            text = stringResource(R.string.playlists),
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(horizontal = 48.dp, vertical = 8.dp)
                         )
+
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(24.dp),
+                            modifier = Modifier.focusGroup(),
+                            contentPadding = PaddingValues(horizontal = 48.dp)
+                        ) {
+                            items(playlists, key = { it.mediaId }) { playlist ->
+                                TvPlaylistCard(
+                                    playlist = playlist,
+                                    onClick = {
+                                        playlistViewModel.setCurrentPlaylist(playlist)
+                                        navHostController.navigate(Screen.PlaylistDetails.route) {
+                                            launchSingleTop = true
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                val albums = when (item.key) {
+                    "recently_played" -> recentlyPlayedAlbums
+                    "recently_added" -> recentAlbums
+                    "most_played" -> mostPlayedAlbums
+                    "random_songs" -> shuffledAlbums
+                    else -> emptyList()
+                }
+                if (albums.isEmpty()) return@items
+
+                Column (
+                    Modifier.focusGroup()
+                ) {
+                    Text(
+                        text = stringResource(titleMap[item.key] ?: R.string.recently_played),
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 48.dp, vertical = 8.dp)
+                    )
+
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(24.dp),
+                        modifier = Modifier
+                            .focusGroup(),
+                        contentPadding = PaddingValues(horizontal = 48.dp)
+                    ) {
+                        items(albums, key = {it.mediaId} ) { album ->
+                            TvAlbumCard(
+                                album = album,
+                                onClick = {
+                                    val albumEncoded = album.toAlbum()
+                                    val encodedImage = URLEncoder.encode(albumEncoded.coverArt, "UTF-8")
+                                    navHostController.navigate(Screen.AlbumDetails.route + "/${albumEncoded.navidromeID}/$encodedImage") {
+                                        launchSingleTop = true
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }

@@ -130,13 +130,19 @@ class AppearanceSettingsManager @Inject constructor(
     val homeItemsItemsFlow: Flow<List<HomeItem>> = context.dataStore.data.map { preferences ->
         val jsonString = preferences[HOME_ITEMS_KEY]
         val defaultValue = listOf(
+            HomeItem("playlists", true),
             HomeItem("recently_played", true),
             HomeItem("recently_added", true),
             HomeItem("most_played", true),
             HomeItem("random_songs", true)
         )
         try {
-            jsonString?.let { Json.decodeFromString<List<HomeItem>>(it) } ?: defaultValue
+            val items = jsonString?.let { Json.decodeFromString<List<HomeItem>>(it) } ?: defaultValue
+            if (items.none { it.key == "playlists" }) {
+                listOf(HomeItem("playlists", true)) + items
+            } else {
+                items
+            }
         } catch (e: Exception) {
             println(e.message)
             defaultValue

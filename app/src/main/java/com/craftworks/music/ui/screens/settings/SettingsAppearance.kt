@@ -291,6 +291,7 @@ fun S_AppearanceScreen(navHostController: NavHostController = rememberNavControl
                     //Home Items
                     val titleMap = remember {
                         mapOf(
+                            "playlists" to R.string.playlists,
                             "recently_played" to R.string.recently_played,
                             "recently_added" to R.string.recently_added,
                             "most_played" to R.string.most_played,

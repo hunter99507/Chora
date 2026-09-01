@@ -174,9 +174,11 @@ fun TvS_AppearanceScreen() {
 
                 // Home Items
                 val titleMap = mapOf(
+                    "playlists" to R.string.playlists,
                     "recently_played" to R.string.recently_played,
                     "recently_added" to R.string.recently_added,
-                    "most_played" to R.string.most_played
+                    "most_played" to R.string.most_played,
+                    "random_songs" to R.string.random_songs
                 )
                 val enabledHomeItems by AppearanceSettingsManager(context).homeItemsItemsFlow.collectAsState(
                     emptyList()
