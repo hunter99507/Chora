@@ -39,6 +39,7 @@ fun Modifier.swipeToNavigateTabs(
             if (!change.pressed) {
                 // Gesture ended (finger lifted)
                 if (isHorizontalDrag == true) {
+                    change.consume()
                     if (totalDragX < -60f && currentIndex < activeTabs.size - 1) {
                         // Swiped left -> Go to next active tab
                         val targetRoute = activeTabs[currentIndex + 1]
@@ -75,6 +76,10 @@ fun Modifier.swipeToNavigateTabs(
                 } else if (abs(totalDragY) > 20f) {
                     isHorizontalDrag = false
                 }
+            }
+
+            if (isHorizontalDrag == true) {
+                change.consume()
             }
         }
     }
