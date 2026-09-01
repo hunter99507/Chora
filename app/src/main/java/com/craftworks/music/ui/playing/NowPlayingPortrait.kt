@@ -204,7 +204,7 @@ fun NowPlayingPortrait(
                     LyricsView(iconColor, false, mediaController, onRefreshLyrics = onRefreshLyrics)
                 }
             } else {
-                val artworkHeight = (LocalConfiguration.current.screenHeightDp.dp * 0.51f).coerceAtLeast(380.dp)
+                val artworkHeight = (LocalConfiguration.current.screenHeightDp.dp * 0.585f).coerceAtLeast(435.dp)
                 var totalDrag by remember { mutableFloatStateOf(0f) }
                 var isForward by remember { mutableStateOf(true) }
 
@@ -397,12 +397,12 @@ fun NowPlayingPortrait(
         }
         //endregion
 
-        //region Bottom Section: Playback Controls (Shifted upward)
+        //region Bottom Section: Playback Controls (Shifted down)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                .padding(bottom = 88.dp),
+                .padding(bottom = 48.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
