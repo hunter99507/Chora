@@ -303,12 +303,13 @@ fun S_AppearanceScreen(navHostController: NavHostController = rememberNavControl
                             emptyList()
                         ).value
                             .filter { it.enabled }
-                            .joinToString(", ") {
-                                context.getString(
+                            .map {
+                                stringResource(
                                     titleMap[it.key]
                                         ?: androidx.media3.session.R.string.error_message_fallback
                                 )
                             }
+                            .joinToString(", ")
 
                     SettingsDialogButton(
                         stringResource(R.string.Setting_Home_Items),

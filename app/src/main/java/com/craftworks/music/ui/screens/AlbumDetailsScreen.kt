@@ -247,7 +247,7 @@ fun AlbumDetails(
                                 horizontalArrangement = Arrangement.Center
                             ) {
                                 currentAlbum[0].mediaMetadata.genre?.split(",")?.forEach {
-                                    GenrePill(it.toString())
+                                    GenrePill(it)
                                 }
                             }
                         }

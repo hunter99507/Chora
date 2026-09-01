@@ -17,6 +17,7 @@ class SongHelper {
         private val _expandNowPlayingSheet = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
         val expandNowPlayingSheet = _expandNowPlayingSheet.asSharedFlow()
 
+        @OptIn(UnstableApi::class)
         suspend fun play(mediaItems: List<MediaItem>, index: Int, mediaController: MediaController?) {
             val playableItems = mediaItems.filter {
                 it.mediaMetadata.isPlayable != false && !it.mediaId.startsWith("folder_album_") && it.mediaId.isNotBlank()

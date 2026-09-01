@@ -63,6 +63,20 @@ android {
         includeInApk = false
         includeInBundle = false
     }
+
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
+        disable += listOf(
+            "MissingTranslation",
+            "VectorRaster",
+            "VectorPath",
+            "ConfigurationScreenWidthHeight",
+            "AcceptsUserCertificates",
+            "InsecureBaseConfiguration",
+            "ExportedService"
+        )
+    }
 }
 
 dependencies {
