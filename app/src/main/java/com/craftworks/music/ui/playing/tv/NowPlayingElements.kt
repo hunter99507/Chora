@@ -76,6 +76,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.shadow
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true)
 @Composable
@@ -94,7 +99,7 @@ fun PlaybackProgressSlider(
     val animatedValue by animateFloatAsState(
         targetValue = currentValue.toFloat(),
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioLowBouncy,
+            dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessMedium
         ),
         label = "Smooth Slider Update"
@@ -157,13 +162,13 @@ fun PlaybackProgressSlider(
             .fillMaxWidth()
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Text(
             text = remember(currentValue) { formatMilliseconds(currentValue.toInt() / 1000) },
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Start,
-            color = color.copy(alpha = 0.75f),
+            color = if (focused.value) color else color.copy(alpha = 0.75f),
             modifier = Modifier.width(48.dp),
             maxLines = 1
         )
@@ -200,11 +205,38 @@ fun PlaybackProgressSlider(
                 mediaController?.seekTo(currentValue)
             },
             valueRange = 0f..(currentDuration?.toFloat() ?: 0f),
-            colors = SliderDefaults.colors(
-                activeTrackColor = color,
-                inactiveTrackColor = color.copy(alpha = 0.25f),
-                thumbColor = color
-            ),
+            thumb = {
+                val thumbWidth by animateDpAsState(
+                    targetValue = if (focused.value) 8.dp else 4.dp,
+                    animationSpec = spring(stiffness = Spring.StiffnessMedium),
+                    label = "Thumb Width"
+                )
+                val thumbHeight by animateDpAsState(
+                    targetValue = if (focused.value) 20.dp else 14.dp,
+                    animationSpec = spring(stiffness = Spring.StiffnessMedium),
+                    label = "Thumb Height"
+                )
+                Box(
+                    modifier = Modifier
+                        .size(width = thumbWidth, height = thumbHeight)
+                        .background(
+                            color = if (focused.value) MaterialTheme.colorScheme.primary else color,
+                            shape = RoundedCornerShape(100)
+                        )
+                        .shadow(if (focused.value) 6.dp else 0.dp, RoundedCornerShape(100))
+                )
+            },
+            track = { sliderState ->
+                SliderDefaults.Track(
+                    sliderState = sliderState,
+                    modifier = Modifier.height(if (focused.value) 6.dp else 4.dp),
+                    colors = SliderDefaults.colors(
+                        activeTrackColor = color,
+                        inactiveTrackColor = color.copy(alpha = 0.2f)
+                    ),
+                    thumbTrackGapSize = 1.dp
+                )
+            },
             interactionSource = interactionSource,
         )
 
@@ -214,9 +246,9 @@ fun PlaybackProgressSlider(
                     currentDuration?.toInt()?.div(1000) ?: (currentValue / 1000).toInt()
                 )
             },
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.End,
-            color = color.copy(alpha = 0.75f),
+            color = if (focused.value) color else color.copy(alpha = 0.75f),
             modifier = Modifier.width(48.dp),
             maxLines = 1
         )
@@ -228,14 +260,23 @@ fun PlaybackProgressSlider(
 internal fun PreviousSongButton(player: Player, modifier: Modifier = Modifier) {
     val state = rememberPreviousButtonState(player)
     IconButton(
-        onClick = state::onClick, modifier = modifier
+        onClick = state::onClick,
+        modifier = modifier
             .bounceClick(state.isEnabled)
-            .moveClick(false, state.isEnabled), enabled = state.isEnabled
+            .moveClick(false, state.isEnabled),
+        enabled = state.isEnabled,
+        colors = IconButtonDefaults.colors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            focusedContentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        scale = IconButtonDefaults.scale(focusedScale = 1.15f)
     ) {
         Icon(
             imageVector = ImageVector.vectorResource(R.drawable.media3_notification_seek_to_previous),
             contentDescription = "Previous song",
-            modifier = Modifier.size(IconButtonDefaults.MediumIconSize),
+            modifier = Modifier.size(24.dp),
         )
     }
 }
@@ -253,12 +294,19 @@ internal fun PlayPauseButton(player: Player, modifier: Modifier = Modifier) {
     IconButton(
         onClick = state::onClick,
         modifier = modifier.bounceClick(state.isEnabled),
-        enabled = state.isEnabled
+        enabled = state.isEnabled,
+        colors = IconButtonDefaults.colors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            focusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+            focusedContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+        ),
+        scale = IconButtonDefaults.scale(focusedScale = 1.15f)
     ) {
         Icon(
             icon,
             contentDescription,
-            modifier = Modifier.size(IconButtonDefaults.LargeIconSize)
+            modifier = Modifier.size(30.dp)
         )
     }
 }
@@ -269,13 +317,22 @@ internal fun NextSongButton(player: Player, modifier: Modifier = Modifier) {
     val state = rememberNextButtonState(player)
     IconButton(
         onClick = state::onClick,
-        modifier = modifier.moveClick(true, state.isEnabled),
+        modifier = modifier
+            .bounceClick(state.isEnabled)
+            .moveClick(true, state.isEnabled),
         enabled = state.isEnabled,
+        colors = IconButtonDefaults.colors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            focusedContentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        scale = IconButtonDefaults.scale(focusedScale = 1.15f)
     ) {
         Icon(
             imageVector = ImageVector.vectorResource(R.drawable.media3_notification_seek_to_next),
             contentDescription = "Next song",
-            modifier = Modifier.size(IconButtonDefaults.MediumIconSize),
+            modifier = Modifier.size(24.dp),
         )
     }
 }
@@ -357,16 +414,16 @@ fun ShuffleButton(player: Player, modifier: Modifier = Modifier) {
         enabled = state.isEnabled,
         colors = IconButtonDefaults.colors(
             containerColor = if (isActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.25f) else Color.Transparent,
-            contentColor = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+            contentColor = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
             focusedContainerColor = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
             focusedContentColor = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
         ),
-        scale = IconButtonDefaults.scale(),
+        scale = IconButtonDefaults.scale(focusedScale = 1.15f),
     ) {
         Icon(
             imageVector = ImageVector.vectorResource(R.drawable.round_shuffle_28),
             contentDescription = if (isActive) "Shuffle On" else "Shuffle Off",
-            modifier = Modifier.size(IconButtonDefaults.SmallIconSize),
+            modifier = Modifier.size(20.dp),
         )
     }
 }
@@ -383,11 +440,11 @@ fun RepeatButton(player: Player, modifier: Modifier = Modifier) {
         enabled = state.isEnabled,
         colors = IconButtonDefaults.colors(
             containerColor = if (isActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.25f) else Color.Transparent,
-            contentColor = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+            contentColor = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
             focusedContainerColor = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
             focusedContentColor = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
         ),
-        scale = IconButtonDefaults.scale(),
+        scale = IconButtonDefaults.scale(focusedScale = 1.15f),
     ) {
         Icon(
             imageVector = icon,
@@ -396,7 +453,7 @@ fun RepeatButton(player: Player, modifier: Modifier = Modifier) {
                 Player.REPEAT_MODE_ALL -> "Repeat All"
                 else -> "Repeat Off"
             },
-            modifier = Modifier.size(IconButtonDefaults.SmallIconSize),
+            modifier = Modifier.size(20.dp),
         )
     }
 }

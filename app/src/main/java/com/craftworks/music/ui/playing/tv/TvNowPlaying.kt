@@ -228,14 +228,14 @@ fun TvNowPlaying(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .shadow(10.dp, RoundedCornerShape(20.dp))
+                .shadow(12.dp, RoundedCornerShape(24.dp))
                 .background(
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f),
-                    shape = RoundedCornerShape(20.dp)
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
+                    shape = RoundedCornerShape(24.dp)
                 )
-                .padding(horizontal = 20.dp, vertical = 8.dp)
+                .padding(horizontal = 24.dp, vertical = 10.dp)
                 .focusGroup(),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (metadata?.mediaType != MediaMetadata.MEDIA_TYPE_RADIO_STATION) {
@@ -251,34 +251,34 @@ fun TvNowPlaying(
             ) {
                 ChoraMediaLibraryService.getInstance()?.player?.let { player ->
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(24.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         ShuffleButton(
                             player,
-                            Modifier.size(IconButtonDefaults.SmallButtonSize)
+                            Modifier.size(40.dp)
                         )
 
                         PreviousSongButton(
                             player,
-                            Modifier.size(IconButtonDefaults.MediumButtonSize)
+                            Modifier.size(48.dp)
                         )
 
                         PlayPauseButton(
                             player,
                             Modifier
-                                .size(IconButtonDefaults.LargeButtonSize)
+                                .size(56.dp)
                                 .requestFocusOnFirstGainingVisibility()
                         )
 
                         NextSongButton(
                             player,
-                            Modifier.size(IconButtonDefaults.MediumButtonSize)
+                            Modifier.size(48.dp)
                         )
 
                         RepeatButton(
                             player,
-                            Modifier.size(IconButtonDefaults.SmallButtonSize)
+                            Modifier.size(40.dp)
                         )
                     }
                 }
