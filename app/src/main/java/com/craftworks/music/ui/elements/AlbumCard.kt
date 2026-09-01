@@ -70,28 +70,6 @@ fun AlbumCard(
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant),
             )
-
-            IconButton(
-                onClick = {
-                    onPlay(album)
-                },
-                modifier = Modifier
-                    .padding(6.dp)
-                    .background(
-                        MaterialTheme.colorScheme.background.copy(alpha = 0.75f),
-                        shape = CircleShape
-                    )
-                    .height(36.dp)
-                    .size(36.dp)
-                    .align(Alignment.BottomStart)
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.PlayArrow,
-                    tint = MaterialTheme.colorScheme.onBackground,
-                    contentDescription = "Play Album",
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
         }
 
         Spacer(modifier = Modifier.height(4.dp))
