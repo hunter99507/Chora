@@ -227,8 +227,8 @@ fun TvNowPlaying(
         // --- Sleek Floating Playback Controls ---
         Column(
             modifier = Modifier
-                .widthIn(max = 600.dp)
-                .fillMaxWidth(0.60f)
+                .widthIn(max = 920.dp)
+                .fillMaxWidth(0.85f)
                 .padding(bottom = 8.dp)
                 .focusGroup(),
             verticalArrangement = Arrangement.spacedBy(2.dp),
