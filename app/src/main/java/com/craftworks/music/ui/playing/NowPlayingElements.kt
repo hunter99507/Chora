@@ -211,7 +211,7 @@ fun PlaybackProgressSlider(
                         activeTrackColor = color,
                         inactiveTrackColor = color.copy(alpha = 0.30f)
                     ),
-                    thumbTrackGapSize = 3.dp,
+                    thumbTrackGapSize = 1.5.dp,
                     drawStopIndicator = null
                 )
             },
@@ -219,7 +219,7 @@ fun PlaybackProgressSlider(
                 SliderDefaults.Thumb(
                     interactionSource = interactionSource,
                     colors = SliderDefaults.colors(thumbColor = color),
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(width = 4.dp, height = 16.dp)
                 )
             }
         )

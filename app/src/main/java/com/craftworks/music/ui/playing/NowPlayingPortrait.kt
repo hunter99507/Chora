@@ -418,27 +418,21 @@ fun NowPlayingPortrait(
         }
 
         // Back Button on top left
-        Button(
+        IconButton(
             onClick = {
                 backDispatcher?.onBackPressed()
             },
-            shape = CircleShape,
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .statusBarsPadding()
-                .padding(top = 8.dp, start = 16.dp)
-                .size(40.dp),
-            contentPadding = PaddingValues(4.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.Black.copy(alpha = 0.45f),
-                contentColor = iconColor
-            )
+                .padding(top = 8.dp, start = 8.dp)
+                .size(48.dp)
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                 tint = iconColor,
                 contentDescription = "Back",
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(28.dp)
             )
         }
     }
