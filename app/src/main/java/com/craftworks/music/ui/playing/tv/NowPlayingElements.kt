@@ -216,23 +216,12 @@ fun PlaybackProgressSlider(
                 mediaController?.seekTo(currentValue)
             },
             valueRange = 0f..(currentDuration?.toFloat() ?: 0f),
-            thumb = {
-                val isFocused = focused.value
-                val dotSize by animateDpAsState(
-                    targetValue = if (isFocused) 16.dp else 12.dp,
-                    animationSpec = spring(stiffness = Spring.StiffnessMedium),
-                    label = "Thumb Dot Size"
-                )
-                Box(
-                    modifier = Modifier
-                        .size(dotSize)
-                        .shadow(if (isFocused) 4.dp else 2.dp, CircleShape)
-                        .background(
-                            color = vibrantColor,
-                            shape = CircleShape
-                        )
-                )
-            },
+            colors = SliderDefaults.colors(
+                activeTrackColor = vibrantColor,
+                inactiveTrackColor = vibrantColor.copy(alpha = 0.30f),
+                thumbColor = vibrantColor
+            ),
+            interactionSource = interactionSource,
             track = { sliderState ->
                 val fraction = if (sliderState.valueRange.endInclusive > sliderState.valueRange.start) {
                     ((sliderState.value - sliderState.valueRange.start) / (sliderState.valueRange.endInclusive - sliderState.valueRange.start)).coerceIn(0f, 1f)
@@ -243,7 +232,7 @@ fun PlaybackProgressSlider(
                         .height(16.dp)
                 ) {
                     val y = size.height / 2f
-                    val trackThickness = if (focused.value) 4.5.dp.toPx() else 3.5.dp.toPx()
+                    val trackThickness = 3.5.dp.toPx()
                     // Inactive track line
                     drawLine(
                         color = vibrantColor.copy(alpha = 0.28f),
@@ -264,7 +253,23 @@ fun PlaybackProgressSlider(
                     }
                 }
             },
-            interactionSource = interactionSource,
+            thumb = {
+                val isFocused = focused.value
+                val dotSize by animateDpAsState(
+                    targetValue = if (isFocused) 20.dp else 16.dp,
+                    animationSpec = spring(stiffness = Spring.StiffnessMedium),
+                    label = "Thumb Dot Size"
+                )
+                Box(
+                    modifier = Modifier
+                        .size(dotSize)
+                        .shadow(if (isFocused) 4.dp else 2.dp, CircleShape)
+                        .background(
+                            color = vibrantColor,
+                            shape = CircleShape
+                        )
+                )
+            }
         )
 
         Box(
