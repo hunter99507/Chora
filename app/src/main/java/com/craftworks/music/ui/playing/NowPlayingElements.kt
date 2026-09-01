@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Badge
@@ -229,10 +230,11 @@ fun PlaybackProgressSlider(
                 )
             },
             thumb = {
-                SliderDefaults.Thumb(
-                    interactionSource = interactionSource,
-                    colors = SliderDefaults.colors(thumbColor = color),
-                    modifier = Modifier.size(12.dp)
+                Box(
+                    modifier = Modifier
+                        .size(12.dp)
+                        .shadow(2.dp, CircleShape)
+                        .background(color, CircleShape)
                 )
             }
         )

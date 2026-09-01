@@ -65,6 +65,7 @@ import com.gigamole.composefadingedges.marqueeHorizontalFadingEdges
 fun TvNowPlaying(
     mediaController: MediaController? = null,
     iconColor: Color = Color.Black,
+    accentColor: Color = Color.White,
     metadata: MediaMetadata? = null,
     onRefreshLyrics: () -> Unit = {}
 ){
@@ -78,6 +79,12 @@ fun TvNowPlaying(
         targetValue = iconColor,
         animationSpec = tween(1000, 0, FastOutSlowInEasing),
         label = "Animated text color"
+    )
+
+    val animatedAccentColor by animateColorAsState(
+        targetValue = accentColor,
+        animationSpec = tween(1000, 0, FastOutSlowInEasing),
+        label = "Animated accent color"
     )
 
     Column(
@@ -235,7 +242,7 @@ fun TvNowPlaying(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (metadata?.mediaType != MediaMetadata.MEDIA_TYPE_RADIO_STATION) {
-                PlaybackProgressSlider(iconTextColor, mediaController, metadata)
+                PlaybackProgressSlider(animatedAccentColor, mediaController, metadata)
             }
 
             Row(
@@ -247,34 +254,34 @@ fun TvNowPlaying(
             ) {
                 ChoraMediaLibraryService.getInstance()?.player?.let { player ->
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         ShuffleButton(
                             player,
-                            Modifier.size(36.dp)
+                            Modifier.size(28.dp)
                         )
 
                         PreviousSongButton(
                             player,
-                            Modifier.size(42.dp)
+                            Modifier.size(34.dp)
                         )
 
                         PlayPauseButton(
                             player,
                             Modifier
-                                .size(50.dp)
+                                .size(44.dp)
                                 .requestFocusOnFirstGainingVisibility()
                         )
 
                         NextSongButton(
                             player,
-                            Modifier.size(42.dp)
+                            Modifier.size(34.dp)
                         )
 
                         RepeatButton(
                             player,
-                            Modifier.size(36.dp)
+                            Modifier.size(28.dp)
                         )
                     }
                 }

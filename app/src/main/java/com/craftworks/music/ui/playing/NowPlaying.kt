@@ -86,13 +86,15 @@ fun NowPlayingContent(
         TvNowPlaying(
             mediaController,
             iconTextColor,
-            metadata
+            accentColor = colors.firstOrNull() ?: iconTextColor,
+            metadata = metadata
         )
     } else if (LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE) {
         NowPlayingLandscape(
             mediaController = mediaController,
             metadata = metadata,
             iconColor = iconTextColor,
+            accentColor = colors.firstOrNull() ?: iconTextColor,
             sleepTimerMinutes = sleepTimerMinutes,
             onOpenSleepTimer = { viewModel.setSleepTimerDialogOpen(true) },
             onToggleQueue = { viewModel.setPlayQueueOpen(!playQueueOpen) },

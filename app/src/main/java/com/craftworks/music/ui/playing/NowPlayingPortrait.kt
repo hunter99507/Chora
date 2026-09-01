@@ -390,7 +390,7 @@ fun NowPlayingPortrait(
                     Box(
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        PlaybackProgressSlider(iconColor, mediaController, metadata)
+                        PlaybackProgressSlider(animatedAccentColor, mediaController, metadata)
                     }
                 }
             }

@@ -211,16 +211,16 @@ fun PlaybackProgressSlider(
             thumb = {
                 val isFocused = focused.value
                 val dotSize by animateDpAsState(
-                    targetValue = if (isFocused) 16.dp else 10.dp,
+                    targetValue = if (isFocused) 14.dp else 10.dp,
                     animationSpec = spring(stiffness = Spring.StiffnessMedium),
                     label = "Thumb Dot Size"
                 )
                 Box(
                     modifier = Modifier
                         .size(dotSize)
-                        .shadow(if (isFocused) 8.dp else 2.dp, CircleShape)
+                        .shadow(if (isFocused) 4.dp else 1.dp, CircleShape)
                         .background(
-                            color = if (isFocused) MaterialTheme.colorScheme.primary else color,
+                            color = color,
                             shape = CircleShape
                         )
                 )

@@ -69,6 +69,7 @@ fun NowPlayingLandscape(
     mediaController: MediaController? = null,
     metadata: MediaMetadata? = null,
     iconColor: Color = Color.White,
+    accentColor: Color = Color.White,
     sleepTimerMinutes: Int = 10,
     onOpenSleepTimer: () -> Unit = {},
     onToggleQueue: () -> Unit = {},
@@ -81,6 +82,15 @@ fun NowPlayingLandscape(
             stiffness = Spring.StiffnessVeryLow
         ),
         label = "Animated text color"
+    )
+
+    val animatedAccentColor by animateColorAsState(
+        targetValue = accentColor,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessVeryLow
+        ),
+        label = "Animated accent color"
     )
 
     val context = LocalContext.current
@@ -213,7 +223,7 @@ fun NowPlayingLandscape(
                 }
 
                 if (metadata?.mediaType != MediaMetadata.MEDIA_TYPE_RADIO_STATION)
-                    PlaybackProgressSlider(iconTextColor, mediaController)
+                    PlaybackProgressSlider(animatedAccentColor, mediaController, metadata)
 
             }
             Row(
@@ -254,23 +264,6 @@ fun NowPlayingLandscape(
                         Modifier.size(32.dp)
                     )
                 }
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .requiredHeightIn(min = 48.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                DownloadButton(
-                    iconTextColor,
-                    32.dp,
-                    metadata,
-                    !(metadata?.extras?.getString("navidromeID")?.startsWith("Local_") ?: true)
-                )
-                SleepTimerButton(iconTextColor, 32.dp, sleepTimerMinutes, onOpenSleepTimer)
-                PlayQueueButton(iconTextColor, 32.dp, onToggleQueue)
             }
         }
 
