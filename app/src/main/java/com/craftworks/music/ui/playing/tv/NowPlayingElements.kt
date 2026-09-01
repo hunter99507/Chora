@@ -78,9 +78,12 @@ import kotlinx.coroutines.launch
 
 import com.craftworks.music.ui.playing.getVibrantSeekbarColor
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.draw.shadow
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -231,15 +234,35 @@ fun PlaybackProgressSlider(
                 )
             },
             track = { sliderState ->
-                SliderDefaults.Track(
-                    sliderState = sliderState,
-                    modifier = Modifier.height(12.dp),
-                    colors = SliderDefaults.colors(
-                        activeTrackColor = vibrantColor,
-                        inactiveTrackColor = vibrantColor.copy(alpha = 0.30f)
-                    ),
-                    thumbTrackGapSize = 0.dp
-                )
+                val fraction = if (sliderState.valueRange.endInclusive > sliderState.valueRange.start) {
+                    ((sliderState.value - sliderState.valueRange.start) / (sliderState.valueRange.endInclusive - sliderState.valueRange.start)).coerceIn(0f, 1f)
+                } else 0f
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(16.dp)
+                ) {
+                    val y = size.height / 2f
+                    val trackThickness = if (focused.value) 4.5.dp.toPx() else 3.5.dp.toPx()
+                    // Inactive track line
+                    drawLine(
+                        color = vibrantColor.copy(alpha = 0.28f),
+                        start = Offset(0f, y),
+                        end = Offset(size.width, y),
+                        strokeWidth = trackThickness,
+                        cap = StrokeCap.Round
+                    )
+                    // Active track line
+                    if (fraction > 0f) {
+                        drawLine(
+                            color = vibrantColor,
+                            start = Offset(0f, y),
+                            end = Offset(size.width * fraction, y),
+                            strokeWidth = trackThickness + 0.5.dp.toPx(),
+                            cap = StrokeCap.Round
+                        )
+                    }
+                }
             },
             interactionSource = interactionSource,
         )

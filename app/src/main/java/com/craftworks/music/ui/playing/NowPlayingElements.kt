@@ -7,6 +7,7 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
@@ -21,6 +22,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.material.icons.Icons
@@ -235,21 +238,40 @@ fun PlaybackProgressSlider(
             ),
             interactionSource = interactionSource,
             track = { sliderState ->
-                SliderDefaults.Track(
-                    sliderState = sliderState,
-                    modifier = Modifier.height(12.dp),
-                    colors = SliderDefaults.colors(
-                        activeTrackColor = vibrantColor,
-                        inactiveTrackColor = vibrantColor.copy(alpha = 0.30f)
-                    ),
-                    thumbTrackGapSize = 0.dp,
-                    drawStopIndicator = null
-                )
+                val fraction = if (sliderState.valueRange.endInclusive > sliderState.valueRange.start) {
+                    ((sliderState.value - sliderState.valueRange.start) / (sliderState.valueRange.endInclusive - sliderState.valueRange.start)).coerceIn(0f, 1f)
+                } else 0f
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(16.dp)
+                ) {
+                    val y = size.height / 2f
+                    val trackThickness = 3.5.dp.toPx()
+                    // Inactive track line
+                    drawLine(
+                        color = vibrantColor.copy(alpha = 0.28f),
+                        start = Offset(0f, y),
+                        end = Offset(size.width, y),
+                        strokeWidth = trackThickness,
+                        cap = StrokeCap.Round
+                    )
+                    // Active track line
+                    if (fraction > 0f) {
+                        drawLine(
+                            color = vibrantColor,
+                            start = Offset(0f, y),
+                            end = Offset(size.width * fraction, y),
+                            strokeWidth = trackThickness + 0.5.dp.toPx(),
+                            cap = StrokeCap.Round
+                        )
+                    }
+                }
             },
             thumb = {
                 Box(
                     modifier = Modifier
-                        .size(12.dp)
+                        .size(16.dp)
                         .shadow(3.dp, CircleShape)
                         .background(vibrantColor, CircleShape)
                 )
