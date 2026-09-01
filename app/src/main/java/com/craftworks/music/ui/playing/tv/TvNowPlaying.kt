@@ -242,7 +242,7 @@ fun TvNowPlaying(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (metadata?.mediaType != MediaMetadata.MEDIA_TYPE_RADIO_STATION) {
-                PlaybackProgressSlider(animatedAccentColor, mediaController, metadata)
+                PlaybackProgressSlider(animatedAccentColor, iconColor, mediaController, metadata)
             }
 
             Row(

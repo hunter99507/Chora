@@ -97,7 +97,7 @@ fun getVibrantSeekbarColor(accentColor: Color, isDarkTheme: Boolean = true): Col
         hsl[2] = hsl[2].coerceIn(0.72f, 0.88f)
     } else {
         hsl[1] = hsl[1].coerceIn(0.70f, 1.0f)
-        hsl[2] = hsl[2].coerceIn(0.20f, 0.35f)
+        hsl[2] = hsl[2].coerceIn(0.18f, 0.32f)
     }
     return Color(ColorUtils.HSLToColor(hsl))
 }
@@ -107,11 +107,15 @@ fun getVibrantSeekbarColor(accentColor: Color, isDarkTheme: Boolean = true): Col
 @Composable
 fun PlaybackProgressSlider(
     color: Color = MaterialTheme.colorScheme.onBackground,
+    iconColor: Color = MaterialTheme.colorScheme.onBackground,
     mediaController: MediaController? = null,
     metadata: MediaMetadata? = null
 ) {
-    val vibrantColor = remember(color) {
-        getVibrantSeekbarColor(color, true)
+    val isDarkBackground = remember(iconColor) {
+        ColorUtils.calculateLuminance(iconColor.toArgb()) > 0.45
+    }
+    val vibrantColor = remember(color, isDarkBackground) {
+        getVibrantSeekbarColor(color, isDarkBackground)
     }
 
     var currentValue by remember { mutableLongStateOf(0L) }

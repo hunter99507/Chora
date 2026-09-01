@@ -84,18 +84,24 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.draw.shadow
+import androidx.core.graphics.ColorUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true)
 @Composable
 fun PlaybackProgressSlider(
     color: Color = MaterialTheme.colorScheme.onBackground,
+    iconColor: Color = MaterialTheme.colorScheme.onBackground,
     mediaController: MediaController? = null,
     metadata: MediaMetadata? = null
 ) {
-    val vibrantColor = remember(color) {
-        getVibrantSeekbarColor(color, true)
+    val isDarkBackground = remember(iconColor) {
+        ColorUtils.calculateLuminance(iconColor.toArgb()) > 0.45
+    }
+    val vibrantColor = remember(color, isDarkBackground) {
+        getVibrantSeekbarColor(color, isDarkBackground)
     }
 
     var currentValue by remember { mutableLongStateOf(0L) }
