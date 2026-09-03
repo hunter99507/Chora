@@ -25,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -84,6 +85,7 @@ fun AlbumScreen(
         onRefresh = onRefresh
     ) {
         Scaffold(
+            containerColor = Color.Transparent,
             modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
             topBar = {
                 Column {
@@ -116,7 +118,7 @@ fun AlbumScreen(
                                                 val albumItems = viewModel.getAlbum(albumId)
                                                 val songs = if (albumItems.size > 1) albumItems.subList(1, albumItems.size) else albumItems
                                                 if (songs.isNotEmpty()) {
-                                                    SongHelper.play(songs.shuffled(), 0, mediaController)
+                                                    SongHelper.play(songs, 0, mediaController, shuffle = true)
                                                 }
                                             }
                                         }

@@ -45,6 +45,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.net.ConnectException
+import java.net.URLEncoder
 import java.nio.channels.UnresolvedAddressException
 import java.security.MessageDigest
 import java.security.SecureRandom
@@ -246,7 +247,7 @@ class NavidromeDataSource @Inject constructor() {
         musicFolderIds: List<Int>? = NavidromeManager.getEnabledLibraryIdsForCurrentServer(),
     ): List<MediaItem> = withContext(Dispatchers.IO) {
         getRequest(
-            "search3.view?query=$query&songCount=0&songOffset=0&artistCount=0&albumCount=100",
+            "search3.view?query=${URLEncoder.encode(query ?: "", "UTF-8")}&songCount=0&songOffset=0&artistCount=0&albumCount=100",
             musicFolderIds,
             ignoreCachedResponse
         ).filterIsInstance<MediaItem>()
@@ -266,7 +267,7 @@ class NavidromeDataSource @Inject constructor() {
         musicFolderIds,
         ignoreCachedResponse
         ) else getRequest(
-        "search3.view?query=$query&songCount=$songCount&songOffset=$songOffset&artistCount=0&albumCount=0",
+        "search3.view?query=${URLEncoder.encode(query ?: "", "UTF-8")}&songCount=$songCount&songOffset=$songOffset&artistCount=0&albumCount=0",
         musicFolderIds,
         ignoreCachedResponse
         )).filterIsInstance<MediaItem>()
@@ -334,7 +335,7 @@ class NavidromeDataSource @Inject constructor() {
     ): List<MediaData.Artist> = withContext(Dispatchers.IO) {
         if (query.isNullOrBlank()) getNavidromeArtists(musicFolderIds = musicFolderIds, ignoreCachedResponse = ignoreCachedResponse)
         else getRequest(
-            "search3.view?query=$query&artistCount=100&albumCount=0&songCount=0",
+            "search3.view?query=${URLEncoder.encode(query, "UTF-8")}&artistCount=100&albumCount=0&songCount=0",
             musicFolderIds,
             ignoreCachedResponse
         ).filterIsInstance<MediaData.Artist>()
@@ -365,7 +366,7 @@ class NavidromeDataSource @Inject constructor() {
     suspend fun createNavidromePlaylist(
         name: String, songIds: List<String>? = null, ignoreCachedResponse: Boolean = false
     ): Boolean = withContext(Dispatchers.IO) {
-        var endpoint = "createPlaylist.view?name=$name"
+        var endpoint = "createPlaylist.view?name=${URLEncoder.encode(name, "UTF-8")}"
         songIds?.forEach { songId -> endpoint += "&songId=$songId" }
         val response = getRequest(endpoint, null, ignoreCachedResponse)
         response.isNotEmpty()
@@ -419,7 +420,7 @@ class NavidromeDataSource @Inject constructor() {
         name: String, url: String, homePageUrl: String? = null
     ) = withContext(Dispatchers.IO) {
         getRequest(
-            "createInternetRadioStation.view?name=$name&streamUrl=$url&homepageUrl=$homePageUrl",
+            "createInternetRadioStation.view?name=${URLEncoder.encode(name, "UTF-8")}&streamUrl=${URLEncoder.encode(url, "UTF-8")}&homepageUrl=${URLEncoder.encode(homePageUrl ?: "", "UTF-8")}",
             null,
             true
         )
@@ -429,7 +430,7 @@ class NavidromeDataSource @Inject constructor() {
         radioId: String, name: String, url: String, homePageUrl: String? = null
     ) = withContext(Dispatchers.IO) {
         getRequest(
-            "updateInternetRadioStation.view?name=$name&streamUrl=$url&homepageUrl=$homePageUrl&id=$radioId",
+            "updateInternetRadioStation.view?name=${URLEncoder.encode(name, "UTF-8")}&streamUrl=${URLEncoder.encode(url, "UTF-8")}&homepageUrl=${URLEncoder.encode(homePageUrl ?: "", "UTF-8")}&id=$radioId",
             null,
             true
         )
@@ -449,7 +450,9 @@ class NavidromeDataSource @Inject constructor() {
     suspend fun getNavidromePlainLyrics(
         metadata: MediaMetadata?, ignoreCachedResponse: Boolean = false
     ): List<Lyric> = withContext(Dispatchers.IO) {
-        getRequest("getLyrics.view?artist=${metadata?.artist}&title=${metadata?.title}", null).filterIsInstance<MediaData.PlainLyrics>().getOrNull(0)?.toLyric()?.takeIf { it.text.isNotEmpty() }?.let { listOf(it) } ?: emptyList()
+        val artist = URLEncoder.encode(metadata?.artist?.toString() ?: "", "UTF-8")
+        val title = URLEncoder.encode(metadata?.title?.toString() ?: "", "UTF-8")
+        getRequest("getLyrics.view?artist=$artist&title=$title", null).filterIsInstance<MediaData.PlainLyrics>().getOrNull(0)?.toLyric()?.takeIf { it.text.isNotEmpty() }?.let { listOf(it) } ?: emptyList()
     }
 
     suspend fun getNavidromeSyncedLyrics(

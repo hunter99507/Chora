@@ -2,8 +2,10 @@ package com.craftworks.music.ui.screens.tv
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -87,12 +90,28 @@ fun TvPlaylistDetails(
     val playlistDuration =
         remember(playlistSongs) { playlistSongs.sumOf { it.mediaMetadata.durationMs ?: 0 } }
 
-    val playRequester = remember { FocusRequester() }
-
-    LaunchedEffect(Unit) { playRequester.requestFocus() }
+    LaunchedEffect(viewModel.selectedPlaylist.value) {
+        if (viewModel.selectedPlaylist.value != null && viewModel.selectedPlaylistSongs.value.isEmpty()) {
+            viewModel.fetchPlaylistDetails()
+        }
+    }
 
     AnimatedVisibility(
-        visible = !isLoading,
+        visible = isLoading && playlistSongs.isEmpty(),
+        enter = fadeIn(),
+        exit = fadeOut()
+    ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(64.dp),
+                color = MaterialTheme.colorScheme.primary,
+                strokeWidth = 6.dp
+            )
+        }
+    }
+
+    AnimatedVisibility(
+        visible = !isLoading || playlistSongs.isNotEmpty(),
         enter = fadeIn()
     ) {
         val coroutineScope = rememberCoroutineScope()
@@ -116,14 +135,17 @@ fun TvPlaylistDetails(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
+                val artData = playlistMetadata?.artworkData
+                    ?: playlistMetadata?.artworkUri?.toString()?.replace(Regex("size=\\d+"), "size=800")
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
-                        .data(playlistMetadata?.artworkUri.toString().replace(Regex("size=\\d+"), "size=800"))
+                        .data(artData ?: R.drawable.placeholder)
                         .diskCachePolicy(coil.request.CachePolicy.DISABLED)
                         .crossfade(true)
                         .build(),
                     placeholder = painterResource(R.drawable.placeholder),
                     fallback = painterResource(R.drawable.placeholder),
+                    error = painterResource(R.drawable.placeholder),
                     contentScale = ContentScale.Crop,
                     contentDescription = null,
                     modifier = Modifier
@@ -191,9 +213,10 @@ fun TvPlaylistDetails(
                             coroutineScope.launch {
                                 if (playlistSongs.isNotEmpty()) {
                                     SongHelper.play(
-                                        playlistSongs.shuffled(),
+                                        playlistSongs,
                                         0,
-                                        mediaController
+                                        mediaController,
+                                        shuffle = true
                                     )
                                     navHostController.navigate(Screen.NowPlayingLandscape.route) {
                                         launchSingleTop = true
@@ -225,8 +248,9 @@ fun TvPlaylistDetails(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(playlistSongs) { song ->
-                    TvHorizontalSongCard (
+                    TvHorizontalSongCard(
                         song = song,
+                        modifier = Modifier.fillMaxWidth(),
                         showTrackNumber = false,
                         onClick = {
                             coroutineScope.launch {

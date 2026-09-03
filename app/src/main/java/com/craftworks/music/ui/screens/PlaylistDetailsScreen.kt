@@ -1,10 +1,15 @@
 package com.craftworks.music.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.draw.clip
+import com.craftworks.music.data.model.Screen
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -35,6 +40,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -81,6 +87,8 @@ import com.craftworks.music.ui.elements.dialogs.RatingDialog
 import com.craftworks.music.ui.elements.dialogs.dialogFocusable
 import com.craftworks.music.ui.elements.dialogs.showAddSongToPlaylistDialog
 import com.craftworks.music.ui.viewmodels.PlaylistScreenViewModel
+import com.craftworks.music.util.AmbientGradientBackground
+import com.craftworks.music.util.PaletteHelper
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -94,8 +102,6 @@ fun PlaylistDetails(
 ) {
     val context = LocalContext.current
 
-    val imageFadingEdge = Brush.verticalGradient(listOf(Color.Red, Color.Transparent))
-
     val requester = remember { FocusRequester() }
 
     val playlistMetadata =
@@ -103,12 +109,29 @@ fun PlaylistDetails(
     val playlistSongs = viewModel.selectedPlaylistSongs.collectAsStateWithLifecycle().value
     val isLoading = viewModel.isLoading.collectAsStateWithLifecycle().value
 
+    var paletteColors by remember { mutableStateOf<List<Color>>(emptyList()) }
+    val artworkUriString = playlistMetadata?.artworkUri?.toString()
+    LaunchedEffect(artworkUriString) {
+        if (!artworkUriString.isNullOrBlank()) {
+            val colors = PaletteHelper.extractColorsFromUri(artworkUriString, context)
+            if (colors.isNotEmpty()) {
+                paletteColors = colors
+            }
+        }
+    }
+
     val playlistDuration =
         remember(playlistSongs) { playlistSongs.sumOf { it.mediaMetadata.durationMs ?: 0 } }
 
     val coroutineScope = rememberCoroutineScope()
 
     var songToRate by remember { mutableStateOf<MediaItem?>(null) }
+
+    BackHandler {
+        if (!navHostController.popBackStack()) {
+            navHostController.navigate(Screen.Playlists.route) { launchSingleTop = true }
+        }
+    }
 
     println("artwork uri: ${playlistMetadata?.artworkUri}; artwork data: ${playlistMetadata?.artworkData}")
 
@@ -144,60 +167,72 @@ fun PlaylistDetails(
         enter = fadeIn()
     ) {
         val headerHeight = (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp * 0.40f).coerceAtLeast(360.dp)
+        val fadeBrush = remember {
+            Brush.verticalGradient(
+                0.0f to Color.Black,
+                0.30f to Color.Black,
+                0.60f to Color.Black.copy(alpha = 0.6f),
+                0.85f to Color.Black.copy(alpha = 0.2f),
+                1.0f to Color.Transparent
+            )
+        }
 
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .dialogFocusable(),
-            contentPadding = PaddingValues(bottom = 80.dp),
+        AmbientGradientBackground(
+            colors = paletteColors,
+            modifier = Modifier.fillMaxSize()
         ) {
-            item {
-                Box(
-                    modifier = Modifier
-                        .height(headerHeight)
-                        .fillMaxWidth()
-                ) {
-                    SubcomposeAsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(
-                                if (playlistMetadata?.extras?.getString("navidromeID")
-                                        ?.startsWith("Local") == true
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .dialogFocusable(),
+                contentPadding = PaddingValues(bottom = 80.dp),
+            ) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .height(headerHeight)
+                            .fillMaxWidth()
+                    ) {
+                        SubcomposeAsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(
+                                    if (playlistMetadata?.extras?.getString("navidromeID")
+                                            ?.startsWith("Local") == true
+                                    )
+                                        playlistMetadata.artworkData else
+                                        playlistMetadata?.artworkUri.toString().replace(Regex("size=\\d+"), "size=800")
                                 )
-                                    playlistMetadata.artworkData else
-                                    playlistMetadata?.artworkUri.toString().replace(Regex("size=\\d+"), "size=800")
-                            )
-                            .diskCachePolicy(coil.request.CachePolicy.DISABLED)
-                            .crossfade(true)
-                            .build(),
-                        contentScale = ContentScale.Crop,
-                        contentDescription = "Playlist cover art",
+                                .diskCachePolicy(coil.request.CachePolicy.DISABLED)
+                                .crossfade(true)
+                                .build(),
+                            contentScale = ContentScale.Crop,
+                            contentDescription = "Playlist cover art",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .fadingEdge(fadeBrush)
+                        )
+                    Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .fadingEdge(imageFadingEdge)
-                            .blur(10.dp)
-                    )
-                    Button(
-                        onClick = { navHostController.popBackStack() },
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
+                            .align(Alignment.TopStart)
                             .padding(
                                 top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp,
                                 start = 16.dp
                             )
-                            .size(36.dp),
-                        contentPadding = PaddingValues(4.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.7f),
-                            contentColor = MaterialTheme.colorScheme.onBackground
-                        )
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.7f))
+                            .clickable {
+                                if (!navHostController.popBackStack()) {
+                                    navHostController.navigate(Screen.Playlists.route) { launchSingleTop = true }
+                                }
+                            },
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                             tint = MaterialTheme.colorScheme.primary,
                             contentDescription = "Back",
-                            modifier = Modifier
-                                .height(28.dp)
-                                .size(28.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
 
@@ -296,7 +331,7 @@ fun PlaylistDetails(
                         onClick = {
                             coroutineScope.launch {
                                 if (playlistSongs.isNotEmpty()) {
-                                    SongHelper.play(playlistSongs.shuffled(), 0, mediaController)
+                                    SongHelper.play(playlistSongs, 0, mediaController, shuffle = true)
                                 }
                             }
                         },
@@ -357,6 +392,7 @@ fun PlaylistDetails(
                 )
             }
         }
+    }
     }
 
     if(showAddSongToPlaylistDialog.value)

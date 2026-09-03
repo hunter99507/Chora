@@ -8,7 +8,7 @@ data class NavidromeProvider (
     var url:String,
     var username:String,
     val password:String,
-    val enabled:Boolean? = true,
+    var enabled: Boolean = true,
     var allowSelfSignedCert: Boolean? = false,
     // List of library folders and if they're enabled or not.
     var libraryIds: List<Pair<NavidromeLibrary, Boolean>> = listOf(Pair(NavidromeLibrary(0, "Media Library"), true))

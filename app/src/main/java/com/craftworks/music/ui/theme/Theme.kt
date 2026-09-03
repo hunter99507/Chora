@@ -74,18 +74,19 @@ fun MusicPlayerTheme(
     }
 
     if (isTv) {
-        val colorScheme = when {
-            darkTheme -> androidx.tv.material3.darkColorScheme()
-            else -> androidx.tv.material3.lightColorScheme()
-        }
+        val colorScheme = androidx.tv.material3.darkColorScheme()
 
-        println("using theme dark:$darkTheme for tv")
+        println("using dark theme for tv")
 
-        MaterialTheme(
+        androidx.tv.material3.MaterialTheme(
             colorScheme = colorScheme,
             typography = androidx.tv.material3.Typography(),
-            content = content
-        )
+        ) {
+            androidx.compose.material3.MaterialTheme(
+                colorScheme = DarkColorScheme,
+                content = content
+            )
+        }
     }
     else {
         val baseColorScheme = when {

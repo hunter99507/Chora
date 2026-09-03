@@ -1,5 +1,7 @@
 package com.craftworks.music.ui.screens.tv
 
+import com.craftworks.music.managers.MediaSource
+
 import android.graphics.drawable.BitmapDrawable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -19,6 +21,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -65,10 +69,12 @@ import androidx.palette.graphics.Palette
 import androidx.tv.material3.Button
 import androidx.tv.material3.Carousel
 import androidx.tv.material3.ExperimentalTvMaterial3Api
+import androidx.tv.material3.FilterChip
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import androidx.tv.material3.rememberCarouselState
+import com.craftworks.music.managers.MediaSourceManager
 import coil.compose.AsyncImage
 import coil.imageLoader
 import coil.request.CachePolicy
@@ -142,41 +148,94 @@ fun TvHomeScreen(
             .focusRestorer(focusRequester),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        /*
-        item (key = "libraries") {
-            if (libraries.size > 1) {
-                libraries.forEach { (library, isSelected) ->
-                    FilterChip(
-                        onClick = {
-                            NavidromeManager.currentServerId.value?.let { serverId ->
-                                NavidromeManager.toggleServerLibraryEnabled(
-                                    serverId,
-                                    library.id,
-                                    !isSelected
-                                )
+        item (key = "source_selector") {
+            val selectedSource by MediaSourceManager.selectedSource.collectAsStateWithLifecycle()
+            val availableSources = remember { MediaSourceManager.getAvailableSources() }
+
+            if (availableSources.size > 1) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 48.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Library:",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    val navidromeServers by com.craftworks.music.managers.NavidromeManager.allServers.collectAsStateWithLifecycle()
+                    val currentNavidromeId by com.craftworks.music.managers.NavidromeManager.currentServerId.collectAsStateWithLifecycle()
+                    val embyServers by com.craftworks.music.managers.EmbyJellyfinManager.allServers.collectAsStateWithLifecycle()
+                    val currentEmbyId by com.craftworks.music.managers.EmbyJellyfinManager.currentServerId.collectAsStateWithLifecycle()
+
+                    availableSources.forEach { source ->
+                        if (source == MediaSource.NAVIDROME && navidromeServers.size > 1) {
+                            navidromeServers.forEach { server ->
+                                val isSelected = (source == selectedSource) && (server.id == currentNavidromeId)
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = {
+                                        com.craftworks.music.managers.NavidromeManager.setCurrentServer(server.id)
+                                        com.craftworks.music.managers.NavidromeManager.setServerEnabled(server.id, true)
+                                        MediaSourceManager.setSelectedSource(source)
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            painter = painterResource(id = source.iconRes),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                ) {
+                                    Text("Navidrome (${server.username})")
+                                }
                             }
-                        },
-                        content = {
-                            Text(library.name)
-                        },
-                        selected = isSelected,
-                        leadingIcon = if (isSelected) {
-                            {
-                                Icon(
-                                    imageVector = Icons.Filled.Done,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(FilterChipDefaults.IconSize)
-                                )
+                        } else if (source == MediaSource.EMBY && embyServers.size > 1) {
+                            embyServers.forEach { server ->
+                                val isSelected = (source == selectedSource) && (server.id == currentEmbyId)
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = {
+                                        com.craftworks.music.managers.EmbyJellyfinManager.setCurrentServer(server.id)
+                                        com.craftworks.music.managers.EmbyJellyfinManager.setServerEnabled(server.id, true)
+                                        MediaSourceManager.setSelectedSource(source)
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            painter = painterResource(id = source.iconRes),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                ) {
+                                    Text("Emby (${server.username})")
+                                }
                             }
                         } else {
-                            null
-                        },
-                        modifier = Modifier.padding(end = 8.dp)
-                    )
+                            val isSelected = source == selectedSource
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = {
+                                    MediaSourceManager.setSelectedSource(source)
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        painter = painterResource(id = source.iconRes),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            ) {
+                                Text(source.displayName)
+                            }
+                        }
+                    }
                 }
             }
         }
-        */
 
         item (key = "carousel") {
             val carouselState = rememberCarouselState()

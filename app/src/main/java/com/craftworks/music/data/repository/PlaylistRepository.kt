@@ -1,8 +1,14 @@
 package com.craftworks.music.data.repository
 
 import androidx.media3.common.MediaItem
+import com.craftworks.music.data.datasource.emby.EmbyJellyfinDataSource
 import com.craftworks.music.data.datasource.local.LocalDataSource
 import com.craftworks.music.data.datasource.navidrome.NavidromeDataSource
+import com.craftworks.music.data.model.toMediaItem
+import com.craftworks.music.managers.EmbyJellyfinManager
+import com.craftworks.music.managers.LocalProviderManager
+import com.craftworks.music.managers.MediaSource
+import com.craftworks.music.managers.MediaSourceManager
 import com.craftworks.music.managers.NavidromeManager
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
@@ -14,26 +20,38 @@ import javax.inject.Singleton
 @Singleton
 class PlaylistRepository @Inject constructor(
     private val localDataSource: LocalDataSource,
-    private val navidromeDataSource: NavidromeDataSource
+    private val navidromeDataSource: NavidromeDataSource,
+    private val embyJellyfinDataSource: EmbyJellyfinDataSource
 ) {
 
     suspend fun getPlaylists(ignoreCachedResponse: Boolean = false): List<MediaItem> = coroutineScope {
         val deferredPlaylists = mutableListOf<Deferred<List<MediaItem>>>()
 
-        if (NavidromeManager.checkActiveServers())
+        if (MediaSourceManager.isSourceActive(MediaSource.NAVIDROME) && NavidromeManager.checkActiveServers())
             deferredPlaylists.add(async { navidromeDataSource.getNavidromePlaylists(ignoreCachedResponse) })
 
-        //if (LocalProviderManager.checkActiveFolders())
-        deferredPlaylists.add(async { localDataSource.getLocalPlaylists() })
+        if (MediaSourceManager.isSourceActive(MediaSource.EMBY) && EmbyJellyfinManager.checkActiveServers())
+            deferredPlaylists.add(async { embyJellyfinDataSource.getPlaylists().map { it.toMediaItem() } })
 
-        deferredPlaylists.awaitAll().flatten()
+        if (MediaSourceManager.isSourceActive(MediaSource.LOCAL) && LocalProviderManager.checkActiveFolders())
+            deferredPlaylists.add(async { localDataSource.getLocalPlaylists() })
+
+        val allItems = deferredPlaylists.awaitAll().flatten()
+        com.craftworks.music.managers.FileLogger.log("REPO_PLAYLISTS", "Raw playlists count: ${allItems.size}, titles: ${allItems.map { "${it.mediaId}->${it.mediaMetadata.title}" }}")
+
+        val deduplicated = allItems.distinctBy { 
+            it.mediaMetadata.title?.toString()?.trim()?.lowercase() ?: it.mediaId 
+        }
+        com.craftworks.music.managers.FileLogger.log("REPO_PLAYLISTS", "Deduplicated count: ${deduplicated.size}, titles: ${deduplicated.map { "${it.mediaId}->${it.mediaMetadata.title}" }}")
+
+        deduplicated
     }
 
     suspend fun getPlaylistSongs(playlistId: String, ignoreCachedResponse: Boolean = false): List<MediaItem> = coroutineScope {
-        if (playlistId.startsWith("Local_")){
-            localDataSource.getLocalPlaylistSongs(playlistId)
-        } else {
-            navidromeDataSource.getNavidromePlaylist(playlistId, ignoreCachedResponse) ?: emptyList()
+        when {
+            playlistId.startsWith("Local_") -> localDataSource.getLocalPlaylistSongs(playlistId)
+            playlistId.startsWith("emby_") -> embyJellyfinDataSource.getPlaylist(playlistId)
+            else -> navidromeDataSource.getNavidromePlaylist(playlistId, ignoreCachedResponse) ?: emptyList()
         }
     }
 

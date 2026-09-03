@@ -204,7 +204,8 @@ fun LyricsView(
                     if (targetItemAfter != null) {
                         var finalScrollDelta = targetItemAfter.offset - scrollOffset
 
-                        if (lyrics[(targetIndex - 1).coerceAtLeast(0)].text[0] == "")
+                        if (lyrics.isNotEmpty() &&
+                            lyrics[(targetIndex - 1).coerceAtLeast(0)].text.firstOrNull() == "")
                             finalScrollDelta -= interludeHeight
 
                         state.animateScrollBy(

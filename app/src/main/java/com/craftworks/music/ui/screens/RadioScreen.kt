@@ -90,10 +90,15 @@ fun RadioScreen(
         onRefresh = onRefresh
     ) {
         Scaffold(
+            containerColor = Color.Transparent,
             modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
             topBar = {
                 TopAppBar(
                     title = { Text(text = stringResource(R.string.radios)) },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        scrolledContainerColor = Color.Transparent
+                    ),
                     actions = {
                         Button(
                             onClick = { showRadioAddDialog = true },

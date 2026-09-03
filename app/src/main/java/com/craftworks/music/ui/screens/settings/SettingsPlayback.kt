@@ -1,5 +1,6 @@
 package com.craftworks.music.ui.screens.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -58,6 +59,14 @@ import kotlin.math.roundToInt
 )
 @Composable
 fun S_PlaybackScreen(navHostController: NavHostController = rememberNavController()) {
+    BackHandler {
+        if (!navHostController.popBackStack()) {
+            navHostController.navigate(Screen.Setting.route) {
+                launchSingleTop = true
+            }
+        }
+    }
+
     val context = LocalContext.current
 
     var showWifiTranscodingDialog by remember { mutableStateOf(false) }
@@ -71,15 +80,17 @@ fun S_PlaybackScreen(navHostController: NavHostController = rememberNavControlle
     val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text(text = stringResource(R.string.Settings_Header_Playback)) },
                 actions = {
                     IconButton(
                         onClick = {
-                            navHostController.navigate(Screen.Setting.route) {
-                                launchSingleTop = true
+                            if (!navHostController.popBackStack()) {
+                                navHostController.navigate(Screen.Setting.route) {
+                                    launchSingleTop = true
+                                }
                             }
                         },
                         modifier = Modifier.size(56.dp, 70.dp),
@@ -184,6 +195,18 @@ fun S_PlaybackScreen(navHostController: NavHostController = rememberNavControlle
                         settingsSubtitle = defaultRepeatLabel,
                         settingsIcon = ImageVector.vectorResource(R.drawable.rounded_repeat_24),
                         toggleEvent = { showDefaultRepeatDialog = true }
+                    )
+
+                    val fadeInOut by PlaybackSettingsManager(context).fadeInOutFlow.collectAsStateWithLifecycle(false)
+                    SettingsSwitch(
+                        fadeInOut,
+                        stringResource(R.string.Setting_Fade_In_Out),
+                        ImageVector.vectorResource(R.drawable.rounded_seamless_24),
+                        toggleEvent = {
+                            coroutineScope.launch {
+                                PlaybackSettingsManager(context).setFadeInOut(!fadeInOut)
+                            }
+                        }
                     )
                 }
 

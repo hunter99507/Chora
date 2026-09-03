@@ -1,6 +1,7 @@
 package com.craftworks.music.ui.screens
 
 import android.content.res.Configuration
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +23,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.Wallpapers
 import androidx.compose.ui.unit.dp
@@ -36,6 +42,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.craftworks.music.R
 import com.craftworks.music.data.model.Screen
+import com.craftworks.music.ui.elements.dialogs.AndroidAutoItemsDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview(
@@ -46,26 +53,33 @@ import com.craftworks.music.data.model.Screen
 fun SettingScreen(
     navHostController: NavHostController = rememberNavController()
 ) {
+    BackHandler {
+        if (!navHostController.popBackStack()) {
+            navHostController.navigate(Screen.Home.route) {
+                launchSingleTop = true
+            }
+        }
+    }
+
+    var showAndroidAutoItemsDialog by remember { mutableStateOf(false) }
+
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
-                title = { Text(text = stringResource(R.string.settings)) },
-                actions = {
-                    IconButton(
-                        onClick = {
+                title = { Text(stringResource(R.string.settings), fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = {
+                        if (!navHostController.popBackStack()) {
                             navHostController.navigate(Screen.Home.route) {
                                 launchSingleTop = true
                             }
-                        },
-                        modifier = Modifier.size(56.dp, 70.dp),
-                    ) {
+                        }
+                    }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                             tint = MaterialTheme.colorScheme.onBackground,
-                            contentDescription = "Previous Song",
-                            modifier = Modifier
-                                .size(24.dp)
+                            contentDescription = "Back"
                         )
                     }
                 },
@@ -105,8 +119,18 @@ fun SettingScreen(
                     R.string.Settings_Header_Playback,
                     navHostController
                 )
+
+                SettingsActionButton(
+                    icon = R.drawable.round_directions_car_24,
+                    text = stringResource(R.string.Setting_Android_Auto_Items),
+                    onClick = { showAndroidAutoItemsDialog = true }
+                )
             }
         }
+    }
+
+    if (showAndroidAutoItemsDialog) {
+        AndroidAutoItemsDialog(setShowDialog = { showAndroidAutoItemsDialog = it })
     }
 }
 
@@ -136,6 +160,38 @@ private fun SettingsButton(route: String, icon: Int, text: Int, navHostControlle
             )
             Text(
                 text = stringResource(text),
+                color = MaterialTheme.colorScheme.onBackground,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(vertical = 20.dp).weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsActionButton(icon: Int, text: String, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        contentPadding = PaddingValues(0.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.surfaceBright,
+            contentColor = MaterialTheme.colorScheme.onBackground
+        ),
+        shape = RoundedCornerShape(4.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = ImageVector.vectorResource(icon),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier
+                    .padding(start = 20.dp, end = 16.dp)
+                    .size(32.dp)
+            )
+            Text(
+                text = text,
                 color = MaterialTheme.colorScheme.onBackground,
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(vertical = 20.dp).weight(1f)

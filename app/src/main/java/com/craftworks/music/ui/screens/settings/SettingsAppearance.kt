@@ -2,6 +2,7 @@ package com.craftworks.music.ui.screens.settings
 
 import android.content.res.Configuration
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -83,6 +84,14 @@ import kotlinx.coroutines.runBlocking
 @Composable
 @Preview(showSystemUi = false, showBackground = true)
 fun S_AppearanceScreen(navHostController: NavHostController = rememberNavController()) {
+    BackHandler {
+        if (!navHostController.popBackStack()) {
+            navHostController.navigate(Screen.Setting.route) {
+                launchSingleTop = true
+            }
+        }
+    }
+
     var showNameDialog by remember { mutableStateOf(false) }
     var showBackgroundDialog by remember { mutableStateOf(false) }
     var showThemesDialog by remember { mutableStateOf(false) }
@@ -111,15 +120,17 @@ fun S_AppearanceScreen(navHostController: NavHostController = rememberNavControl
     )
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text(text = stringResource(R.string.Settings_Header_Appearance)) },
                 actions = {
                     IconButton(
                         onClick = {
-                            navHostController.navigate(Screen.Setting.route) {
-                                launchSingleTop = true
+                            if (!navHostController.popBackStack()) {
+                                navHostController.navigate(Screen.Setting.route) {
+                                    launchSingleTop = true
+                                }
                             }
                         },
                         modifier = Modifier.size(56.dp, 70.dp),

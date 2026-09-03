@@ -3,14 +3,17 @@ package com.craftworks.music.ui.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import com.craftworks.music.data.model.MediaData
 import com.craftworks.music.data.repository.AlbumRepository
 import com.craftworks.music.data.repository.ArtistRepository
+import com.craftworks.music.data.repository.SongRepository
 import com.craftworks.music.managers.DataRefreshManager
 import com.craftworks.music.managers.settings.LocalDataSettingsManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +30,7 @@ import javax.inject.Inject
 class ArtistsScreenViewModel @Inject constructor(
     private val artistRepository: ArtistRepository,
     private val albumRepository: AlbumRepository,
+    private val songRepository: SongRepository,
     private val localDataSettingsManager: LocalDataSettingsManager
 ) : ViewModel() {
     private val _allArtists = MutableStateFlow<List<MediaData.Artist>>(emptyList())
@@ -37,6 +41,9 @@ class ArtistsScreenViewModel @Inject constructor(
 
     private val _artistAlbums = MutableStateFlow<List<MediaItem>>(emptyList())
     val artistAlbums: StateFlow<List<MediaItem>> = _artistAlbums.asStateFlow()
+
+    private val _artistSongs = MutableStateFlow<List<MediaItem>>(emptyList())
+    val artistSongs: StateFlow<List<MediaItem>> = _artistSongs.asStateFlow()
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
@@ -54,7 +61,14 @@ class ArtistsScreenViewModel @Inject constructor(
                 _showFavoritesOnly.value = showFavorites
                 getArtists()
             }
+        }
+        viewModelScope.launch {
             DataRefreshManager.dataSourceChangedEvent.collect {
+                getArtists()
+            }
+        }
+        viewModelScope.launch {
+            com.craftworks.music.managers.MediaSourceManager.selectedSource.collect {
                 getArtists()
             }
         }
@@ -104,6 +118,7 @@ class ArtistsScreenViewModel @Inject constructor(
 
     fun setSelectedArtist(artist: MediaData.Artist) {
         _selectedArtist.value = artist
+        _artistSongs.value = emptyList()
         viewModelScope.launch {
             val loadingJob = launch {
                 delay(1000)
@@ -114,7 +129,22 @@ class ArtistsScreenViewModel @Inject constructor(
             loadingJob.start()
             coroutineScope {
                 val artistAlbumsAsync = async { artistRepository.getArtistAlbums(artist.navidromeID) }
-                _artistAlbums.value = artistAlbumsAsync.await()
+                val albums = artistAlbumsAsync.await()
+                _artistAlbums.value = albums
+
+                // Concurrently fetch songs for all albums
+                val songsDeferred = albums.map { albumItem ->
+                    async {
+                        val albumId = albumItem.mediaMetadata.extras?.getString("navidromeID") ?: albumItem.mediaId
+                        val albumTracks = albumRepository.getAlbum(albumId) ?: emptyList()
+                        if (albumTracks.size > 1 && albumTracks[0].mediaMetadata.mediaType == MediaMetadata.MEDIA_TYPE_ALBUM) {
+                            albumTracks.subList(1, albumTracks.size)
+                        } else {
+                            albumTracks
+                        }
+                    }
+                }
+                _artistSongs.value = songsDeferred.awaitAll().flatten()
 
                 val artistDetails = async { artistRepository.getArtistInfo(artist.navidromeID) }.await()
                 _selectedArtist.value = _selectedArtist.value?.copy(
@@ -128,9 +158,44 @@ class ArtistsScreenViewModel @Inject constructor(
             _isLoading.value = false
         }
     }
+
+    fun selectArtistByName(artistName: String, fallbackId: String = "") {
+        viewModelScope.launch {
+            val existing = _allArtists.value.firstOrNull {
+                (fallbackId.isNotBlank() && it.navidromeID == fallbackId) ||
+                it.name.equals(artistName, ignoreCase = true)
+            }
+            if (existing != null) {
+                setSelectedArtist(existing)
+                return@launch
+            }
+            val fetchedArtists = artistRepository.getArtists(ignoreCachedResponse = false)
+            val found = fetchedArtists.firstOrNull {
+                (fallbackId.isNotBlank() && it.navidromeID == fallbackId) ||
+                it.name.equals(artistName, ignoreCase = true)
+            }
+            if (found != null) {
+                setSelectedArtist(found)
+            } else {
+                setSelectedArtist(
+                    MediaData.Artist(
+                        navidromeID = fallbackId,
+                        name = artistName
+                    )
+                )
+            }
+        }
+    }
+
     fun setShowFavoritesOnly(showFavorites: Boolean) {
         viewModelScope.launch {
             localDataSettingsManager.saveShowFavoriteOnly(showFavorites)
+        }
+    }
+
+    fun setSongRating(navidromeId: String, rating: Int) {
+        viewModelScope.launch {
+            songRepository.setSongRating(navidromeId, rating)
         }
     }
 }

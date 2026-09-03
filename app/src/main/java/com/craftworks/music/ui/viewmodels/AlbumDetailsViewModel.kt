@@ -56,9 +56,9 @@ class AlbumDetailsViewModel @Inject constructor(
         songId: String,
         rating: Int,
     ) {
-        val song =_songsInAlbum.value.first {
+        val song = _songsInAlbum.value.firstOrNull {
             it.mediaMetadata.extras?.getString("navidromeID") == songId
-        }
+        } ?: return
         val maxStars = (song.mediaMetadata.userRating as? StarRating)?.maxStars ?: 5
 
         val updatedSong = song.buildUpon().setMediaMetadata(

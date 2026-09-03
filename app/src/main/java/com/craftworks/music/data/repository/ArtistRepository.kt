@@ -1,10 +1,14 @@
 package com.craftworks.music.data.repository
 
 import androidx.media3.common.MediaItem
+import com.craftworks.music.data.datasource.emby.EmbyJellyfinDataSource
 import com.craftworks.music.data.datasource.local.LocalDataSource
 import com.craftworks.music.data.datasource.navidrome.NavidromeDataSource
 import com.craftworks.music.data.model.MediaData
+import com.craftworks.music.managers.EmbyJellyfinManager
 import com.craftworks.music.managers.LocalProviderManager
+import com.craftworks.music.managers.MediaSource
+import com.craftworks.music.managers.MediaSourceManager
 import com.craftworks.music.managers.NavidromeManager
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
@@ -16,7 +20,8 @@ import javax.inject.Singleton
 @Singleton
 class ArtistRepository @Inject constructor(
     private val localDataSource: LocalDataSource,
-    private val navidromeDataSource: NavidromeDataSource
+    private val navidromeDataSource: NavidromeDataSource,
+    private val embyJellyfinDataSource: EmbyJellyfinDataSource
 ) {
 
     suspend fun getArtists(
@@ -28,12 +33,19 @@ class ArtistRepository @Inject constructor(
     ): List<MediaData.Artist> = coroutineScope {
         val deferredArtists = mutableListOf<Deferred<List<MediaData.Artist>>>()
 
-        if (LocalProviderManager.checkActiveFolders())
+        if (MediaSourceManager.isSourceActive(MediaSource.LOCAL) && LocalProviderManager.checkActiveFolders())
             if (offset == 0)
                 deferredArtists.add(async { localDataSource.getLocalArtists() })
 
-        if (NavidromeManager.checkActiveServers()) {
+        if (MediaSourceManager.isSourceActive(MediaSource.NAVIDROME) && NavidromeManager.checkActiveServers()) {
             deferredArtists.add(async { navidromeDataSource.getNavidromeArtists(ignoreCachedResponse, favoritesOnly = favoritesOnly) })
+        }
+
+        if (MediaSourceManager.isSourceActive(MediaSource.EMBY) && EmbyJellyfinManager.checkActiveServers()) {
+            deferredArtists.add(async {
+                if (favoritesOnly) embyJellyfinDataSource.getStarredArtists()
+                else embyJellyfinDataSource.getArtists(size ?: 100, offset ?: 0, ignoreCachedResponse)
+            })
         }
 
         deferredArtists.awaitAll().flatten()
@@ -45,26 +57,31 @@ class ArtistRepository @Inject constructor(
     ): List<MediaData.Artist> = coroutineScope {
         val deferredArtists = mutableListOf<Deferred<List<MediaData.Artist>>>()
 
-        if (LocalProviderManager.checkActiveFolders())
+        if (MediaSourceManager.isSourceActive(MediaSource.LOCAL) && LocalProviderManager.checkActiveFolders())
             deferredArtists.add(async { localDataSource.searchLocalArtists(query) })
 
-        if (NavidromeManager.checkActiveServers())
+        if (MediaSourceManager.isSourceActive(MediaSource.NAVIDROME) && NavidromeManager.checkActiveServers())
             deferredArtists.add(async { navidromeDataSource.searchNavidromeArtists(query, ignoreCachedResponse) })
+
+        if (MediaSourceManager.isSourceActive(MediaSource.EMBY) && EmbyJellyfinManager.checkActiveServers())
+            deferredArtists.add(async { embyJellyfinDataSource.getArtists(size = 100, offset = 0, ignoreCachedResponse = ignoreCachedResponse, searchTerm = query) })
 
         deferredArtists.awaitAll().flatten()
     }
 
     suspend fun getArtistAlbums(artistId: String, ignoreCachedResponse: Boolean = false): List<MediaItem> = coroutineScope {
-        if (artistId.startsWith("Local_"))
-            localDataSource.getLocalArtistAlbums(artistId)
-        else
-            navidromeDataSource.getNavidromeArtistAlbums(artistId, ignoreCachedResponse)
+        when {
+            artistId.startsWith("Local_") -> localDataSource.getLocalArtistAlbums(artistId)
+            artistId.startsWith("emby_") -> embyJellyfinDataSource.getArtistAlbums(artistId, ignoreCachedResponse)
+            else -> navidromeDataSource.getNavidromeArtistAlbums(artistId, ignoreCachedResponse)
+        }
     }
 
     suspend fun getArtistInfo(artistId: String, ignoreCachedResponse: Boolean = false): MediaData.ArtistInfo? = coroutineScope {
-        if (artistId.startsWith("Local_"))
-            null
-        else
-            navidromeDataSource.getNavidromeArtistInfo(artistId, ignoreCachedResponse)
+        when {
+            artistId.startsWith("Local_") -> null
+            artistId.startsWith("emby_") -> embyJellyfinDataSource.getArtistBiography(artistId)
+            else -> navidromeDataSource.getNavidromeArtistInfo(artistId, ignoreCachedResponse)
+        }
     }
 }

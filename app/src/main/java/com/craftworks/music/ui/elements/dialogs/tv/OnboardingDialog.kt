@@ -48,9 +48,11 @@ import androidx.tv.material3.ListItem
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.craftworks.music.R
+import com.craftworks.music.managers.EmbyJellyfinManager
 import com.craftworks.music.managers.LocalProviderManager
 import com.craftworks.music.managers.NavidromeManager
 import com.craftworks.music.ui.elements.dialogs.OnboardingStep
+import com.craftworks.music.ui.elements.tv.EmbyJellyfinProviderCard
 import com.craftworks.music.ui.elements.tv.LocalProviderCard
 import com.craftworks.music.ui.elements.tv.NavidromeProviderCard
 
@@ -69,6 +71,7 @@ fun OnboardingDialog(
     var step by remember { mutableStateOf(OnboardingStep.OVERVIEW) }
 
     var showNavidromeServerDialog by remember { mutableStateOf(false) }
+    var showEmbyServerDialog by remember { mutableStateOf(false) }
     var showLocalFolderDialog by remember { mutableStateOf(false) }
     var showLrcLibEditDialog by remember { mutableStateOf(false) }
 
@@ -88,60 +91,71 @@ fun OnboardingDialog(
                 .fillMaxSize()
                 .drawBehind { drawRect(color = backgroundColor) }
                 .padding(horizontal = 48.dp, vertical = 48.dp),
+            contentAlignment = Alignment.Center
         ) {
-            AnimatedContent(
-                step, transitionSpec = {
-                    val forward = targetState.ordinal > initialState.ordinal
-                    slideInHorizontally(
-                        animationSpec = tween(350, easing = EaseInOutCubic),
-                        initialOffsetX = { if (forward) it / 4 else -it / 4 }) + fadeIn(tween(350)) togetherWith slideOutHorizontally(
-                        animationSpec = tween(350, easing = EaseInOutCubic),
-                        targetOffsetX = { if (forward) -it / 4 else it / 4 }) + fadeOut(tween(350))
-                }
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
+                AnimatedContent(
+                    targetState = step,
                     modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    transitionSpec = {
+                        val forward = targetState.ordinal > initialState.ordinal
+                        slideInHorizontally(
+                            animationSpec = tween(350, easing = EaseInOutCubic),
+                            initialOffsetX = { if (forward) it / 4 else -it / 4 }) + fadeIn(tween(350)) togetherWith slideOutHorizontally(
+                            animationSpec = tween(350, easing = EaseInOutCubic),
+                            targetOffsetX = { if (forward) -it / 4 else it / 4 }) + fadeOut(tween(350))
+                    }
                 ) {
-                    when (it) {
-                        OnboardingStep.OVERVIEW -> {
-                            Icon(
-                                ImageVector.vectorResource(R.drawable.ic_banner_foreground),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onBackground,
-                            )
-
-                            Text(
-                                text = stringResource(R.string.No_Providers_Splash),
-                                modifier = Modifier.width(320.dp),
-                                color = MaterialTheme.colorScheme.onBackground,
-                            )
-
-                            Button(
-                                modifier = Modifier.width(320.dp),
-                                onClick = {
-                                    step = OnboardingStep.PROVIDER_SELECTION
-                                }
-                            ) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        when (it) {
+                            OnboardingStep.OVERVIEW -> {
                                 Text(
-                                    text = stringResource(R.string.Action_Next),
+                                    text = stringResource(R.string.No_Providers_Splash),
+                                    modifier = Modifier.width(320.dp),
+                                    style = MaterialTheme.typography.titleLarge,
+                                    color = MaterialTheme.colorScheme.onBackground,
                                     textAlign = TextAlign.Center
                                 )
+
+                                Column(
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Button(
+                                        modifier = Modifier.width(320.dp),
+                                        onClick = {
+                                            step = OnboardingStep.PROVIDER_SELECTION
+                                        }
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.Action_Done),
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+                                }
                             }
-                        }
 
-                        OnboardingStep.PROVIDER_SELECTION -> {
-                            OnboardingSetupProviders(
-                                setDialogStep = { step = it },
-                                showNavidromeServerDialog = { showNavidromeServerDialog = true },
-                                showLocalFolderDialog = { showLocalFolderDialog = true }
-                            )
-                        }
+                            OnboardingStep.PROVIDER_SELECTION -> {
+                                OnboardingSetupProviders(
+                                    setDialogStep = { step = it },
+                                    showNavidromeServerDialog = { showNavidromeServerDialog = true },
+                                    showEmbyServerDialog = { showEmbyServerDialog = true },
+                                    showLocalFolderDialog = { showLocalFolderDialog = true }
+                                )
+                            }
 
-                        OnboardingStep.DONE -> {
-                            OnboardingDoneScreen {
-                                setShowDialog(false)
+                            OnboardingStep.DONE -> {
+                                OnboardingDoneScreen {
+                                    setShowDialog(false)
+                                }
                             }
                         }
                     }
@@ -159,6 +173,9 @@ fun OnboardingDialog(
     if(showNavidromeServerDialog)
         CreateNavidromeProviderDialog(setShowDialog = { showNavidromeServerDialog = it })
 
+    if(showEmbyServerDialog)
+        CreateEmbyJellyfinProviderDialog(setShowDialog = { showEmbyServerDialog = it })
+
     if(showLocalFolderDialog)
         CreateLocalProviderDialog(setShowDialog = { showLocalFolderDialog = it })
 }
@@ -167,10 +184,12 @@ fun OnboardingDialog(
 private fun OnboardingSetupProviders(
     setDialogStep: (OnboardingStep) -> Unit = { },
     showNavidromeServerDialog: () -> Unit = { },
+    showEmbyServerDialog: () -> Unit = { },
     showLocalFolderDialog: () -> Unit = { }
 ) {
     val localProviders by LocalProviderManager.allFolders.collectAsStateWithLifecycle()
     val navidromeServers by NavidromeManager.allServers.collectAsStateWithLifecycle()
+    val embyServers by EmbyJellyfinManager.allServers.collectAsStateWithLifecycle()
 
     Text(
         text = stringResource(R.string.Dialog_Media_Source),
@@ -233,6 +252,34 @@ private fun OnboardingSetupProviders(
                     )
                 },
                 onClick = showNavidromeServerDialog
+            )
+        }
+
+        item {
+            HorizontalDivider()
+        }
+
+        item {
+            Text(
+                text = stringResource(R.string.Source_Emby),
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+        }
+
+        items(embyServers, key = { it.id }) { server ->
+            EmbyJellyfinProviderCard(server)
+        }
+        item {
+            ListItem(
+                selected = false,
+                headlineContent = { Text(stringResource(R.string.Action_Add)) },
+                leadingContent = {
+                    Icon(
+                        imageVector = Icons.Rounded.Add,
+                        contentDescription = stringResource(R.string.Action_Login),
+                    )
+                },
+                onClick = showEmbyServerDialog
             )
         }
     }

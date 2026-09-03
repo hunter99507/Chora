@@ -1,4 +1,4 @@
-@file:OptIn(UnstableApi::class)
+@file:OptIn(UnstableApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 
 package com.craftworks.music.ui.playing
 
@@ -10,6 +10,7 @@ import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
@@ -17,6 +18,14 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -29,14 +38,17 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeightIn
@@ -56,6 +68,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -68,6 +81,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.core.graphics.ColorUtils
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -87,7 +102,9 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import coil.compose.SubcomposeAsyncImage
@@ -115,14 +132,15 @@ fun NowPlayingPortrait(
     mediaController: MediaController? = null,
     metadata: MediaMetadata? = null,
     iconColor: Color = Color.White,
-    accentColor: Color = Color(0xFFC89B66),
+    accentColor: Color = Color.White,
     lyricsOpen: Boolean = false,
     sleepTimerMinutes: Int = 10,
     onToggleLyrics: () -> Unit = {},
     onToggleQueue: () -> Unit = {},
     onToggleDetails: () -> Unit = {},
     onOpenSleepTimer: () -> Unit = {},
-    onRefreshLyrics: () -> Unit = {}
+    onRefreshLyrics: () -> Unit = {},
+    onClose: () -> Unit = {}
 ) {
     val animatedAccentColor by animateColorAsState(
         targetValue = accentColor,
@@ -205,64 +223,154 @@ fun NowPlayingPortrait(
                 }
             } else {
                 val artworkHeight = (LocalConfiguration.current.screenHeightDp.dp * 0.585f).coerceAtLeast(435.dp)
-                var totalDrag by remember { mutableFloatStateOf(0f) }
-                var isForward by remember { mutableStateOf(true) }
+                val coroutineScope = rememberCoroutineScope()
+
+                // Resolve the active Player instance (ExoPlayer from service or MediaController)
+                val activePlayer = remember(mediaController) {
+                    ChoraMediaLibraryService.getInstance()?.player ?: mediaController
+                }
+
+                // Track adjacent and current items respecting shuffle and repeat
+                var currentItem by remember { mutableStateOf(activePlayer?.currentMediaItem) }
+                var prevItem by remember {
+                    mutableStateOf(
+                        if (activePlayer?.hasPreviousMediaItem() == true) {
+                            val idx = activePlayer.previousMediaItemIndex
+                            if (idx in 0 until activePlayer.mediaItemCount) activePlayer.getMediaItemAt(idx) else null
+                        } else null
+                    )
+                }
+                var nextItem by remember {
+                    mutableStateOf(
+                        if (activePlayer?.hasNextMediaItem() == true) {
+                            val idx = activePlayer.nextMediaItemIndex
+                            if (idx in 0 until activePlayer.mediaItemCount) activePlayer.getMediaItemAt(idx) else null
+                        } else null
+                    )
+                }
+
+                val pagerState = rememberPagerState(
+                    initialPage = 1,
+                    pageCount = { 3 }
+                )
+
+                fun updateAdjacentItems() {
+                    val p = ChoraMediaLibraryService.getInstance()?.player ?: mediaController
+                    currentItem = p?.currentMediaItem
+                    prevItem = if (p?.hasPreviousMediaItem() == true) {
+                        val idx = p.previousMediaItemIndex
+                        if (idx in 0 until p.mediaItemCount) p.getMediaItemAt(idx) else null
+                    } else null
+                    nextItem = if (p?.hasNextMediaItem() == true) {
+                        val idx = p.nextMediaItemIndex
+                        if (idx in 0 until p.mediaItemCount) p.getMediaItemAt(idx) else null
+                    } else null
+                }
+
+                val isDragged by pagerState.interactionSource.collectIsDraggedAsState()
+                var hasTriggeredForTarget by remember { mutableStateOf(false) }
+
+                DisposableEffect(mediaController) {
+                    val p = ChoraMediaLibraryService.getInstance()?.player ?: mediaController
+                    if (p == null) {
+                        onDispose { }
+                    } else {
+                        val listener = object : Player.Listener {
+                            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                                updateAdjacentItems()
+                                hasTriggeredForTarget = false
+                                coroutineScope.launch {
+                                    pagerState.scrollToPage(1)
+                                }
+                            }
+                            override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
+                                updateAdjacentItems()
+                            }
+                            override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+                                updateAdjacentItems()
+                            }
+                            override fun onRepeatModeChanged(repeatMode: Int) {
+                                updateAdjacentItems()
+                            }
+                        }
+                        p.addListener(listener)
+                        updateAdjacentItems()
+                        onDispose { p.removeListener(listener) }
+                    }
+                }
+
+                // Trigger song seek immediately upon finger release towards targetPage or on settle, eliminating delay
+                LaunchedEffect(pagerState, isDragged) {
+                    snapshotFlow {
+                        Triple(isDragged, pagerState.targetPage, pagerState.settledPage)
+                    }.collect { (dragged, target, settled) ->
+                        if (target == 1 && settled == 1) {
+                            hasTriggeredForTarget = false
+                            return@collect
+                        }
+
+                        // As soon as the user lets go (or on quick flick) and target is 0 or 2, trigger skip IMMEDIATELY
+                        if (!dragged && (target != 1 || settled != 1) && !hasTriggeredForTarget) {
+                            val destination = if (target != 1) target else settled
+                            val p = ChoraMediaLibraryService.getInstance()?.player ?: mediaController ?: return@collect
+                            hasTriggeredForTarget = true
+                            if (destination == 2) {
+                                if (p.hasNextMediaItem()) {
+                                    p.seekToNextMediaItem()
+                                } else {
+                                    p.seekToNext()
+                                }
+                                p.play()
+                            } else if (destination == 0) {
+                                if (p.hasPreviousMediaItem()) {
+                                    p.seekToPreviousMediaItem()
+                                } else {
+                                    p.seekToPrevious()
+                                }
+                                p.play()
+                            }
+
+                            // Safety reset if onMediaItemTransition didn't trigger
+                            kotlinx.coroutines.delay(200)
+                            updateAdjacentItems()
+                            if (pagerState.currentPage != 1) {
+                                pagerState.scrollToPage(1)
+                            }
+                            hasTriggeredForTarget = false
+                        }
+                    }
+                }
+
+                fun artworkUriForItem(item: MediaItem?): String {
+                    val uri = item?.mediaMetadata?.artworkUri?.toString() ?: ""
+                    return if (uri.isNotEmpty()) uri.replace(Regex("size=\\d+"), "size=600") else ""
+                }
 
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(artworkHeight)
-                        .pointerInput(mediaController) {
-                            detectHorizontalDragGestures(
-                                onDragStart = { totalDrag = 0f },
-                                onDragEnd = {
-                                    if (totalDrag < -60f) {
-                                        isForward = true
-                                        mediaController?.seekToNextMediaItem()
-                                    } else if (totalDrag > 60f) {
-                                        isForward = false
-                                        mediaController?.seekToPreviousMediaItem()
-                                    }
-                                    totalDrag = 0f
-                                },
-                                onDragCancel = {
-                                    totalDrag = 0f
-                                },
-                                onHorizontalDrag = { _, dragAmount ->
-                                    totalDrag += dragAmount
-                                }
-                            )
-                        },
-                    contentAlignment = Alignment.TopCenter
                 ) {
-                    AnimatedContent(
-                        targetState = metadata?.artworkUri.toString().replace(Regex("size=\\d+"), "size=600"),
-                        transitionSpec = {
-                            val direction = if (isForward) 1 else -1
-                            (slideInHorizontally(
-                                animationSpec = spring(
-                                    dampingRatio = Spring.DampingRatioNoBouncy,
-                                    stiffness = Spring.StiffnessMediumLow
-                               ),
-                                initialOffsetX = { fullWidth -> (fullWidth * 0.4f * direction).toInt() }
-                            ) + fadeIn(animationSpec = tween(350)) + scaleIn(initialScale = 0.92f, animationSpec = tween(350)))
-                                .togetherWith(
-                                    slideOutHorizontally(
-                                        animationSpec = spring(
-                                            dampingRatio = Spring.DampingRatioNoBouncy,
-                                            stiffness = Spring.StiffnessMediumLow
-                                        ),
-                                        targetOffsetX = { fullWidth -> (-fullWidth * 0.4f * direction).toInt() }
-                                    ) + fadeOut(animationSpec = tween(250)) + scaleOut(targetScale = 0.92f, animationSpec = tween(250))
-                                )
-                        },
-                        label = "Album artwork animated transition",
-                        modifier = Modifier.fillMaxSize()
-                    ) { artworkUri ->
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize(),
+                        beyondViewportPageCount = 1,
+                        pageSpacing = 0.dp,
+                        key = { it }
+                    ) { page ->
+                        val pageArtworkUri = when (page) {
+                            0 -> artworkUriForItem(prevItem)
+                            1 -> artworkUriForItem(currentItem).ifEmpty {
+                                (metadata?.artworkUri?.toString() ?: "").replace(Regex("size=\\d+"), "size=600")
+                            }
+                            2 -> artworkUriForItem(nextItem)
+                            else -> ""
+                        }
+
                         SubcomposeAsyncImage(
                             model = ImageRequest.Builder(context)
-                                .data(artworkUri)
-                                .placeholderMemoryCacheKey(metadata?.artworkUri.toString())
+                                .data(pageArtworkUri.ifEmpty { null })
+                                .placeholderMemoryCacheKey(metadata?.artworkUri?.toString())
                                 .diskCachePolicy(CachePolicy.DISABLED)
                                 .build(),
                             contentDescription = "Album Cover Art",
@@ -273,6 +381,28 @@ fun NowPlayingPortrait(
                                 .fadingEdge(imageFadingEdge)
                         )
                     }
+
+                    // Left edge back gesture guard: consumes horizontal drags in the system back zone so pager doesn't move
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .width(24.dp)
+                            .fillMaxHeight()
+                            .pointerInput(Unit) {
+                                detectHorizontalDragGestures { _, _ -> }
+                            }
+                    )
+
+                    // Right edge back gesture guard
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .width(24.dp)
+                            .fillMaxHeight()
+                            .pointerInput(Unit) {
+                                detectHorizontalDragGestures { _, _ -> }
+                            }
+                    )
                 }
             }
         }
@@ -398,6 +528,13 @@ fun NowPlayingPortrait(
         //endregion
 
         //region Bottom Section: Playback Controls (Shifted down)
+        val isDarkControlsBackground = remember(iconColor) {
+            ColorUtils.calculateLuminance(iconColor.toArgb()) > 0.45
+        }
+        val vibrantControlsColor = remember(animatedAccentColor, isDarkControlsBackground) {
+            getVibrantSeekbarColor(animatedAccentColor, isDarkControlsBackground)
+        }
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -407,11 +544,11 @@ fun NowPlayingPortrait(
             verticalAlignment = Alignment.CenterVertically
         ) {
             ChoraMediaLibraryService.getInstance()?.player?.let { player ->
-                RepeatButton(player, iconColor, Modifier.size(28.dp))
-                PreviousSongButton(player, iconColor, Modifier.size(34.dp))
-                PlayPauseButton(player, iconColor, Modifier.size(76.dp))
-                NextSongButton(player, iconColor, Modifier.size(34.dp))
-                ShuffleButton(player, iconColor, Modifier.size(28.dp))
+                RepeatButton(player, vibrantControlsColor, Modifier.size(28.dp))
+                PreviousSongButton(player, vibrantControlsColor, Modifier.size(34.dp))
+                PlayPauseButton(player, vibrantControlsColor, Modifier.size(76.dp))
+                NextSongButton(player, vibrantControlsColor, Modifier.size(34.dp))
+                ShuffleButton(player, vibrantControlsColor, Modifier.size(28.dp))
             }
         }
         //endregion
@@ -420,7 +557,7 @@ fun NowPlayingPortrait(
         // Back Button on top left
         IconButton(
             onClick = {
-                backDispatcher?.onBackPressed()
+                onClose()
             },
             modifier = Modifier
                 .align(Alignment.TopStart)

@@ -40,7 +40,14 @@ class SongsScreenViewModel @Inject constructor(
                 _showFavoritesOnly.value = showFavorites
                 getSongs()
             }
+        }
+        viewModelScope.launch {
             DataRefreshManager.dataSourceChangedEvent.collect {
+                getSongs()
+            }
+        }
+        viewModelScope.launch {
+            com.craftworks.music.managers.MediaSourceManager.selectedSource.collect {
                 getSongs()
             }
         }
@@ -67,6 +74,26 @@ class SongsScreenViewModel @Inject constructor(
         }
     }
 
+    fun shuffleAll(mediaController: androidx.media3.session.MediaController?) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            val fullList = try {
+                val fetched = songRepository.getSongs(
+                    songCount = 5000,
+                    ignoreCachedResponse = false,
+                    favoritesOnly = _showFavoritesOnly.value
+                )
+                if (fetched.isNotEmpty()) fetched else _allSongs.value
+            } catch (e: Exception) {
+                _allSongs.value
+            }
+            _isLoading.value = false
+            if (fullList.isNotEmpty()) {
+                com.craftworks.music.player.SongHelper.play(fullList, 0, mediaController, shuffle = true)
+            }
+        }
+    }
+
     fun search(query: String){
         if (query.isBlank()) {
             _searchResults.value = emptyList()
@@ -90,11 +117,11 @@ class SongsScreenViewModel @Inject constructor(
         songId: String,
         rating: Int,
     ) {
-        val song =_allSongs.value.firstOrNull {
+        val song = _allSongs.value.firstOrNull {
             it.mediaMetadata.extras?.getString("navidromeID") == songId
-        } ?: _searchResults.value.first {
+        } ?: _searchResults.value.firstOrNull {
             it.mediaMetadata.extras?.getString("navidromeID") == songId
-        }
+        } ?: return
 
         val maxStars = (song.mediaMetadata.userRating as? StarRating)?.maxStars ?: 5
 

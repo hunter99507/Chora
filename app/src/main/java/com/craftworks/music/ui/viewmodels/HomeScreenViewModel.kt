@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import com.craftworks.music.data.repository.AlbumRepository
 import com.craftworks.music.managers.DataRefreshManager
+import com.craftworks.music.managers.EmbyJellyfinManager
 import com.craftworks.music.managers.NavidromeManager
 import com.craftworks.music.data.repository.PlaylistRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -54,6 +55,19 @@ class HomeScreenViewModel @Inject constructor(
             combine(
                 NavidromeManager.currentServerId,
                 NavidromeManager.libraries
+            ) { serverId, libs -> serverId to libs }
+                .distinctUntilChanged()
+                .collect { (serverId, libs) ->
+                    if (serverId != null && libs.isNotEmpty()) {
+                        loadHomeScreenData()
+                    }
+                }
+        }
+
+        viewModelScope.launch {
+            combine(
+                EmbyJellyfinManager.currentServerId,
+                EmbyJellyfinManager.libraries
             ) { serverId, libs -> serverId to libs }
                 .distinctUntilChanged()
                 .collect { (serverId, libs) ->

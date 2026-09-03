@@ -14,11 +14,17 @@ import kotlinx.coroutines.withContext
 
 class SongHelper {
     companion object{
-        private val _expandNowPlayingSheet = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+        private val _expandNowPlayingSheet = MutableSharedFlow<Unit>(extraBufferCapacity = 64)
         val expandNowPlayingSheet = _expandNowPlayingSheet.asSharedFlow()
 
         @OptIn(UnstableApi::class)
-        suspend fun play(mediaItems: List<MediaItem>, index: Int, mediaController: MediaController?) {
+        suspend fun play(
+            mediaItems: List<MediaItem>,
+            index: Int,
+            mediaController: MediaController?,
+            expandSheet: Boolean = true,
+            shuffle: Boolean = false
+        ) {
             val playableItems = mediaItems.filter {
                 it.mediaMetadata.isPlayable != false && !it.mediaId.startsWith("folder_album_") && it.mediaId.isNotBlank()
             }
@@ -29,17 +35,69 @@ class SongHelper {
 
             val service = ChoraMediaLibraryService.getInstance()
             val playbackSettings = service?.playbackSettingsManager ?: service?.applicationContext?.let { PlaybackSettingsManager(it) }
-            val defaultShuffle = playbackSettings?.defaultShuffleFlow?.first() ?: true
             val defaultRepeat = playbackSettings?.defaultRepeatFlow?.first() ?: Player.REPEAT_MODE_ALL
 
             withContext(Dispatchers.Main) {
                 mediaController?.repeatMode = defaultRepeat
-                mediaController?.shuffleModeEnabled = defaultShuffle
-                mediaController?.setMediaItems(playableItems, safeIndex, 0)
+                if (shuffle) {
+                    mediaController?.shuffleModeEnabled = true
+                    mediaController?.setMediaItems(playableItems, true)
+                } else {
+                    val defaultShuffle = playbackSettings?.defaultShuffleFlow?.first() ?: false
+                    mediaController?.shuffleModeEnabled = defaultShuffle
+                    mediaController?.setMediaItems(playableItems, safeIndex, 0)
+                }
                 mediaController?.prepare()
                 mediaController?.play()
-                _expandNowPlayingSheet.tryEmit(Unit)
+                if (expandSheet) {
+                    _expandNowPlayingSheet.tryEmit(Unit)
+                }
             }
+        }
+
+        @OptIn(UnstableApi::class)
+        fun calculateQueuePosition(player: Player?): Pair<Int, Int> {
+            if (player == null) return Pair(0, 0)
+            val total = player.mediaItemCount
+            val currentIndex = player.currentMediaItemIndex
+            if (total <= 0 || currentIndex !in 0 until total) return Pair(0, 0)
+
+            val timeline = player.currentTimeline
+            if (timeline.isEmpty || !player.shuffleModeEnabled) {
+                return Pair(currentIndex + 1, total)
+            }
+
+            // Backward traversal in shuffle order to count how many songs precede the current item
+            var position = 1
+            var idx = currentIndex
+            var foundStart = false
+            while (position <= total) {
+                val prev = timeline.getPreviousWindowIndex(idx, Player.REPEAT_MODE_OFF, true)
+                if (prev == androidx.media3.common.C.INDEX_UNSET || prev < 0) {
+                    foundStart = true
+                    break
+                }
+                if (prev == idx) break
+                position++
+                idx = prev
+            }
+
+            if (foundStart) {
+                return Pair(position.coerceIn(1, total), total)
+            }
+
+            // Fallback: forward traversal from getFirstWindowIndex
+            var forwardPos = 1
+            var curr = timeline.getFirstWindowIndex(true)
+            while (forwardPos <= total && curr != androidx.media3.common.C.INDEX_UNSET && curr >= 0) {
+                if (curr == currentIndex) {
+                    return Pair(forwardPos, total)
+                }
+                curr = timeline.getNextWindowIndex(curr, Player.REPEAT_MODE_OFF, true)
+                forwardPos++
+            }
+
+            return Pair(currentIndex + 1, total)
         }
     }
 }

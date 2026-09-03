@@ -436,6 +436,111 @@ fun NavbarItemsDialog(setShowDialog: (Boolean) -> Unit) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
+fun AndroidAutoItemsDialog(setShowDialog: (Boolean) -> Unit) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val autoItems =
+        (AppearanceSettingsManager(context).androidAutoNavItemsFlow.collectAsState(null).value ?: emptyList()).toMutableList()
+
+    AlertDialog(
+        onDismissRequest = { setShowDialog(false) },
+        title = { Text(stringResource(R.string.Setting_Android_Auto_Items)) },
+        text = {
+            val lazyListState = rememberLazyListState()
+            val reorderableLazyColumnState =
+                rememberReorderableLazyListState(lazyListState) { from, to ->
+                    AppearanceSettingsManager(context).setAndroidAutoNavItems(autoItems.toMutableList()
+                        .apply {
+                            add(to.index, removeAt(from.index))
+                        })
+                }
+
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                state = lazyListState
+            ) {
+                items(autoItems, key = { it.title }) { navItem ->
+                    ReorderableItem(reorderableLazyColumnState, navItem.title) {
+                        val interactionSource = remember { MutableInteractionSource() }
+                        val index = autoItems.indexOf(navItem)
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .height(48.dp)
+                        ) {
+                            Checkbox(
+                                enabled = navItem.title != "Home",
+                                checked = autoItems.getOrNull(index)?.enabled ?: true,
+                                onCheckedChange = {
+                                    coroutineScope.launch {
+                                        autoItems[index] = autoItems[index].copy(enabled = it)
+                                        AppearanceSettingsManager(context).setAndroidAutoNavItems(autoItems)
+                                    }
+                                },
+                                modifier = Modifier
+                                    .semantics { contentDescription = navItem.title }
+                                    .bounceClick()
+                            )
+                            Text(
+                                text = navItem.title,
+                                fontWeight = FontWeight.Normal,
+                                fontSize = MaterialTheme.typography.titleMedium.fontSize,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(
+                                modifier = Modifier.draggableHandle(
+                                    onDragStarted = {},
+                                    onDragStopped = {},
+                                    interactionSource = interactionSource,
+                                ),
+                                onClick = {},
+                            ) {
+                                Icon(
+                                    ImageVector.vectorResource(R.drawable.baseline_drag_handle_24),
+                                    contentDescription = "Reorder"
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                setShowDialog(false)
+            }) {
+                Text(stringResource(R.string.Action_Done))
+            }
+        },
+        dismissButton = {
+            OutlinedButton(
+                onClick = {
+                    coroutineScope.launch {
+                        AppearanceSettingsManager(context).setAndroidAutoNavItems(
+                            listOf(
+                                BottomNavItem("Home", R.drawable.rounded_home_24, "home_screen"),
+                                BottomNavItem("Albums", R.drawable.rounded_library_music_24, "album_screen"),
+                                BottomNavItem("Songs", R.drawable.round_music_note_24, "songs_screen"),
+                                BottomNavItem("Artists", R.drawable.rounded_artist_24, "artists_screen"),
+                                BottomNavItem("Playlists", R.drawable.rounded_queue_music_24, "playlist_screen"),
+                                BottomNavItem("Radios", R.drawable.rounded_radio, "radio_screen", false),
+                                BottomNavItem("Sources", R.drawable.s_m_media_providers, "sources_screen", true)
+                            )
+                        )
+                        setShowDialog(false)
+                    }
+                }
+            ) {
+                Text(stringResource(R.string.Action_Reset))
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
 fun HomeItemsDialog(setShowDialog: (Boolean) -> Unit) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()

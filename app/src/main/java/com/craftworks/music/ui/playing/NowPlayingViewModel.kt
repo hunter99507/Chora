@@ -123,7 +123,7 @@ class NowPlayingViewModel @Inject constructor (
     private suspend fun extractColorsFromUri(uri: String, context: Context): List<Color?> = coroutineScope {
         val loader = context.imageLoader
         val request = ImageRequest.Builder(context)
-            .data(uri.replace(Regex("size=\\d+"), "size=32"))
+            .data(uri.replace(Regex("size=\\d+"), "size=64"))
             .allowHardware(false)
             .diskCachePolicy(CachePolicy.DISABLED)
             .build()
@@ -135,31 +135,24 @@ class NowPlayingViewModel @Inject constructor (
             withContext(Dispatchers.Default) {
                 val palette = Palette.Builder(bitmapImage).generate()
 
-                val swatches = mapOf(
-                    "Muted" to palette.mutedSwatch,
-                    "Dark Vibrant" to palette.darkVibrantSwatch,
-                    "Light Vibrant" to palette.lightVibrantSwatch,
-                    "Vibrant" to palette.vibrantSwatch,
-                    "Dominant" to palette.dominantSwatch,
-                    "Light Muted" to palette.lightMutedSwatch
+                // Find swatches with rich saturation that aren't near-black or near-white
+                val vividSwatches = palette.swatches
+                    .filter { it.hsl[1] >= 0.35f && it.hsl[2] in 0.12f..0.88f }
+                    .sortedByDescending { it.hsl[1] }
+
+                val primaryAccentSwatch = vividSwatches.firstOrNull() ?: palette.vibrantSwatch ?: palette.dominantSwatch
+
+                val orderedSwatches = listOfNotNull(
+                    primaryAccentSwatch,
+                    palette.vibrantSwatch.takeIf { it != primaryAccentSwatch },
+                    palette.darkVibrantSwatch.takeIf { it != primaryAccentSwatch },
+                    palette.dominantSwatch.takeIf { it != primaryAccentSwatch },
+                    palette.lightVibrantSwatch.takeIf { it != primaryAccentSwatch },
+                    palette.mutedSwatch.takeIf { it != primaryAccentSwatch },
+                    palette.lightMutedSwatch.takeIf { it != primaryAccentSwatch }
                 )
 
-                // Log the results
-                swatches.forEach { (name, swatch) ->
-                    swatch?.let {
-                        val hex = Integer.toHexString(it.rgb).uppercase()
-                        Log.d("PaletteColor", "$name: #$hex | Body Text Color: ${Integer.toHexString(it.bodyTextColor)}")
-                    }
-                }
-
-                listOf(
-                    palette.vibrantSwatch?.rgb?.let { Color(it) },
-                    palette.darkVibrantSwatch?.rgb?.let { Color(it) },
-                    palette.dominantSwatch?.rgb?.let { Color(it) },
-                    palette.lightVibrantSwatch?.rgb?.let { Color(it) },
-                    palette.mutedSwatch?.rgb?.let { Color(it) },
-                    palette.lightMutedSwatch?.rgb?.let { Color(it) },
-                )
+                orderedSwatches.map { Color(it.rgb) }
             }
         } ?: listOf()
     }

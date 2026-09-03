@@ -19,7 +19,8 @@ fun parseNavidromePlainLyricsJSON(
 ): MediaData.PlainLyrics {
     val subsonicResponse = parseSubsonicResponse(response)
 
-    val mediaDataPlainLyrics = subsonicResponse.lyrics!!
+    // Songs without lyrics simply omit the element — return empty instead of throwing.
+    val mediaDataPlainLyrics = subsonicResponse.lyrics ?: MediaData.PlainLyrics(value = "")
 
     return mediaDataPlainLyrics
 }

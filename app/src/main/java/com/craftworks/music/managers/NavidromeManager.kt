@@ -101,7 +101,7 @@ object NavidromeManager {
     }
 
     fun checkActiveServers(): Boolean {
-        return servers.keys.isNotEmpty() && _currentServerId.value != null
+        return servers.values.any { it.enabled } && getCurrentServer()?.enabled == true
     }
 
     fun getAllServers(): List<NavidromeProvider> = servers.values.toList()
@@ -110,7 +110,26 @@ object NavidromeManager {
     fun setCurrentServer(serverId: String?) {
         _currentServerId.value = serverId
         _libraries.value = serverId?.let { servers[it]?.libraryIds } ?: emptyList()
+        updateServersFlow()
         saveServers()
+    }
+
+    fun setServerEnabled(serverId: String, enabled: Boolean) {
+        servers[serverId]?.let { server ->
+            server.enabled = enabled
+            if (enabled) {
+                _currentServerId.value = serverId
+                _libraries.value = server.libraryIds
+            } else {
+                if (_currentServerId.value == serverId) {
+                    val nextActiveServer = servers.values.firstOrNull { it.enabled && it.id != serverId }
+                    _currentServerId.value = nextActiveServer?.id
+                    _libraries.value = nextActiveServer?.libraryIds ?: emptyList()
+                }
+            }
+            updateServersFlow()
+            saveServers()
+        }
     }
 
     private fun updateServersFlow() {
@@ -134,9 +153,11 @@ object NavidromeManager {
 
     private fun saveServers() {
         DataRefreshManager.notifyDataSourcesChanged()
-        val serversJson = json.encodeToString(servers as Map<String, NavidromeProvider>)
-        sharedPreferences.edit { putString(PREF_SERVERS, serversJson) }
-        sharedPreferences.edit { putString(PREF_CURRENT_SERVER, _currentServerId.value) }
+        if (::sharedPreferences.isInitialized) {
+            val serversJson = json.encodeToString(servers as Map<String, NavidromeProvider>)
+            sharedPreferences.edit { putString(PREF_SERVERS, serversJson) }
+            sharedPreferences.edit { putString(PREF_CURRENT_SERVER, _currentServerId.value) }
+        }
     }
 
     private fun loadServers() {

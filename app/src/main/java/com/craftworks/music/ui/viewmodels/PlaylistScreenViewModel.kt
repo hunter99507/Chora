@@ -44,6 +44,11 @@ class PlaylistScreenViewModel @Inject constructor(
                 loadPlaylists()
             }
         }
+        viewModelScope.launch {
+            com.craftworks.music.managers.MediaSourceManager.selectedSource.collect {
+                loadPlaylists()
+            }
+        }
     }
 
     fun loadPlaylists() {
@@ -88,23 +93,22 @@ class PlaylistScreenViewModel @Inject constructor(
         if (_selectedPlaylist.value == null) return
 
         val playlistId = _selectedPlaylist.value?.mediaMetadata?.extras?.getString("navidromeID")
-        if (playlistId == null) return
+            ?: _selectedPlaylist.value?.mediaId
+        if (playlistId.isNullOrBlank()) return
 
         println("Fetching playlist details for playlist ID: $playlistId")
 
         viewModelScope.launch {
-            val loadingJob = launch {
-                if (_selectedPlaylistSongs.value.isEmpty()) {
-                    _isLoading.value = true
-                }
+            if (_selectedPlaylistSongs.value.isEmpty()) {
+                _isLoading.value = true
             }
-            loadingJob.start()
-            coroutineScope {
-                _selectedPlaylistSongs.value =
-                    async { playlistRepository.getPlaylistSongs(playlistId) }.await()
+            try {
+                _selectedPlaylistSongs.value = playlistRepository.getPlaylistSongs(playlistId)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                _isLoading.value = false
             }
-            loadingJob.cancel()
-            _isLoading.value = false
         }
     }
 
@@ -139,6 +143,9 @@ class PlaylistScreenViewModel @Inject constructor(
                 it.mediaMetadata.extras?.getString("navidromeID") == songId
             }
 
+            // Song not found in the current list (e.g. after a refresh) — nothing to remove.
+            if (index == -1) return@launch
+
             if (_selectedPlaylistSongs.value.size == 1 && index == 0) {
                 deletePlaylist(playlistId)
                 return@launch
@@ -166,9 +173,9 @@ class PlaylistScreenViewModel @Inject constructor(
         songId: String,
         rating: Int,
     ) {
-        val song = _selectedPlaylistSongs.value.first {
+        val song = _selectedPlaylistSongs.value.firstOrNull {
             it.mediaMetadata.extras?.getString("navidromeID") == songId
-        }
+        } ?: return
         val maxStars = (song.mediaMetadata.userRating as? StarRating)?.maxStars ?: 5
 
         val updatedSong = song.buildUpon().setMediaMetadata(

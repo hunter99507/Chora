@@ -2,6 +2,7 @@ package com.craftworks.music.providers.local
 
 import android.content.ContentUris
 import android.content.Context
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
@@ -26,7 +27,26 @@ class LocalProvider @Inject constructor(
     private companion object {
         private const val TAG = "LOCAL_PROVIDER"
         private const val LOCAL_PREFIX = "Local_"
-        private const val ALBUM_ART_PATH = "content://media/external/audio/albumart"
+        private val ALBUM_ART_URI = "content://media/external/audio/albumart".toUri()
+        private val PLACEHOLDER_URI = "android.resource://com.craftworks.music/${R.drawable.albumplaceholder}".toUri()
+    }
+
+    @Volatile
+    private var cachedSongs: List<MediaItem>? = null
+    @Volatile
+    private var lastSongsQueryTime: Long = 0L
+
+    fun clearCache() {
+        cachedSongs = null
+        lastSongsQueryTime = 0L
+    }
+
+    private fun getArtworkUri(albumId: Long): Uri {
+        return if (albumId > 0) {
+            ContentUris.withAppendedId(ALBUM_ART_URI, albumId)
+        } else {
+            PLACEHOLDER_URI
+        }
     }
 
     //region Albums
@@ -48,13 +68,10 @@ class LocalProvider @Inject constructor(
             MediaStore.Audio.Albums.ARTIST
         )
 
-        // Get all folders first
-        val folders = LocalProviderManager.getAllFolders()
-        val albumIdsInFolders = if (folders.isNotEmpty()) {
-            getAlbumIdsInFolders(folders)
-        } else {
-            emptySet()
-        }
+        // Get all active folders first
+        val folders = LocalProviderManager.getActiveFolders()
+        if (folders.isEmpty()) return@withContext emptyList()
+        val albumIdsInFolders = getAlbumIdsInFolders(folders)
 
         val selection = if (albumIdsInFolders.isNotEmpty()) {
             "${MediaStore.Audio.Albums._ID} IN (${albumIdsInFolders.joinToString(",")})"
@@ -82,14 +99,7 @@ class LocalProvider @Inject constructor(
                 val albumName = it.getString(nameIdx) ?: "Unknown"
                 val artistName = it.getString(artistIdx) ?: "Unknown"
 
-                val artworkUri = "$ALBUM_ART_PATH/$albumId".toUri().let { uri ->
-                    try {
-                        context.contentResolver.openInputStream(uri)?.close()
-                        uri
-                    } catch (e: Exception) {
-                        "android.resource://com.craftworks.music/${R.drawable.albumplaceholder}".toUri()
-                    }
-                }
+                val artworkUri = getArtworkUri(albumId)
 
                 val mediaMetadata = MediaMetadata.Builder()
                     .setTitle(albumName)
@@ -181,14 +191,7 @@ class LocalProvider @Inject constructor(
                 val artistName = cursor.getString(artistIdx) ?: "Unknown"
                 val year = cursor.getInt(yearIdx)
 
-                val artworkUri = "$ALBUM_ART_PATH/$albumIdLong".toUri().let { uri ->
-                    try {
-                        context.contentResolver.openInputStream(uri)?.close()
-                        uri
-                    } catch (e: Exception) {
-                        "android.resource://com.craftworks.music/${R.drawable.albumplaceholder}".toUri()
-                    }
-                }
+                val artworkUri = getArtworkUri(albumIdLong)
 
                 val songs = getLocalAlbumSongs(albumIdLong)
                 val totalDuration = songs.sumOf { it.mediaMetadata.durationMs ?: 0L }
@@ -213,7 +216,7 @@ class LocalProvider @Inject constructor(
 
                 albumWithSongs += MediaItem.Builder()
                     .setMediaId("$LOCAL_PREFIX$albumIdLong")
-                    .setUri("$ALBUM_ART_PATH/$albumIdLong")
+                    .setUri(getArtworkUri(albumIdLong))
                     .setMediaMetadata(mediaMetadata)
                     .build()
 
@@ -278,35 +281,23 @@ class LocalProvider @Inject constructor(
                 val title = cursor.getString(titleIdx)
                 val album = cursor.getStringOrNull(albumIdx) ?: "Unknown"
                 val artist = cursor.getStringOrNull(artistIdx) ?: "Unknown"
-                val format = cursor.getString(formatIdx)
+                val format = cursor.getStringOrNull(formatIdx) ?: "audio/mpeg"
                 val dateAdded = cursor.getString(dateAddedIdx) ?: ""
                 val rawTrack = cursor.getIntOrNull(trackIdx) ?: 0
                 val year = cursor.getIntOrNull(yearIdx) ?: 0
                 val duration = cursor.getIntOrNull(durationIdx) ?: 0
-                val bitrate = cursor.getIntOrNull(bitrateIdx) ?: 0
-                val genre = cursor.getStringOrNull(genreIdx) ?: ""
+                val bitrate = if (bitrateIdx != -1) cursor.getIntOrNull(bitrateIdx) ?: 0 else 0
+                val genre = if (genreIdx != -1) cursor.getStringOrNull(genreIdx) ?: "" else ""
 
                 val track = if (rawTrack >= 1000) rawTrack % 1000 else rawTrack
                 val discNumber = if (rawTrack >= 1000) rawTrack / 1000 else 1
 
-                val artworkUri = "$ALBUM_ART_PATH/$albumId".toUri().let { uri ->
-                    try {
-                        context.contentResolver.openInputStream(uri)?.close()
-                        uri
-                    } catch (e: Exception) {
-                        "android.resource://com.craftworks.music/${R.drawable.albumplaceholder}".toUri()
-                    }
-                }
+                val artworkUri = getArtworkUri(albumId)
 
                 val contentUri = ContentUris.withAppendedId(
                     MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
                     id
                 )
-
-                if (yearIdx != -1) {
-                    val rawYearString = cursor.getString(yearIdx)
-                    Log.d(TAG, "Raw year string from MediaStore: $rawYearString")
-                }
 
                 val mediaMetadata = MediaMetadata.Builder()
                     .setTitle(title)
@@ -342,12 +333,17 @@ class LocalProvider @Inject constructor(
     }
     //endregion
 
-    fun getLocalSongs(): List<MediaItem> {
+    @Synchronized
+    fun getLocalSongs(forceRefresh: Boolean = false): List<MediaItem> {
+        val now = System.currentTimeMillis()
+        if (!forceRefresh && cachedSongs != null && (now - lastSongsQueryTime) < 30_000) {
+            return cachedSongs!!
+        }
         val songs = mutableListOf<MediaItem>()
         val contentResolver = context.contentResolver
         val uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
 
-        val projection = arrayOf(
+        val projection = mutableListOf(
             MediaStore.Audio.Media._ID,
             MediaStore.Audio.Media.ALBUM_ID,
             MediaStore.Audio.Media.DATA,
@@ -359,9 +355,14 @@ class LocalProvider @Inject constructor(
             MediaStore.Audio.Media.TRACK,
             MediaStore.Audio.Media.YEAR,
             MediaStore.Audio.Media.DURATION,
-        )
+        ).apply {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                add(MediaStore.Audio.Media.BITRATE)
+                add(MediaStore.Audio.Media.GENRE)
+            }
+        }.toTypedArray()
 
-        val folders = LocalProviderManager.getAllFolders()
+        val folders = LocalProviderManager.getActiveFolders()
         if (folders.isEmpty()) return emptyList()
 
         val selectionBuilder = StringBuilder("${MediaStore.Audio.Media.IS_MUSIC} != 0 AND (")
@@ -401,22 +402,15 @@ class LocalProvider @Inject constructor(
                 val title = cursor.getString(titleIdx)
                 val album = cursor.getStringOrNull(albumIdx) ?: "Unknown"
                 val artist = cursor.getStringOrNull(artistIdx) ?: "Unknown"
-                val format = cursor.getString(formatIdx)
+                val format = cursor.getStringOrNull(formatIdx) ?: "audio/mpeg"
                 val dateAdded = cursor.getString(dateAddedIdx) ?: ""
                 val track = cursor.getIntOrNull(trackIdx) ?: 0
                 val year = cursor.getIntOrNull(yearIdx) ?: 0
                 val duration = cursor.getIntOrNull(durationIdx) ?: 0
-                val bitrate = cursor.getIntOrNull(bitrateIdx) ?: 0
-                val genre = cursor.getStringOrNull(genreIdx) ?: ""
+                val bitrate = if (bitrateIdx != -1) cursor.getIntOrNull(bitrateIdx) ?: 0 else 0
+                val genre = if (genreIdx != -1) cursor.getStringOrNull(genreIdx) ?: "" else ""
 
-                val artworkUri = "$ALBUM_ART_PATH/$albumId".toUri().let { uri ->
-                    try {
-                        context.contentResolver.openInputStream(uri)?.close()
-                        uri
-                    } catch (e: Exception) {
-                        "android.resource://com.craftworks.music/${R.drawable.albumplaceholder}".toUri()
-                    }
-                }
+                val artworkUri = getArtworkUri(albumId)
 
                 val contentUri = ContentUris.withAppendedId(
                     MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
@@ -429,6 +423,7 @@ class LocalProvider @Inject constructor(
                     .setArtist(artist)
                     .setArtworkUri(artworkUri)
                     .setIsPlayable(true)
+                    .setIsBrowsable(false)
                     .setTrackNumber(track)
                     .setRecordingYear(year)
                     .setDurationMs(duration.toLong())
@@ -451,32 +446,44 @@ class LocalProvider @Inject constructor(
             }
         }
 
+        cachedSongs = songs
+        lastSongsQueryTime = now
         return songs
     }
 
     fun getLocalArtists(): List<MediaData.Artist> {
-        val artists = mutableSetOf<MediaData.Artist>()
+        val artistsMap = mutableMapOf<String, MediaData.Artist>()
         val songs = getLocalSongs()
 
         songs.forEach { song ->
-            val artistName = song.mediaMetadata.artist ?: "Unknown"
+            val artistName = song.mediaMetadata.artist?.toString() ?: "Unknown"
             val artistId = song.mediaMetadata.extras?.getString("artistId") ?:
-            "$LOCAL_PREFIX${artistName.hashCode()}"
+                "$LOCAL_PREFIX${artistName.hashCode()}"
+            val songArt = song.mediaMetadata.artworkUri?.toString()
+                ?.takeIf { !it.contains("albumplaceholder") }
 
-            artists.add(
-                MediaData.Artist(
+            val existing = artistsMap[artistId]
+            if (existing == null) {
+                artistsMap[artistId] = MediaData.Artist(
                     navidromeID = artistId,
-                    name = artistName.toString(),
+                    name = artistName,
                     description = "",
-                    artistImageUrl = null
+                    artistImageUrl = songArt
                 )
-            )
+            } else if (existing.artistImageUrl.isNullOrEmpty() && !songArt.isNullOrEmpty()) {
+                artistsMap[artistId] = existing.copy(artistImageUrl = songArt)
+            }
         }
 
-        return artists.sortedBy { it.name }
+        return artistsMap.values.sortedBy { it.name }
     }
 
     suspend fun getAlbumsByArtistId(artistId: String): List<MediaItem> = withContext(Dispatchers.IO) {
+        val folders = LocalProviderManager.getActiveFolders()
+        if (folders.isEmpty()) return@withContext emptyList()
+        val albumIdsInFolders = getAlbumIdsInFolders(folders)
+        if (albumIdsInFolders.isEmpty()) return@withContext emptyList()
+
         val albums = mutableListOf<MediaItem>()
         val contentResolver = context.contentResolver
         val albumsUri = MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI
@@ -488,10 +495,12 @@ class LocalProvider @Inject constructor(
             MediaStore.Audio.Albums.FIRST_YEAR
         )
 
+        val selection = "${MediaStore.Audio.Albums._ID} IN (${albumIdsInFolders.joinToString(",")})"
+
         contentResolver.query(
             albumsUri,
             projection,
-            null, // get all albums
+            selection,
             null,
             "${MediaStore.Audio.Albums.ALBUM} ASC"
         )?.use { cursor ->
@@ -510,14 +519,7 @@ class LocalProvider @Inject constructor(
                 val thisArtistId = "$LOCAL_PREFIX${artistName.hashCode()}"
                 if (thisArtistId != artistId) continue
 
-                val artworkUri = "$ALBUM_ART_PATH/$albumId".toUri().let { uri ->
-                    try {
-                        context.contentResolver.openInputStream(uri)?.close()
-                        uri
-                    } catch (e: Exception) {
-                        "android.resource://com.craftworks.music/${R.drawable.albumplaceholder}".toUri()
-                    }
-                }
+                val artworkUri = getArtworkUri(albumId)
 
                 albums += MediaItem.Builder()
                     .setMediaId("$LOCAL_PREFIX$albumId")

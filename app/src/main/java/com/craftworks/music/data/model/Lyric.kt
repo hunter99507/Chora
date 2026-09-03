@@ -101,7 +101,9 @@ fun MediaData.StructuredLyrics.toLyrics(): List<Lyric> {
 fun LrcLibLyrics.toLyrics(): List<Lyric> {
     if (instrumental) return listOf()
 
-    if (lyricsfile.toString() != "null") {
+    // NOTE: use isNullOrBlank — a response without a "lyricsfile" field must not hijack
+    // the YAML branch (kotlinx defaults the field to ""), or synced/plain lyrics are lost.
+    if (!lyricsfile.isNullOrBlank()) {
         val settings = LoadSettings.builder().build()
         val raw = Load(settings).loadFromString(lyricsfile) as? Map<*, *>
             ?: throw IllegalArgumentException("Invalid YAML format")
@@ -129,13 +131,15 @@ fun LrcLibLyrics.toLyrics(): List<Lyric> {
         }
         return lines
     }
-    else if (syncedLyrics.toString() != "null") {
+    else if (!syncedLyrics.isNullOrBlank()) {
         val raw = mutableListOf<Pair<Int, String>>()
         syncedLyrics?.lines()?.forEach { lyric ->
             if (lyric.isBlank())
                 return@forEach
-            val timeStampsRaw = getTimeStamps(lyric)[0]
-            val time = mmssToMilliseconds(timeStampsRaw).toInt()
+            val tags = getTimeStamps(lyric)
+            if (tags.isEmpty())
+                return@forEach
+            val time = mmssToMilliseconds(tags[0]).toInt()
             val lyricText = lyric.substringAfter("]").trim()
             raw.add(Pair(time, lyricText))
         }
@@ -145,7 +149,7 @@ fun LrcLibLyrics.toLyrics(): List<Lyric> {
             .map { (time, lines) -> Lyric(time, lines.map { it.second }) }
             .sortedBy { it.startMs }
     }
-    else if (plainLyrics.toString() != "null") {
+    else if (!plainLyrics.isNullOrEmpty()) {
         Log.d("LYRICS", "Got LRCLIB plain lyrics: $plainLyrics")
         return listOf(Lyric(-1, listOf(plainLyrics.toString())))
     }

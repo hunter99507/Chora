@@ -1,5 +1,6 @@
 package com.craftworks.music.ui.screens.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,9 +41,11 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.craftworks.music.R
 import com.craftworks.music.data.model.Screen
+import com.craftworks.music.managers.EmbyJellyfinManager
 import com.craftworks.music.managers.LocalProviderManager
 import com.craftworks.music.managers.NavidromeManager
 import com.craftworks.music.providers.navidrome.navidromeStatus
+import com.craftworks.music.ui.elements.EmbyJellyfinProviderCard
 import com.craftworks.music.ui.elements.LRCLIBProviderCard
 import com.craftworks.music.ui.elements.LocalProviderCard
 import com.craftworks.music.ui.elements.NavidromeProviderCard
@@ -56,20 +59,30 @@ import com.craftworks.music.ui.elements.dialogs.dialogFocusable
 @Composable
 @Preview(showSystemUi = false, showBackground = true)
 fun S_ProviderScreen(navHostController: NavHostController = rememberNavController()) {
+    BackHandler {
+        if (!navHostController.popBackStack()) {
+            navHostController.navigate(Screen.Setting.route) {
+                launchSingleTop = true
+            }
+        }
+    }
+
     val context = LocalContext.current.applicationContext
 
     var showNavidromeServerDialog by remember { mutableStateOf(false) }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text(text = stringResource(R.string.Settings_Header_Media)) },
                 actions = {
                     IconButton(
                         onClick = {
-                            navHostController.navigate(Screen.Setting.route) {
-                                launchSingleTop = true
+                            if (!navHostController.popBackStack()) {
+                                navHostController.navigate(Screen.Setting.route) {
+                                    launchSingleTop = true
+                                }
                             }
                         },
                         modifier = Modifier.size(56.dp, 70.dp),
@@ -102,22 +115,31 @@ fun S_ProviderScreen(navHostController: NavHostController = rememberNavControlle
                     .padding(12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                LRCLIBProviderCard(context)
-
-                NetEaseProviderCard(context)
+                com.craftworks.music.ui.elements.DefaultSourceSelectorCard(context)
 
                 val localProviders by LocalProviderManager.allFolders.collectAsStateWithLifecycle()
                 val navidromeServers by NavidromeManager.allServers.collectAsStateWithLifecycle()
+                val embyServers by EmbyJellyfinManager.allServers.collectAsStateWithLifecycle()
 
                 // Local Providers First
                 for (local in localProviders) {
                     LocalProviderCard(local, context)
                 }
 
-                // Then Navidrome Providers
+                // Navidrome Providers
                 for (server in navidromeServers) {
                     NavidromeProviderCard(server)
                 }
+
+                // Emby / Jellyfin Providers
+                for (server in embyServers) {
+                    EmbyJellyfinProviderCard(server)
+                }
+
+                // Lyrics Providers at bottom
+                LRCLIBProviderCard(context)
+
+                NetEaseProviderCard(context)
             }
 
             FloatingActionButton(

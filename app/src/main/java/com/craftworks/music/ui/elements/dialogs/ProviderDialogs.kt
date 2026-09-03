@@ -57,11 +57,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavHostController
 import com.craftworks.music.R
+import com.craftworks.music.data.EmbyJellyfinLibrary
+import com.craftworks.music.data.EmbyJellyfinProvider
 import com.craftworks.music.data.NavidromeProvider
+import com.craftworks.music.data.datasource.emby.EmbyJellyfinDataSource
 import com.craftworks.music.data.model.Screen
+import com.craftworks.music.managers.EmbyJellyfinManager
 import com.craftworks.music.managers.LocalProviderManager
 import com.craftworks.music.managers.NavidromeManager
 import com.craftworks.music.managers.settings.AppearanceSettingsManager
@@ -203,9 +208,16 @@ fun CreateMediaProviderDialog(
 
             var expanded by remember { mutableStateOf(false) }
 
+            var embyStatus by remember { mutableStateOf("") }
+            var embyAuthToken by remember { mutableStateOf<String?>(null) }
+            var embyUserId by remember { mutableStateOf<String?>(null) }
+            var embyServerId by remember { mutableStateOf<String?>(null) }
+            var embyLibrariesSelection by remember { mutableStateOf<List<Pair<EmbyJellyfinLibrary, Boolean>>>(emptyList()) }
+
             val options = listOf(
                 stringResource(R.string.Source_Local),
-                stringResource(R.string.Source_Navidrome)
+                stringResource(R.string.Source_Navidrome),
+                stringResource(R.string.Source_Emby)
             )
             var selectedOptionText by remember { mutableStateOf(options[1]) }
 
@@ -313,7 +325,6 @@ fun CreateMediaProviderDialog(
                             else
                                 R.drawable.round_visibility_off_24
 
-                            // Please provide localized description for accessibility services
                             val description =
                                 if (passwordVisible) "Hide password" else "Show password"
 
@@ -369,7 +380,7 @@ fun CreateMediaProviderDialog(
                                 onClick = {
                                     coroutineScope.launch {
                                         val server = NavidromeProvider(
-                                            url,
+                                            java.util.UUID.randomUUID().toString(),
                                             url,
                                             username,
                                             password,
@@ -408,6 +419,235 @@ fun CreateMediaProviderDialog(
                                     )
                                     coroutineScope.launch {
                                         getNavidromeStatus(server)
+                                    }
+                                },
+                                modifier = Modifier
+                                    .height(50.dp)
+                                    .fillMaxWidth()
+                                    .bounceClick()
+                            ) {
+                                Text(
+                                    stringResource(R.string.Action_Login)
+                                )
+                            }
+                        }
+                    }
+                }
+            //endregion
+
+            //region Emby / Jellyfin
+            else if (selectedOptionText == stringResource(R.string.Source_Emby))
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    /* SERVER URL */
+                    OutlinedTextField(
+                        value = url,
+                        onValueChange = { url = it },
+                        label = { Text(stringResource(R.string.Label_Emby_URL)) },
+                        placeholder = { Text("http://192.168.0.30:8096") },
+                        singleLine = true,
+                        isError = embyStatus == "Invalid URL"
+                    )
+                    /* USERNAME */
+                    OutlinedTextField(
+                        value = username,
+                        onValueChange = { username = it },
+                        label = { Text(stringResource(R.string.Label_Navidrome_Username)) },
+                        singleLine = true,
+                        isError = embyStatus == "Authentication Failed"
+                    )
+                    /* PASSWORD */
+                    var passwordVisible by remember { mutableStateOf(false) }
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = { Text(stringResource(R.string.Label_Navidrome_Password)) },
+                        singleLine = true,
+                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            val image = if (passwordVisible)
+                                R.drawable.round_visibility_24
+                            else
+                                R.drawable.round_visibility_off_24
+
+                            val description =
+                                if (passwordVisible) "Hide password" else "Show password"
+
+                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                Icon(
+                                    imageVector = ImageVector.vectorResource(id = image),
+                                    description
+                                )
+                            }
+                        },
+                        isError = embyStatus == "Authentication Failed"
+                    )
+
+                    /* Allow Self Signed Certs */
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                    ) {
+                        Text(
+                            text = stringResource(R.string.Label_Allow_Self_Signed_Certs),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Normal,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.weight(1f),
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Start
+                        )
+                        Switch(checked = allowCerts, onCheckedChange = { allowCerts = it })
+                    }
+
+                    if (embyStatus.isNotEmpty()) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .animateContentSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Status: $embyStatus",
+                                fontWeight = FontWeight.Medium,
+                                fontSize = MaterialTheme.typography.bodyMedium.fontSize,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                modifier = Modifier.padding(vertical = 6.dp)
+                            )
+                        }
+                    }
+
+                    Crossfade (
+                        embyStatus == "ok"
+                    ) { isOk ->
+                        if (isOk) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                if (embyLibrariesSelection.isNotEmpty()) {
+                                    Text(
+                                        text = "Select Folders to Include:",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onBackground
+                                    )
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        embyLibrariesSelection.forEachIndexed { index, (library, isSelected) ->
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .background(MaterialTheme.colorScheme.surfaceBright)
+                                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Checkbox(
+                                                    checked = isSelected,
+                                                    onCheckedChange = { checked ->
+                                                        val updated = embyLibrariesSelection.toMutableList()
+                                                        updated[index] = Pair(library, checked)
+                                                        embyLibrariesSelection = updated
+                                                    }
+                                                )
+                                                Text(
+                                                    text = library.name,
+                                                    style = MaterialTheme.typography.bodyLarge,
+                                                    color = MaterialTheme.colorScheme.onBackground,
+                                                    modifier = Modifier.padding(start = 8.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Button(
+                                    onClick = {
+                                        coroutineScope.launch {
+                                            val selectedLibs = if (embyLibrariesSelection.isNotEmpty()) {
+                                                embyLibrariesSelection
+                                            } else {
+                                                listOf(Pair(EmbyJellyfinLibrary("0", "Music"), true))
+                                            }
+                                            val server = EmbyJellyfinProvider(
+                                                id = url,
+                                                url = url,
+                                                username = username,
+                                                password = password,
+                                                token = embyAuthToken,
+                                                userId = embyUserId,
+                                                serverId = embyServerId,
+                                                enabled = true,
+                                                allowSelfSignedCert = allowCerts,
+                                                libraryIds = selectedLibs
+                                            )
+                                            EmbyJellyfinManager.addServer(server, selectedLibraries = selectedLibs)
+                                            AppearanceSettingsManager(context).setUsername(username)
+                                            embyStatus = ""
+                                            embyLibrariesSelection = emptyList()
+                                            setShowDialog(false)
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .height(50.dp)
+                                        .fillMaxWidth()
+                                        .bounceClick(),
+                                    enabled = embyStatus == "ok"
+                                ) {
+                                    Text(
+                                        stringResource(R.string.Action_Add)
+                                    )
+                                }
+                            }
+                        }
+                        else {
+                            OutlinedButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        val auth = EmbyJellyfinDataSource().authenticate(
+                                            serverUrl = url,
+                                            username = username,
+                                            password = password,
+                                            allowSelfSignedCert = allowCerts
+                                        )
+                                        if (auth?.accessToken != null && auth.user != null) {
+                                            embyAuthToken = auth.accessToken
+                                            embyUserId = auth.user.id
+                                            embyServerId = auth.serverId
+
+                                            val tempServer = EmbyJellyfinProvider(
+                                                id = url,
+                                                url = url,
+                                                username = username,
+                                                password = password,
+                                                token = auth.accessToken,
+                                                userId = auth.user.id,
+                                                serverId = auth.serverId,
+                                                enabled = true,
+                                                allowSelfSignedCert = allowCerts
+                                            )
+                                            val views = EmbyJellyfinDataSource().getViews(tempServer)
+                                            val librariesWithSelection = if (views.isNotEmpty()) {
+                                                views.map { item ->
+                                                    val isMusic = item.collectionType?.lowercase() == "music"
+                                                    Pair(EmbyJellyfinLibrary(item.id, item.name), isMusic)
+                                                }.let { list ->
+                                                    // If no folder had collectionType == "music", check all by default
+                                                    if (list.none { it.second }) list.map { it.copy(second = true) } else list
+                                                }
+                                            } else {
+                                                EmbyJellyfinDataSource().getLibraries(tempServer).map { Pair(it, true) }
+                                            }
+                                            embyLibrariesSelection = librariesWithSelection
+                                            embyStatus = "ok"
+                                        } else {
+                                            embyStatus = "Authentication Failed"
+                                        }
                                     }
                                 },
                                 modifier = Modifier

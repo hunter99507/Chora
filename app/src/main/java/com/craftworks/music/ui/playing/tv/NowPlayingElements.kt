@@ -38,6 +38,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.core.graphics.ColorUtils
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -51,10 +53,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
+import com.craftworks.music.player.ChoraMediaLibraryService
+import com.craftworks.music.player.SongHelper
 import androidx.media3.ui.compose.state.rememberNextButtonState
 import androidx.media3.ui.compose.state.rememberPlayPauseButtonState
 import androidx.media3.ui.compose.state.rememberPreviousButtonState
@@ -84,9 +89,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.draw.shadow
-import androidx.core.graphics.ColorUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true)
@@ -111,10 +114,19 @@ fun PlaybackProgressSlider(
         }
     }
 
-    val queueStatus by remember(mediaController?.currentMediaItemIndex, mediaController?.mediaItemCount) {
+    var queuePosition by remember { mutableStateOf(Pair(0, 0)) }
+    fun updateQueuePosition() {
+        val player = ChoraMediaLibraryService.getInstance()?.player ?: mediaController
+        queuePosition = SongHelper.calculateQueuePosition(player)
+    }
+
+    LaunchedEffect(metadata, mediaController) {
+        updateQueuePosition()
+    }
+
+    val queueStatus by remember(queuePosition) {
         derivedStateOf {
-            val total = mediaController?.mediaItemCount ?: 0
-            val current = (mediaController?.currentMediaItemIndex ?: -1) + 1
+            val (current, total) = queuePosition
             if (total > 0 && current > 0) {
                 "$current / $total"
             } else {
@@ -171,9 +183,22 @@ fun PlaybackProgressSlider(
                 if (reason != Player.DISCONTINUITY_REASON_SEEK)
                     currentValue = newPosition.positionMs
             }
+
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                updateQueuePosition()
+            }
+
+            override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
+                updateQueuePosition()
+            }
+
+            override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+                updateQueuePosition()
+            }
         }
 
         mediaController?.addListener(listener)
+        updateQueuePosition()
 
         // Initial check in case state changed before listener was attached or for initial setup
         isPlaying = mediaController?.isPlaying ?: false
@@ -330,19 +355,26 @@ fun PlaybackProgressSlider(
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
-internal fun PreviousSongButton(player: Player, modifier: Modifier = Modifier) {
+internal fun PreviousSongButton(player: Player, color: Color = MaterialTheme.colorScheme.primary, modifier: Modifier = Modifier) {
     val state = rememberPreviousButtonState(player)
     IconButton(
-        onClick = state::onClick,
+        onClick = {
+            if (player.hasPreviousMediaItem()) {
+                player.seekToPreviousMediaItem()
+            } else {
+                player.seekToPrevious()
+            }
+            player.play()
+        },
         modifier = modifier
             .bounceClick(state.isEnabled)
             .moveClick(false, state.isEnabled),
         enabled = state.isEnabled,
         colors = IconButtonDefaults.colors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-            focusedContentColor = MaterialTheme.colorScheme.onSurface
+            containerColor = color.copy(alpha = 0.15f),
+            contentColor = color,
+            focusedContainerColor = color.copy(alpha = 0.35f),
+            focusedContentColor = color
         ),
         scale = IconButtonDefaults.scale(focusedScale = 1.15f)
     ) {
@@ -356,7 +388,7 @@ internal fun PreviousSongButton(player: Player, modifier: Modifier = Modifier) {
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
-internal fun PlayPauseButton(player: Player, modifier: Modifier = Modifier) {
+internal fun PlayPauseButton(player: Player, color: Color = MaterialTheme.colorScheme.primary, modifier: Modifier = Modifier) {
     val state = rememberPlayPauseButtonState(player)
     val icon =
         if (state.showPlay) Icons.Rounded.PlayArrow else ImageVector.vectorResource(R.drawable.media3_notification_pause)
@@ -364,15 +396,19 @@ internal fun PlayPauseButton(player: Player, modifier: Modifier = Modifier) {
         if (state.showPlay) "play"
         else "pause"
 
+    val iconTint = remember(color) {
+        if (ColorUtils.calculateLuminance(color.toArgb()) > 0.5) Color(0xFF16130E) else Color.White
+    }
+
     IconButton(
         onClick = state::onClick,
         modifier = modifier.bounceClick(state.isEnabled),
         enabled = state.isEnabled,
         colors = IconButtonDefaults.colors(
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            focusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-            focusedContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            containerColor = color,
+            contentColor = iconTint,
+            focusedContainerColor = color.copy(alpha = 0.85f),
+            focusedContentColor = iconTint
         ),
         scale = IconButtonDefaults.scale(focusedScale = 1.15f)
     ) {
@@ -386,19 +422,26 @@ internal fun PlayPauseButton(player: Player, modifier: Modifier = Modifier) {
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
-internal fun NextSongButton(player: Player, modifier: Modifier = Modifier) {
+internal fun NextSongButton(player: Player, color: Color = MaterialTheme.colorScheme.primary, modifier: Modifier = Modifier) {
     val state = rememberNextButtonState(player)
     IconButton(
-        onClick = state::onClick,
+        onClick = {
+            if (player.hasNextMediaItem()) {
+                player.seekToNextMediaItem()
+            } else {
+                player.seekToNext()
+            }
+            player.play()
+        },
         modifier = modifier
             .bounceClick(state.isEnabled)
             .moveClick(true, state.isEnabled),
         enabled = state.isEnabled,
         colors = IconButtonDefaults.colors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-            focusedContentColor = MaterialTheme.colorScheme.onSurface
+            containerColor = color.copy(alpha = 0.15f),
+            contentColor = color,
+            focusedContainerColor = color.copy(alpha = 0.35f),
+            focusedContentColor = color
         ),
         scale = IconButtonDefaults.scale(focusedScale = 1.15f)
     ) {
@@ -478,7 +521,7 @@ fun DownloadButton(size: Dp, metadata: MediaMetadata?, enabled: Boolean) {
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
-fun ShuffleButton(player: Player, modifier: Modifier = Modifier) {
+fun ShuffleButton(player: Player, color: Color = MaterialTheme.colorScheme.primary, modifier: Modifier = Modifier) {
     val state = rememberShuffleButtonState(player)
     val isActive = state.shuffleOn
     IconButton(
@@ -486,10 +529,10 @@ fun ShuffleButton(player: Player, modifier: Modifier = Modifier) {
         modifier = modifier,
         enabled = state.isEnabled,
         colors = IconButtonDefaults.colors(
-            containerColor = if (isActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.25f) else Color.Transparent,
-            contentColor = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
-            focusedContainerColor = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-            focusedContentColor = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+            containerColor = if (isActive) color.copy(alpha = 0.25f) else Color.Transparent,
+            contentColor = if (isActive) color else color.copy(alpha = 0.45f),
+            focusedContainerColor = if (isActive) color else color.copy(alpha = 0.2f),
+            focusedContentColor = if (isActive) (if (ColorUtils.calculateLuminance(color.toArgb()) > 0.5) Color(0xFF16130E) else Color.White) else color
         ),
         scale = IconButtonDefaults.scale(focusedScale = 1.15f),
     ) {
@@ -503,7 +546,7 @@ fun ShuffleButton(player: Player, modifier: Modifier = Modifier) {
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
-fun RepeatButton(player: Player, modifier: Modifier = Modifier) {
+fun RepeatButton(player: Player, color: Color = MaterialTheme.colorScheme.primary, modifier: Modifier = Modifier) {
     val state = rememberRepeatButtonState(player)
     val isActive = state.repeatModeState != Player.REPEAT_MODE_OFF
     val icon = repeatModeIcon(state.repeatModeState)
@@ -512,10 +555,10 @@ fun RepeatButton(player: Player, modifier: Modifier = Modifier) {
         modifier = modifier,
         enabled = state.isEnabled,
         colors = IconButtonDefaults.colors(
-            containerColor = if (isActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.25f) else Color.Transparent,
-            contentColor = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
-            focusedContainerColor = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-            focusedContentColor = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+            containerColor = if (isActive) color.copy(alpha = 0.25f) else Color.Transparent,
+            contentColor = if (isActive) color else color.copy(alpha = 0.45f),
+            focusedContainerColor = if (isActive) color else color.copy(alpha = 0.2f),
+            focusedContentColor = if (isActive) (if (ColorUtils.calculateLuminance(color.toArgb()) > 0.5) Color(0xFF16130E) else Color.White) else color
         ),
         scale = IconButtonDefaults.scale(focusedScale = 1.15f),
     ) {

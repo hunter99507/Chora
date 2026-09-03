@@ -27,11 +27,15 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.core.graphics.ColorUtils
+import com.craftworks.music.ui.playing.getVibrantSeekbarColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -245,6 +249,13 @@ fun TvNowPlaying(
                 PlaybackProgressSlider(animatedAccentColor, iconColor, mediaController, metadata)
             }
 
+            val isDarkControlsBackground = remember(iconColor) {
+                ColorUtils.calculateLuminance(iconColor.toArgb()) > 0.45
+            }
+            val vibrantControlsColor = remember(animatedAccentColor, isDarkControlsBackground) {
+                getVibrantSeekbarColor(animatedAccentColor, isDarkControlsBackground)
+            }
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -259,29 +270,34 @@ fun TvNowPlaying(
                     ) {
                         ShuffleButton(
                             player,
-                            Modifier.size(28.dp)
+                            color = vibrantControlsColor,
+                            modifier = Modifier.size(28.dp)
                         )
 
                         PreviousSongButton(
                             player,
-                            Modifier.size(34.dp)
+                            color = vibrantControlsColor,
+                            modifier = Modifier.size(34.dp)
                         )
 
                         PlayPauseButton(
                             player,
-                            Modifier
+                            color = vibrantControlsColor,
+                            modifier = Modifier
                                 .size(44.dp)
                                 .requestFocusOnFirstGainingVisibility()
                         )
 
                         NextSongButton(
                             player,
-                            Modifier.size(34.dp)
+                            color = vibrantControlsColor,
+                            modifier = Modifier.size(34.dp)
                         )
 
                         RepeatButton(
                             player,
-                            Modifier.size(28.dp)
+                            color = vibrantControlsColor,
+                            modifier = Modifier.size(28.dp)
                         )
                     }
                 }

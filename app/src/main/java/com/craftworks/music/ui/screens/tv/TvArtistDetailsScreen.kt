@@ -56,12 +56,19 @@ import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import androidx.compose.foundation.layout.height
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import com.craftworks.music.R
 import com.craftworks.music.data.model.Screen
 import com.craftworks.music.data.model.toAlbum
 import com.craftworks.music.player.SongHelper
 import com.craftworks.music.ui.elements.tv.TvAlbumCard
+import com.craftworks.music.ui.screens.ArtistHeaderCollage
 import com.craftworks.music.ui.viewmodels.ArtistsScreenViewModel
+import com.craftworks.music.util.AmbientGradientBackground
+import com.craftworks.music.util.PaletteHelper
 import kotlinx.coroutines.launch
 import java.net.URLEncoder
 
@@ -72,9 +79,24 @@ fun TvArtistDetailsScreen(
     mediaController: MediaController? = null,
     viewModel: ArtistsScreenViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     val showLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val artist = viewModel.selectedArtist.collectAsStateWithLifecycle().value
     val artistAlbums = viewModel.artistAlbums.collectAsStateWithLifecycle().value
+
+    var paletteColors by remember { mutableStateOf<List<Color>>(emptyList()) }
+    val firstCover = remember(artistAlbums, artist?.artistImageUrl) {
+        val albumArt = artistAlbums.firstOrNull()?.mediaMetadata?.artworkUri?.toString()
+        if (!albumArt.isNullOrBlank()) albumArt else artist?.artistImageUrl
+    }
+    LaunchedEffect(firstCover) {
+        if (!firstCover.isNullOrBlank()) {
+            val colors = PaletteHelper.extractColorsFromUri(firstCover, context)
+            if (colors.isNotEmpty()) {
+                paletteColors = colors
+            }
+        }
+    }
 
     AnimatedVisibility(
         visible = showLoading || artist == null,
@@ -90,7 +112,7 @@ fun TvArtistDetailsScreen(
     }
 
     AnimatedVisibility(
-        visible = !showLoading,
+        visible = !showLoading && artist != null,
         enter = fadeIn()
     ) {
         val coroutineScope = rememberCoroutineScope()
@@ -99,63 +121,66 @@ fun TvArtistDetailsScreen(
         LaunchedEffect(Unit) {
             playRequester.requestFocus()
         }
-        val groupedAlbums =
-            artistAlbums.groupBy { it.mediaMetadata.recordingYear }
-                .toSortedMap(compareByDescending { it })
-
-        LazyVerticalGrid(
-            modifier = Modifier
-                .fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 48.dp, vertical = 24.dp),
-            columns = GridCells.Fixed(5),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        AmbientGradientBackground(
+            colors = paletteColors,
+            modifier = Modifier.fillMaxSize()
         ) {
-            item(span = { GridItemSpan(5) }) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusGroup(),
-                    horizontalArrangement = Arrangement.spacedBy(24.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(artist?.artistImageUrl)
-                            .diskCacheKey(artist?.navidromeID)
-                            .crossfade(true)
-                            .build(),
-                        fallback = painterResource(R.drawable.rounded_artist_24),
-                        contentScale = ContentScale.Crop,
-                        contentDescription = null,
+            LazyVerticalGrid(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 48.dp, end = 48.dp, bottom = 48.dp),
+                columns = GridCells.Fixed(5),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // 1. Hero Artwork Collage with Melting Bottom Edge
+                item(span = { GridItemSpan(5) }) {
+                    ArtistHeaderCollage(
+                        artistImageUrl = artist?.artistImageUrl,
+                        albums = artistAlbums,
                         modifier = Modifier
-                            .size(240.dp)
-                            .clip(CircleShape)
+                            .fillMaxWidth()
+                            .height(330.dp)
                     )
+                }
 
-                    // Artist Name
+                // 2. Artist Title, Metadata, and Action Buttons
+                item(span = { GridItemSpan(5) }) {
                     Column(
                         horizontalAlignment = Alignment.Start,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusGroup()
                     ) {
                         Text(
                             text = artist?.name ?: "",
-                            style = MaterialTheme.typography.titleLarge,
+                            style = MaterialTheme.typography.headlineLarge,
                             color = MaterialTheme.colorScheme.onBackground,
                             fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center,
                             maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
+                            overflow = TextOverflow.Ellipsis
                         )
 
-                        // Biography
                         Text(
-                            text = artist?.description?.split("<a target")?.first() ?: "",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                            text = "${artistAlbums.size} ${if (artistAlbums.size == 1) "album" else "albums"}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         )
+
+                        if (!artist?.description.isNullOrBlank()) {
+                            Text(
+                                text = artist.description.split("<a target").first(),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
 
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 4.dp)
                         ) {
                             Button(
                                 onClick = {
@@ -180,9 +205,7 @@ fun TvArtistDetailsScreen(
                                         }
                                     }
                                 },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .focusRequester(playRequester),
+                                modifier = Modifier.focusRequester(playRequester),
                                 contentPadding = ButtonDefaults.ButtonWithIconContentPadding
                             ) {
                                 Icon(
@@ -196,32 +219,29 @@ fun TvArtistDetailsScreen(
 
                             OutlinedButton(
                                 onClick = {
-                                    mediaController?.shuffleModeEnabled = true
                                     coroutineScope.launch {
-                                        val allArtistSongsList = artistAlbums.map {
-                                            it.mediaMetadata.extras?.getString("navidromeID").let {
-                                                val album = viewModel.getAlbum(it ?: "")
-                                                if (album.isNotEmpty())
-                                                    album.subList(1, album.size)
-                                                else
-                                                    emptyList()
-                                            }
+                                        val allArtistSongsList = artistAlbums.flatMap {
+                                            val navId = it.mediaMetadata.extras?.getString("navidromeID") ?: it.mediaId
+                                            val album = viewModel.getAlbum(navId)
+                                            if (album.isNotEmpty())
+                                                album.subList(1, album.size)
+                                            else
+                                                emptyList()
                                         }
 
-                                        mediaController?.shuffleModeEnabled = true
-                                        val random = allArtistSongsList.indices.random()
-                                        SongHelper.play(
-                                            allArtistSongsList.flatten(),
-                                            random,
-                                            mediaController
-                                        )
-                                        navHostController.navigate(Screen.NowPlayingLandscape.route) {
-                                            launchSingleTop = true
+                                        if (allArtistSongsList.isNotEmpty()) {
+                                            SongHelper.play(
+                                                allArtistSongsList,
+                                                0,
+                                                mediaController,
+                                                shuffle = true
+                                            )
+                                            navHostController.navigate(Screen.NowPlayingLandscape.route) {
+                                                launchSingleTop = true
+                                            }
                                         }
                                     }
                                 },
-                                modifier = Modifier
-                                    .weight(1f),
                                 contentPadding = ButtonDefaults.ButtonWithIconContentPadding
                             ) {
                                 Icon(
@@ -235,19 +255,8 @@ fun TvArtistDetailsScreen(
                         }
                     }
                 }
-            }
 
-            groupedAlbums.forEach { (groupName, albumsInGroup) ->
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    Text(
-                        text = groupName.toString(),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier
-                            .padding(vertical = 8.dp)
-                    )
-                }
-                items(albumsInGroup) { album ->
+                items(artistAlbums) { album ->
                     TvAlbumCard(
                         album = album,
                         onClick = {

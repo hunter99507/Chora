@@ -50,6 +50,8 @@ fun NowPlayingContent(
     mediaController: MediaController? = null,
     metadata: MediaMetadata? = null,
     viewModel: NowPlayingViewModel = viewModel(),
+    isExpanded: Boolean = true,
+    onClose: () -> Unit = {}
 ) {
     val backgroundStyle by viewModel.backgroundStyle.collectAsStateWithLifecycle(NowPlayingBackground.STATIC_BLUR)
     val backgroundDarkMode by viewModel.isBackgroundDark.collectAsStateWithLifecycle()
@@ -82,6 +84,20 @@ fun NowPlayingContent(
 
     NowPlaying_Background(colors, backgroundStyle, targetOverlayColor)
 
+    if (isExpanded) {
+        androidx.activity.compose.BackHandler {
+            if (lyricsOpen) {
+                viewModel.setLyricsOpen(false)
+            } else if (playQueueOpen) {
+                viewModel.setPlayQueueOpen(false)
+            } else if (detailsOpen) {
+                viewModel.setDetailsOpen(false)
+            } else {
+                onClose()
+            }
+        }
+    }
+
     if (LocalConfiguration.current.uiMode and Configuration.UI_MODE_TYPE_MASK == Configuration.UI_MODE_TYPE_TELEVISION) {
         TvNowPlaying(
             mediaController,
@@ -111,7 +127,8 @@ fun NowPlayingContent(
             onToggleQueue = { viewModel.setPlayQueueOpen(!playQueueOpen) },
             onToggleDetails = { viewModel.setDetailsOpen(!detailsOpen) },
             onOpenSleepTimer = { viewModel.setSleepTimerDialogOpen(true) },
-            onRefreshLyrics =  { viewModel.refreshLyrics(metadata) }
+            onRefreshLyrics =  { viewModel.refreshLyrics(metadata) },
+            onClose = onClose
         )
     }
 

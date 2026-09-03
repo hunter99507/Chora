@@ -52,7 +52,7 @@ import com.craftworks.music.data.repository.LyricsState
 import com.craftworks.music.managers.settings.AppearanceSettingsManager
 import com.craftworks.music.managers.settings.LocalDataSettingsManager
 import com.craftworks.music.managers.settings.MediaProviderSettingsManager
-import com.craftworks.music.ui.elements.SwipeableTabContent
+import com.craftworks.music.ui.screens.MainTabsPagerScreen
 import com.craftworks.music.ui.playing.NowPlayingContent
 import com.craftworks.music.ui.playing.NowPlayingViewModel
 import com.craftworks.music.ui.playing.dpToPx
@@ -119,61 +119,21 @@ fun SetupNavGraph(
 
 
 
-    val topLevelTabRoutes = listOf(
-        Screen.Home.route,
-        Screen.Albums.route,
-        Screen.Song.route,
-        Screen.Artists.route,
-        Screen.Playlists.route
-    )
-
     NavHost(
         navController = navController,
-        startDestination = Screen.Home.route,
+        startDestination = "tabs_screen",
         modifier = Modifier.padding(bottom = bottomPadding, start = leftPadding),
         enterTransition = {
-            val fromIndex = topLevelTabRoutes.indexOf(initialState.destination.route)
-            val toIndex = topLevelTabRoutes.indexOf(targetState.destination.route)
-            if (fromIndex != -1 && toIndex != -1 && fromIndex != toIndex) {
-                if (toIndex > fromIndex) {
-                    slideIntoContainer(
-                        towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
-                    ) + fadeIn(animationSpec = tween(300))
-                } else {
-                    slideIntoContainer(
-                        towards = AnimatedContentTransitionScope.SlideDirection.End,
-                        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
-                    ) + fadeIn(animationSpec = tween(300))
-                }
-            } else {
-                slideIntoContainer(
-                    towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                    animationSpec = tween(300, easing = FastOutSlowInEasing)
-                ) + fadeIn(animationSpec = tween(300))
-            }
+            slideIntoContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                animationSpec = tween(220, easing = FastOutSlowInEasing)
+            ) + fadeIn(animationSpec = tween(220))
         },
         exitTransition = {
-            val fromIndex = topLevelTabRoutes.indexOf(initialState.destination.route)
-            val toIndex = topLevelTabRoutes.indexOf(targetState.destination.route)
-            if (fromIndex != -1 && toIndex != -1 && fromIndex != toIndex) {
-                if (toIndex > fromIndex) {
-                    slideOutOfContainer(
-                        towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
-                    ) + fadeOut(animationSpec = tween(250))
-                } else {
-                    slideOutOfContainer(
-                        towards = AnimatedContentTransitionScope.SlideDirection.End,
-                        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
-                    ) + fadeOut(animationSpec = tween(250))
-                }
-            } else {
-                slideOutOfContainer(
-                    towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                    animationSpec = tween(300, easing = FastOutSlowInEasing)
-                ) + fadeOut(animationSpec = tween(250))
-            }
+            slideOutOfContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                animationSpec = tween(220, easing = FastOutSlowInEasing)
+            ) + fadeOut(animationSpec = tween(200))
         },
         popEnterTransition = {
             slideIntoContainer(
@@ -190,19 +150,121 @@ fun SetupNavGraph(
         route = "main_graph"
     ) {
         println("Recomposing NavHost!")
+        // Single container for all 5 tab screens — uses HorizontalPager for finger-tracking
+        composable(route = "tabs_screen") { backStackEntry ->
+            val parentEntry = remember(backStackEntry) {
+                navController.getBackStackEntry("main_graph")
+            }
+            if (isTv) {
+                // TV: show the Home screen in the TV navigation wrapper as before
+                val viewModel: HomeScreenViewModel = hiltViewModel(parentEntry)
+                val playlistViewModel: PlaylistScreenViewModel = hiltViewModel(parentEntry)
+                TvSideNavigation(navController, mediaController) {
+                    TvHomeScreen(navController, mediaController, viewModel, playlistViewModel)
+                }
+            } else {
+                MainTabsPagerScreen(
+                    parentBackStackEntry = parentEntry,
+                    navController = navController,
+                    mediaController = mediaController
+                )
+            }
+        }
+
         composable(route = Screen.Home.route) { backStackEntry ->
             val parentEntry = remember(backStackEntry) {
                 navController.getBackStackEntry("main_graph")
             }
-            val viewModel: HomeScreenViewModel = hiltViewModel(parentEntry)
-            if (isTv)
+            if (isTv) {
+                val viewModel: HomeScreenViewModel = hiltViewModel(parentEntry)
+                val playlistViewModel: PlaylistScreenViewModel = hiltViewModel(parentEntry)
                 TvSideNavigation(navController, mediaController) {
-                    TvHomeScreen(navController, mediaController, viewModel)
+                    TvHomeScreen(navController, mediaController, viewModel, playlistViewModel)
                 }
-            else
-                SwipeableTabContent(navController, Screen.Home.route) {
-                    HomeScreen(navController, mediaController, viewModel)
+            } else {
+                com.craftworks.music.ui.elements.TabStateHolder.selectTab("home_screen")
+                MainTabsPagerScreen(
+                    parentBackStackEntry = parentEntry,
+                    navController = navController,
+                    mediaController = mediaController
+                )
+            }
+        }
+
+        composable(route = Screen.Albums.route) { backStackEntry ->
+            val parentEntry = remember(backStackEntry) {
+                navController.getBackStackEntry("main_graph")
+            }
+            if (isTv) {
+                val viewModel: AlbumScreenViewModel = hiltViewModel(parentEntry)
+                TvSideNavigation(navController, mediaController) {
+                    TvAlbumScreen(navController, viewModel)
                 }
+            } else {
+                com.craftworks.music.ui.elements.TabStateHolder.selectTab("album_screen")
+                MainTabsPagerScreen(
+                    parentBackStackEntry = parentEntry,
+                    navController = navController,
+                    mediaController = mediaController
+                )
+            }
+        }
+
+        composable(route = Screen.Song.route) { backStackEntry ->
+            val parentEntry = remember(backStackEntry) {
+                navController.getBackStackEntry("main_graph")
+            }
+            if (isTv) {
+                val viewModel: SongsScreenViewModel = hiltViewModel(parentEntry)
+                TvSideNavigation(navController, mediaController) {
+                    TvSongsScreen(mediaController, navController, viewModel)
+                }
+            } else {
+                com.craftworks.music.ui.elements.TabStateHolder.selectTab("songs_screen")
+                MainTabsPagerScreen(
+                    parentBackStackEntry = parentEntry,
+                    navController = navController,
+                    mediaController = mediaController
+                )
+            }
+        }
+
+        composable(route = Screen.Artists.route) { backStackEntry ->
+            val parentEntry = remember(backStackEntry) {
+                navController.getBackStackEntry("main_graph")
+            }
+            if (isTv) {
+                val viewModel: ArtistsScreenViewModel = hiltViewModel(parentEntry)
+                TvSideNavigation(navController, mediaController) {
+                    TvArtistScreen(navController, viewModel)
+                }
+            } else {
+                com.craftworks.music.ui.elements.TabStateHolder.selectTab("artists_screen")
+                MainTabsPagerScreen(
+                    parentBackStackEntry = parentEntry,
+                    navController = navController,
+                    mediaController = mediaController
+                )
+            }
+        }
+
+        composable(route = Screen.Playlists.route) { backStackEntry ->
+            val parentEntry = remember(backStackEntry) {
+                navController.getBackStackEntry("main_graph")
+            }
+            if (isTv) {
+                val viewModel: PlaylistScreenViewModel = hiltViewModel(parentEntry)
+                TvSideNavigation(navController, mediaController) {
+                    TvPlaylistScreen(navController, viewModel)
+                }
+            } else {
+                com.craftworks.music.ui.elements.TabStateHolder.selectTab("playlist_screen")
+                MainTabsPagerScreen(
+                    parentBackStackEntry = parentEntry,
+                    navController = navController,
+                    mediaController = mediaController
+                )
+            }
         }
         composable(
             route = Screen.HomeLists.route + "/{category}",
@@ -231,20 +293,6 @@ fun SetupNavGraph(
             )
         }
 
-        composable(route = Screen.Song.route) { backStackEntry ->
-            val parentEntry = remember(backStackEntry) {
-                navController.getBackStackEntry("main_graph")
-            }
-            val viewModel: SongsScreenViewModel = hiltViewModel(parentEntry)
-            if (isTv)
-                TvSideNavigation(navController, mediaController) {
-                    TvSongsScreen(mediaController, navController, viewModel)
-                }
-            else
-                SwipeableTabContent(navController, Screen.Song.route) {
-                    SongsScreen(mediaController, viewModel)
-                }
-        }
         composable(route = Screen.Radio.route) { backStackEntry ->
             val parentEntry = remember(backStackEntry) {
                 navController.getBackStackEntry("main_graph")
@@ -259,20 +307,6 @@ fun SetupNavGraph(
         }
 
         //Albums
-        composable(route = Screen.Albums.route) { backStackEntry ->
-            val parentEntry = remember(backStackEntry) {
-                navController.getBackStackEntry("main_graph")
-            }
-            val viewModel: AlbumScreenViewModel = hiltViewModel(parentEntry)
-            if (isTv)
-                TvSideNavigation(navController, mediaController) {
-                    TvAlbumScreen(navController, viewModel)
-                }
-            else
-                SwipeableTabContent(navController, Screen.Albums.route) {
-                    AlbumScreen(navController, mediaController, viewModel)
-                }
-        }
         composable(
             route = Screen.AlbumDetails.route + "/{album}/{image}",
             arguments = listOf(
@@ -285,7 +319,8 @@ fun SetupNavGraph(
             )
         ) { backStackEntry ->
             val albumId = backStackEntry.arguments?.getString("album") ?: ""
-            val albumImageUri = URLDecoder.decode(backStackEntry.arguments?.getString("image"), "UTF-8")
+            val albumImageUri = backStackEntry.arguments?.getString("image")
+                ?.let { URLDecoder.decode(it, "UTF-8") } ?: ""
             if (isTv)
                 TvAlbumDetails(
                     albumId,
@@ -301,64 +336,28 @@ fun SetupNavGraph(
                     mediaController,
                 )
         }
-        //Artist
-        navigation(startDestination = Screen.Artists.route, route = "artists_graph") {
-            composable(route = Screen.Artists.route) { backStackEntry ->
-                val parentEntry = remember(backStackEntry) {
-                    navController.getBackStackEntry("main_graph")
-                }
-                val viewModel: ArtistsScreenViewModel = hiltViewModel(parentEntry)
-
-                if (isTv)
-                    TvSideNavigation(navController, mediaController) {
-                        TvArtistScreen(navController, viewModel)
-                    }
-                else
-                    SwipeableTabContent(navController, Screen.Artists.route) {
-                        ArtistsScreen(navController, mediaController, viewModel)
-                    }
+        composable(route = Screen.ArtistDetails.route) { backStackEntry ->
+            val parentEntry = remember(backStackEntry) {
+                navController.getBackStackEntry("main_graph")
             }
-            composable(route = Screen.ArtistDetails.route) { backStackEntry ->
-                val parentEntry = remember(backStackEntry) {
-                    navController.getBackStackEntry("main_graph")
-                }
-                val viewModel: ArtistsScreenViewModel = hiltViewModel(parentEntry)
+            val viewModel: ArtistsScreenViewModel = hiltViewModel(parentEntry)
 
-                if (isTv)
-                    TvArtistDetailsScreen(navController, mediaController, viewModel)
-                else
-                    ArtistDetails(navController, mediaController, viewModel)
-            }
+            if (isTv)
+                TvArtistDetailsScreen(navController, mediaController, viewModel)
+            else
+                ArtistDetails(navController, mediaController, viewModel)
         }
 
-        //Playlists
-        navigation(startDestination = Screen.Playlists.route, route = "playlists_graph") {
-            composable(route = Screen.Playlists.route) { backStackEntry ->
-                val parentEntry = remember(backStackEntry) {
-                    navController.getBackStackEntry("main_graph")
-                }
-                val viewModel: PlaylistScreenViewModel = hiltViewModel(parentEntry)
-
-                if (isTv)
-                    TvSideNavigation(navController, mediaController) {
-                        TvPlaylistScreen(navController, viewModel)
-                    }
-                else
-                    SwipeableTabContent(navController, Screen.Playlists.route) {
-                        PlaylistScreen(navController, viewModel)
-                    }
+        composable(route = Screen.PlaylistDetails.route) { backStackEntry ->
+            val parentEntry = remember(backStackEntry) {
+                navController.getBackStackEntry("main_graph")
             }
-            composable(route = Screen.PlaylistDetails.route) { backStackEntry ->
-                val parentEntry = remember(backStackEntry) {
-                    navController.getBackStackEntry("main_graph")
-                }
-                val viewModel: PlaylistScreenViewModel = hiltViewModel(parentEntry)
+            val viewModel: PlaylistScreenViewModel = hiltViewModel(parentEntry)
 
-                if (isTv)
-                    TvPlaylistDetails(navController, mediaController, viewModel)
-                else
-                    PlaylistDetails(navController, mediaController, viewModel)
-            }
+            if (isTv)
+                TvPlaylistDetails(navController, mediaController, viewModel)
+            else
+                PlaylistDetails(navController, mediaController, viewModel)
         }
 
         //Settings
@@ -430,7 +429,7 @@ fun SetupNavGraph(
         composable(route = Screen.NowPlayingLandscape.route) {
             if (LocalWindowInfo.current.containerSize.width < dpToPx(640)) {
                 navController.popBackStack()
-                navController.navigate(Screen.Home.route) {
+                navController.navigate("tabs_screen") {
                     launchSingleTop = true
                 }
             }
@@ -465,9 +464,11 @@ fun SetupNavGraph(
             }
 
             NowPlayingContent(
-                mediaController,
-                metadata,
-                viewModel
+                mediaController = mediaController,
+                metadata = metadata,
+                viewModel = viewModel,
+                isExpanded = true,
+                onClose = { navController.popBackStack() }
             )
 
             // Keep screen on

@@ -1,5 +1,7 @@
 package com.craftworks.music.ui.screens
 
+import com.craftworks.music.managers.DataRefreshManager
+
 import android.content.res.Configuration
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -26,6 +28,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
@@ -50,6 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
@@ -58,8 +62,11 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.MediaItem
@@ -68,6 +75,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.craftworks.music.R
 import com.craftworks.music.data.model.Screen
+import com.craftworks.music.managers.EmbyJellyfinManager
 import com.craftworks.music.managers.NavidromeManager
 import com.craftworks.music.managers.settings.AppearanceSettingsManager
 import com.craftworks.music.player.SongHelper
@@ -127,7 +135,9 @@ fun HomeScreen(
         showRipple++
     }
 
-    val libraries by NavidromeManager.libraries.collectAsStateWithLifecycle()
+    val navidromeLibraries by NavidromeManager.libraries.collectAsStateWithLifecycle()
+    val embyLibraries by EmbyJellyfinManager.libraries.collectAsStateWithLifecycle()
+    val isEmbyActive = EmbyJellyfinManager.checkActiveServers()
 
     PullToRefreshBox(
         modifier = Modifier,
@@ -152,70 +162,65 @@ fun HomeScreen(
                         bottom = 4.dp
                     )
             ) {
-                Text(
-                    text = "Chora",
-                    color = MaterialTheme.colorScheme.onBackground,
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold,
-                )
-                IconButton(
-                    onClick = {
-                        navHostController.navigate(Screen.Setting.route) {
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    modifier = Modifier.size(48.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Icon(
-                        ImageVector.vectorResource(R.drawable.rounded_settings_24),
-                        contentDescription = "Settings",
-                        modifier = Modifier.size(28.dp)
+                    val choraGradient = Brush.linearGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary,
+                            MaterialTheme.colorScheme.tertiary
+                        ),
+                        start = Offset(0f, 0f),
+                        end = Offset(200f, 0f)
                     )
+                    @OptIn(ExperimentalTextApi::class)
+                    Text(
+                        text = "Chora",
+                        style = MaterialTheme.typography.headlineLarge.merge(
+                            TextStyle(
+                                brush = choraGradient,
+                                fontWeight = FontWeight.ExtraBold,
+                                letterSpacing = (-0.5).sp
+                            )
+                        )
+                    )
+                    com.craftworks.music.ui.elements.SourceSelectorPill()
                 }
-            }
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .padding(horizontal = 12.dp)
-                    .horizontalScroll(rememberScrollState())
-            ) {
-                if (libraries.size > 1) {
-                    libraries.forEach { (library, isSelected) ->
-                        FilterChip(
-                            onClick = {
-                                NavidromeManager.currentServerId.value?.let { serverId ->
-                                    NavidromeManager.toggleServerLibraryEnabled(
-                                        serverId,
-                                        library.id,
-                                        !isSelected
-                                    )
-                                }
-                                showRipple++
-                            },
-                            label = {
-                                Text(library.name)
-                            },
-                            selected = isSelected,
-                            leadingIcon = if (isSelected) {
-                                {
-                                    Icon(
-                                        imageVector = Icons.Filled.Done,
-                                        contentDescription = "Done icon",
-                                        modifier = Modifier.size(FilterChipDefaults.IconSize)
-                                    )
-                                }
-                            } else {
-                                null
-                            },
-                            modifier = Modifier.padding(end = 8.dp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = {
+                            viewModel.loadHomeScreenData(forceRefresh = true)
+                            DataRefreshManager.notifyDataSourcesChanged()
+                            showRipple++
+                        },
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Refresh,
+                            contentDescription = "Refresh",
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
+                    IconButton(
+                        onClick = {
+                            navHostController.navigate(Screen.Setting.route) {
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(
+                            ImageVector.vectorResource(R.drawable.rounded_settings_24),
+                            contentDescription = "Settings",
+                            modifier = Modifier.size(28.dp)
                         )
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(6.dp))
 
             val orderedHomeItems = AppearanceSettingsManager(context).homeItemsItemsFlow.collectAsState(
                 initial = listOf(

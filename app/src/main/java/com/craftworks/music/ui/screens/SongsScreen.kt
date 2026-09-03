@@ -21,6 +21,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -83,6 +84,7 @@ fun SongsScreen(
         onRefresh = onRefresh
     ) {
         Scaffold(
+            containerColor = Color.Transparent,
             modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
             topBar = {
                 TopBarWithSearch(
@@ -111,11 +113,7 @@ fun SongsScreen(
                         Row {
                             IconButton(
                                 onClick = {
-                                    coroutineScope.launch {
-                                        if (allSongsList.isNotEmpty()) {
-                                            SongHelper.play(allSongsList.shuffled(), 0, mediaController)
-                                        }
-                                    }
+                                    viewModel.shuffleAll(mediaController)
                                 }
                             ) {
                                 Icon(

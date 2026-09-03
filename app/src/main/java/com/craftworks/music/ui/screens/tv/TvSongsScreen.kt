@@ -32,6 +32,16 @@ import androidx.media3.common.MediaItem
 import androidx.media3.session.MediaController
 import androidx.navigation.NavController
 import androidx.tv.material3.ExperimentalTvMaterial3Api
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
+import androidx.tv.material3.Button
+import androidx.tv.material3.Icon
 import androidx.tv.material3.Tab
 import androidx.tv.material3.TabRow
 import androidx.tv.material3.Text
@@ -103,38 +113,62 @@ fun TvSongsScreen(
             .focusGroup()
             .focusRequester(focusRequester)
             .focusRestorer(focusRequester),
-        contentPadding = PaddingValues(horizontal = 48.dp, vertical = 24.dp),
+        contentPadding = PaddingValues(start = 32.dp, end = 48.dp, top = 20.dp, bottom = 28.dp),
         horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(20.dp),
-        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(24.dp),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
     ) {
-        item() {
-            TabRow(
-                selectedTabIndex = selectedTabIndex,
+        item {
+            Row(
                 modifier = Modifier
-                    .focusGroup()
-                    .focusRestorer(tabFocusRequester)
                     .fillMaxWidth()
+                    .padding(bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                tabs.forEachIndexed { index, tab ->
-                    key(index) {
-                        Tab(
-                            selected = index == selectedTabIndex,
-                            onFocus = {
-                                if (index == 1)
-                                    viewModel.setShowFavoritesOnly(true)
+                TabRow(
+                    selectedTabIndex = selectedTabIndex,
+                    modifier = Modifier
+                        .focusGroup()
+                        .focusRestorer(tabFocusRequester)
+                ) {
+                    tabs.forEachIndexed { index, tab ->
+                        key(index) {
+                            Tab(
+                                selected = index == selectedTabIndex,
+                                onFocus = {
+                                    if (index == 1)
+                                        viewModel.setShowFavoritesOnly(true)
+                                    else
+                                        viewModel.setShowFavoritesOnly(false)
+                                },
+                                modifier = if (index == selectedTabIndex)
+                                    Modifier.focusRequester(tabFocusRequester)
                                 else
-                                    viewModel.setShowFavoritesOnly(false)
-                            },
-                            modifier = if (index == selectedTabIndex)
-                                Modifier.focusRequester(tabFocusRequester)
-                            else
-                                Modifier
-                        ) {
-                            Text(
-                                text = tab,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
-                            )
+                                    Modifier
+                            ) {
+                                Text(
+                                    text = tab,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                                )
+                            }
                         }
+                    }
+                }
+
+                Button(
+                    onClick = {
+                        viewModel.shuffleAll(mediaController)
+                    },
+                    modifier = Modifier.padding(end = 16.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = ImageVector.vectorResource(R.drawable.round_shuffle_28),
+                            contentDescription = stringResource(R.string.Action_Shuffle),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.Action_Shuffle))
                     }
                 }
             }

@@ -36,6 +36,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.core.graphics.ColorUtils
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -226,6 +228,13 @@ fun NowPlayingLandscape(
                     PlaybackProgressSlider(animatedAccentColor, iconColor, mediaController, metadata)
 
             }
+            val isDarkControlsBackground = remember(iconTextColor) {
+                ColorUtils.calculateLuminance(iconTextColor.toArgb()) > 0.45
+            }
+            val vibrantControlsColor = remember(animatedAccentColor, isDarkControlsBackground) {
+                getVibrantSeekbarColor(animatedAccentColor, isDarkControlsBackground)
+            }
+
             Row(
                 modifier = Modifier
                     .wrapContentHeight()
@@ -236,31 +245,31 @@ fun NowPlayingLandscape(
                 ChoraMediaLibraryService.getInstance()?.player?.let {
                     ShuffleButton(
                         it,
-                        iconTextColor,
+                        vibrantControlsColor,
                         Modifier.size(32.dp)
                     )
 
                     PreviousSongButton(
                         it,
-                        iconTextColor,
+                        vibrantControlsColor,
                         Modifier.size(48.dp)
                     )
 
                     PlayPauseButton(
                         it,
-                        iconTextColor,
+                        vibrantControlsColor,
                         Modifier.size(92.dp)
                     )
 
                     NextSongButton(
                         it,
-                        iconTextColor,
+                        vibrantControlsColor,
                         Modifier.size(48.dp)
                     )
 
                     RepeatButton(
                         it,
-                        iconTextColor,
+                        vibrantControlsColor,
                         Modifier.size(32.dp)
                     )
                 }

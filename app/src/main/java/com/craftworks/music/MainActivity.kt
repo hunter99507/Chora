@@ -9,14 +9,16 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
-import androidx.activity.OnBackPressedCallback
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import com.craftworks.music.ui.elements.dialogs.tv.TvSourceSelectorDialog
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -46,6 +48,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
+import com.craftworks.music.util.SubtleAppBackground
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarHostState
@@ -82,6 +85,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
@@ -119,6 +123,8 @@ import com.craftworks.music.managers.settings.AppearanceSettingsManager
 import com.craftworks.music.player.ChoraMediaLibraryService
 import com.craftworks.music.player.SongHelper
 import com.craftworks.music.player.rememberManagedMediaController
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import com.craftworks.music.ui.elements.TabStateHolder
 import com.craftworks.music.ui.elements.dialogs.tv.OnboardingDialog
 import com.craftworks.music.ui.playing.NowPlayingContent
 import com.craftworks.music.ui.playing.NowPlayingMiniPlayer
@@ -226,13 +232,20 @@ class MainActivity : ComponentActivity() {
                                     launchSingleTop = true
                                 }
                             } else {
-                                try {
-                                    scaffoldState.bottomSheetState.expand()
-                                } catch (_: Exception) {
-                                    coroutineScope.launch {
-                                        kotlinx.coroutines.delay(100)
+                                var expanded = false
+                                for (attempt in 0..5) {
+                                    try {
                                         scaffoldState.bottomSheetState.expand()
+                                        expanded = true
+                                        break
+                                    } catch (_: Exception) {
+                                        kotlinx.coroutines.delay(50)
                                     }
+                                }
+                                if (!expanded) {
+                                    try {
+                                        scaffoldState.bottomSheetState.expand()
+                                    } catch (_: Exception) {}
                                 }
                             }
                         } catch (_: Exception) {}
@@ -241,115 +254,96 @@ class MainActivity : ComponentActivity() {
 
                 if (isTv) {
                     // Set background color to colorScheme.background
-                    window.decorView.setBackgroundColor(androidx.tv.material3.MaterialTheme.colorScheme.background.toArgb())
+                    window.decorView.setBackgroundColor(Color(0xFF101114).toArgb())
 
-                    SetupNavGraph(
-                        navController = navController,
-                        bottomPadding = 0.dp,
-                        mediaController = mediaController
-                    )
+                    SubtleAppBackground {
+                        SetupNavGraph(
+                            navController = navController,
+                            bottomPadding = 0.dp,
+                            mediaController = mediaController
+                        )
+                    }
                 } else {
                     // Set background color to colorScheme.background
                     window.decorView.setBackgroundColor(MaterialTheme.colorScheme.background.toArgb())
 
-                    val backCallback = object : OnBackPressedCallback(false) {
-                        override fun handleOnBackPressed() {
-                            coroutineScope.launch {
-                                scaffoldState.bottomSheetState.partialExpand()
-                            }
-                        }
-                    }
+                    SubtleAppBackground {
+                        Scaffold(
+                            bottomBar = {
+                                AnimatedBottomNavBar(navController, scaffoldState)
+                            },
+                            contentColor = MaterialTheme.colorScheme.onBackground,
+                            containerColor = Color.Transparent
+                        ) { paddingValues ->
+                            if (LocalWindowInfo.current.containerSize.width < dpToPx(640)) {
+                                BottomSheetScaffold(
+                                    sheetContainerColor = Color.Transparent,
+                                    containerColor = Color.Transparent,
+                                    sheetPeekHeight = peekHeight + 80.dp + WindowInsets.navigationBars.asPaddingValues()
+                                        .calculateBottomPadding(),
+                                    //sheetShadowElevation = 6.dp,
+                                    sheetShape = RoundedCornerShape(12.dp, 12.dp, 0.dp, 0.dp),
+                                    sheetDragHandle = { },
+                                    scaffoldState = scaffoldState,
+                                    sheetContent = {
+                                        val coroutineScope = rememberCoroutineScope()
+                                        val isSheetExpanded = scaffoldState.bottomSheetState.targetValue == SheetValue.Expanded ||
+                                                scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded
 
-                    onBackPressedDispatcher.addCallback(this, backCallback)
+                                        Box {
+                                            NowPlayingMiniPlayer(
+                                                scaffoldState = scaffoldState,
+                                                metadata = metadata,
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        scaffoldState.bottomSheetState.expand()
+                                                    }
+                                                })
 
-                    Scaffold(
-                        bottomBar = {
-                            AnimatedBottomNavBar(navController, scaffoldState)
-                        },
-                        contentColor = MaterialTheme.colorScheme.onBackground,
-                        containerColor = Color.Transparent
-                    ) { paddingValues ->
-                        if (LocalWindowInfo.current.containerSize.width < dpToPx(640)) {
-                            BottomSheetScaffold(
-                                sheetContainerColor = Color.Transparent,
-                                containerColor = Color.Transparent,
-                                sheetPeekHeight = peekHeight + 80.dp + WindowInsets.navigationBars.asPaddingValues()
-                                    .calculateBottomPadding(),
-                                //sheetShadowElevation = 6.dp,
-                                sheetShape = RoundedCornerShape(12.dp, 12.dp, 0.dp, 0.dp),
-                                sheetDragHandle = { },
-                                scaffoldState = scaffoldState,
-                                sheetContent = {
-                                    val coroutineScope = rememberCoroutineScope()
-
-                                    Box {
-                                        NowPlayingMiniPlayer(
-                                            scaffoldState = scaffoldState,
-                                            metadata = metadata,
-                                            onClick = {
-                                                coroutineScope.launch {
-                                                    scaffoldState.bottomSheetState.expand()
+                                            NowPlayingContent(
+                                                mediaController = mediaController,
+                                                metadata = metadata,
+                                                isExpanded = isSheetExpanded,
+                                                onClose = {
+                                                    coroutineScope.launch {
+                                                        scaffoldState.bottomSheetState.partialExpand()
+                                                    }
                                                 }
-                                            })
-
-                                        println("Recomposing sheetcontent")
-                                        NowPlayingContent(
-                                            mediaController = mediaController,
-                                            metadata = metadata
-                                        )
-                                    }
-
-                                    val currentView = LocalView.current
-                                    val disableScreenStandy by AppearanceSettingsManager(LocalContext.current).disableScreenStandby.collectAsStateWithLifecycle(true)
-                                    DisposableEffect(scaffoldState.bottomSheetState.targetValue) {
-                                        if (scaffoldState.bottomSheetState.targetValue == SheetValue.Expanded) {
-                                            if (disableScreenStandy)
-                                                currentView.keepScreenOn = true
-
-                                            backCallback.isEnabled  = true
-
-                                            /* Restore nav bars.
-                                            @Suppress("DEPRECATION")
-                                            currentView.systemUiVisibility =
-                                                View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
-                                                        View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
-                                                        View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
-                                                        View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-                                                        View.SYSTEM_UI_FLAG_FULLSCREEN or
-                                                        View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                                            */
-
-                                            Log.d("NOW-PLAYING", "KeepScreenOn: True")
-                                        } else {
-                                            currentView.keepScreenOn = false
-                                            backCallback.isEnabled = false
-
-                                            /* Restore nav bars.
-                                            @Suppress("DEPRECATION")
-                                            currentView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                                            */
-                                            Log.d("NOW-PLAYING", "KeepScreenOn: False")
+                                            )
                                         }
 
-                                        onDispose {
-                                            currentView.keepScreenOn = false
-                                            backCallback.isEnabled = false
-                                            Log.d("NOW-PLAYING", "KeepScreenOn: False")
+                                        val currentView = LocalView.current
+                                        val disableScreenStandy by AppearanceSettingsManager(LocalContext.current).disableScreenStandby.collectAsStateWithLifecycle(true)
+                                        DisposableEffect(scaffoldState.bottomSheetState.targetValue) {
+                                            if (scaffoldState.bottomSheetState.targetValue == SheetValue.Expanded) {
+                                                if (disableScreenStandy)
+                                                    currentView.keepScreenOn = true
+
+                                                Log.d("NOW-PLAYING", "KeepScreenOn: True")
+                                            } else {
+                                                currentView.keepScreenOn = false
+                                                Log.d("NOW-PLAYING", "KeepScreenOn: False")
+                                            }
+
+                                            onDispose {
+                                                currentView.keepScreenOn = false
+                                                Log.d("NOW-PLAYING", "KeepScreenOn: False")
+                                            }
                                         }
-                                    }
-                                }) {
+                                    }) {
+                                    SetupNavGraph(
+                                        navController,
+                                        peekHeight + paddingValues.calculateBottomPadding(),
+                                        mediaController
+                                    )
+                                }
+                            } else {
                                 SetupNavGraph(
                                     navController,
-                                    peekHeight + paddingValues.calculateBottomPadding(),
+                                    0.dp,
                                     mediaController
                                 )
                             }
-                        } else {
-                            SetupNavGraph(
-                                navController,
-                                0.dp,
-                                mediaController
-                            )
                         }
                     }
                 }
@@ -359,8 +353,9 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(Unit) {
                     val folders = LocalProviderManager.getAllFolders()
                     val servers = NavidromeManager.getAllServers()
+                    val embyServers = com.craftworks.music.managers.EmbyJellyfinManager.getAllServers()
 
-                    showNoProvidersDialog = !(folders.isEmpty() && servers.isEmpty())
+                    showNoProvidersDialog = !(folders.isEmpty() && servers.isEmpty() && embyServers.isEmpty())
                 }
 
                 if (!showNoProvidersDialog) {
@@ -455,6 +450,11 @@ fun TvSideNavigation(
 
     val (home, albums, songs, artists, radios, playlists, settings) = remember { FocusRequester.createRefs() }
     val currentRoute by navController.currentBackStackEntryFlow.collectAsStateWithLifecycle(initialValue = null)
+    var showSourceDialog by remember { mutableStateOf(false) }
+
+    if (showSourceDialog) {
+        TvSourceSelectorDialog { showSourceDialog = it }
+    }
 
     val orderedNavItems = AppearanceSettingsManager(context).bottomNavItemsFlow.collectAsState(
         initial = listOf(
@@ -621,6 +621,23 @@ fun TvSideNavigation(
                 ) {
                     NavigationDrawerItem(
                         modifier = Modifier.padding(vertical = 4.dp, horizontal = 8.dp),
+                        selected = false,
+                        onClick = {
+                            showSourceDialog = true
+                        },
+                        leadingContent = {
+                            androidx.tv.material3.Icon(
+                                imageVector = ImageVector.vectorResource(R.drawable.rounded_library_music_24),
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    ) {
+                        androidx.tv.material3.Text(text = "Library")
+                    }
+
+                    NavigationDrawerItem(
+                        modifier = Modifier.padding(vertical = 4.dp, horizontal = 8.dp),
                         selected = Screen.Setting.route == backStackEntry?.destination?.route,
                         onClick = {
                             if (Screen.Setting.route != backStackEntry?.destination?.route)
@@ -705,6 +722,19 @@ fun AnimatedBottomNavBar(
         )
     ).value
 
+    // Active (enabled, non-radio) tab routes in pager order — mirrors MainTabsPagerScreen
+    val activeTabs = remember(orderedNavItems) {
+        orderedNavItems.filter { it.enabled && it.screenRoute != "radio_screen" }.map { it.screenRoute }
+    }
+
+    // Is the current destination inside the tabs pager?
+    val onTabsScreen = backStackEntry?.destination?.route == "tabs_screen"
+    // Current pager page route (only meaningful when onTabsScreen)
+    val currentPagerRoute = if (onTabsScreen)
+        activeTabs.getOrNull(TabStateHolder.currentTabIndex.intValue) else null
+
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+
     if (LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT) {
         val expanded by remember { derivedStateOf { scaffoldState.bottomSheetState.targetValue == SheetValue.Expanded } }
 
@@ -716,7 +746,24 @@ fun AnimatedBottomNavBar(
             else 0, label = "Fullscreen Translation"
         )
 
-        NavigationBar(modifier = Modifier.offset { IntOffset(x = 0, y = -yTrans) }) {
+        val navBarBrush = remember(isDark) {
+            Brush.verticalGradient(
+                colors = if (isDark) listOf(
+                    Color(0xFF1E2026),
+                    Color(0xFF121316)
+                ) else listOf(
+                    Color(0xFFF6F8FB),
+                    Color(0xFFE4E7ED)
+                )
+            )
+        }
+
+        NavigationBar(
+            containerColor = Color.Transparent,
+            modifier = Modifier
+                .offset { IntOffset(x = 0, y = -yTrans) }
+                .background(navBarBrush)
+        ) {
             orderedNavItems.forEachIndexed { _, item ->
                 if (!item.enabled || item.screenRoute == "radio_screen") return@forEachIndexed
 
@@ -728,12 +775,32 @@ fun AnimatedBottomNavBar(
                     "playlist_screen"-> R.drawable.rounded_queue_music_24
                     else             -> R.drawable.rounded_queue_music_24
                 }
+                val isSelected = if (onTabsScreen)
+                    item.screenRoute == currentPagerRoute
+                else
+                    item.screenRoute == backStackEntry?.destination?.route
                 NavigationBarItem(
-                    selected = item.screenRoute == backStackEntry?.destination?.route,
+                    selected = isSelected,
                     onClick = {
-                        if (item.screenRoute == backStackEntry?.destination?.route) return@NavigationBarItem
-                        navController.navigate(item.screenRoute) {
-                            launchSingleTop = true
+                        val tabIndex = activeTabs.indexOf(item.screenRoute)
+                        if (tabIndex != -1) {
+                            // Tab item: drive the pager
+                            TabStateHolder.scrollToTab(tabIndex)
+                            if (!onTabsScreen) {
+                                val popped = navController.popBackStack("tabs_screen", false)
+                                if (!popped) {
+                                    navController.navigate("tabs_screen") {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            inclusive = false
+                                        }
+                                        launchSingleTop = true
+                                    }
+                                }
+                            }
+                        } else {
+                            // Non-tab item
+                            if (item.screenRoute == backStackEntry?.destination?.route) return@NavigationBarItem
+                            navController.navigate(item.screenRoute) { launchSingleTop = true }
                         }
                         coroutineScope.launch {
                             if (scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded) scaffoldState.bottomSheetState.partialExpand()
@@ -768,8 +835,22 @@ fun AnimatedBottomNavBar(
                 )
         }
     } else {
+        val railBrush = remember(isDark) {
+            Brush.horizontalGradient(
+                colors = if (isDark) listOf(
+                    Color(0xFF121316),
+                    Color(0xFF1E2026)
+                ) else listOf(
+                    Color(0xFFE4E7ED),
+                    Color(0xFFF6F8FB)
+                )
+            )
+        }
         val lazyColumnState = rememberLazyListState()
-        NavigationRail {
+        NavigationRail(
+            containerColor = Color.Transparent,
+            modifier = Modifier.background(railBrush)
+        ) {
             LazyColumn(
                 state = lazyColumnState,
                 modifier = Modifier
@@ -793,11 +874,28 @@ fun AnimatedBottomNavBar(
                         else             -> R.drawable.placeholder
                     }
                     NavigationRailItem(
-                        selected = item.screenRoute == backStackEntry?.destination?.route,
+                        selected = if (onTabsScreen)
+                            item.screenRoute == currentPagerRoute
+                        else
+                            item.screenRoute == backStackEntry?.destination?.route,
                         onClick = {
-                            if (item.screenRoute == backStackEntry?.destination?.route) return@NavigationRailItem
-                            navController.navigate(item.screenRoute) {
-                                launchSingleTop = true
+                            val tabIndex = activeTabs.indexOf(item.screenRoute)
+                            if (tabIndex != -1) {
+                                TabStateHolder.scrollToTab(tabIndex)
+                                if (!onTabsScreen) {
+                                    val popped = navController.popBackStack("tabs_screen", false)
+                                    if (!popped) {
+                                        navController.navigate("tabs_screen") {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                inclusive = false
+                                            }
+                                            launchSingleTop = true
+                                        }
+                                    }
+                                }
+                            } else {
+                                if (item.screenRoute == backStackEntry?.destination?.route) return@NavigationRailItem
+                                navController.navigate(item.screenRoute) { launchSingleTop = true }
                             }
                             coroutineScope.launch {
                                 if (scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded) scaffoldState.bottomSheetState.partialExpand()

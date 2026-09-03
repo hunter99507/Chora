@@ -57,9 +57,12 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.craftworks.music.R
+import com.craftworks.music.data.EmbyJellyfinProvider
 import com.craftworks.music.data.NavidromeProvider
+import com.craftworks.music.managers.EmbyJellyfinManager
 import com.craftworks.music.managers.LocalProviderManager
 import com.craftworks.music.managers.NavidromeManager
+import com.craftworks.music.ui.elements.EmbyJellyfinProviderCard
 import com.craftworks.music.ui.elements.LocalProviderCard
 import com.craftworks.music.ui.elements.NavidromeProviderCard
 
@@ -75,8 +78,9 @@ fun OnboardingDialog(
 
     val localProviders by LocalProviderManager.allFolders.collectAsStateWithLifecycle()
     val navidromeServers by NavidromeManager.allServers.collectAsStateWithLifecycle()
+    val embyServers by EmbyJellyfinManager.allServers.collectAsStateWithLifecycle()
 
-    val hasProviders = localProviders.isNotEmpty() || navidromeServers.isNotEmpty()
+    val hasProviders = localProviders.isNotEmpty() || navidromeServers.isNotEmpty() || embyServers.isNotEmpty()
 
     Dialog(
         onDismissRequest = {},
@@ -127,6 +131,7 @@ fun OnboardingDialog(
                         OnboardingStep.OVERVIEW -> OverviewStep(
                             localProviders = localProviders,
                             navidromeServers = navidromeServers,
+                            embyServers = embyServers,
                             hasProviders = hasProviders,
                             onAddProvider = { showAddProviderDialog = true },
                             onNext = { step = OnboardingStep.DONE },
@@ -193,6 +198,7 @@ private fun StepIndicator(
 private fun OverviewStep(
     localProviders: List<String>,
     navidromeServers: List<NavidromeProvider>,
+    embyServers: List<EmbyJellyfinProvider>,
     hasProviders: Boolean,
     onAddProvider: () -> Unit,
     onNext: () -> Unit,
@@ -234,6 +240,9 @@ private fun OverviewStep(
             }
             items(navidromeServers, key = { it.id }) { server ->
                 NavidromeProviderCard(server)
+            }
+            items(embyServers, key = { it.id }) { server ->
+                EmbyJellyfinProviderCard(server)
             }
         }
 

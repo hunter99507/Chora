@@ -51,20 +51,21 @@ class LyricsRepository @Inject constructor(
                 LyricsState.loading.value = true;
 
                 coroutineScope {
-                    val isLocal =
-                        metadata?.extras?.getString("navidromeID")?.startsWith("Local_") ?: false
+                    val songId = metadata?.extras?.getString("navidromeID") ?: ""
+                    val isLocal = songId.startsWith("Local_")
+                    val isEmby = songId.startsWith("emby_")
 
                     val navidromeSyncedDeferred = async {
-                        if (NavidromeManager.checkActiveServers() && !isLocal) {
+                        if (NavidromeManager.checkActiveServers() && !isLocal && !isEmby) {
                             navidromeDataSource.getNavidromeSyncedLyrics(
-                                metadata?.extras?.getString("navidromeID") ?: "",
+                                songId,
                                 ignoreCachedResponse
                             )
                         } else null
                     }
 
                     val navidromePlainDeferred = async {
-                        if (NavidromeManager.checkActiveServers() && !isLocal) {
+                        if (NavidromeManager.checkActiveServers() && !isLocal && !isEmby) {
                             navidromeDataSource.getNavidromePlainLyrics(
                                 metadata,
                                 ignoreCachedResponse

@@ -53,6 +53,7 @@ class AppearanceSettingsManager @Inject constructor(
 
         private val OLED_PROTECTION_MODE = stringPreferencesKey("oled_protection")
         private val DISABLE_SCREEN_STANDBY = booleanPreferencesKey("disable_screen_standby")
+        private val ANDROID_AUTO_NAV_ITEMS_KEY = stringPreferencesKey("android_auto_nav_items")
     }
 
     val usernameFlow: Flow<String> = context.dataStore.data.map { preferences ->
@@ -179,6 +180,43 @@ class AppearanceSettingsManager @Inject constructor(
         withContext(NonCancellable) {
             context.dataStore.edit { preferences ->
                 preferences[BOTTOM_NAV_ITEMS_KEY] = Json.encodeToString(items)
+            }
+        }
+    }
+
+    val androidAutoNavItemsFlow: Flow<List<BottomNavItem>> = context.dataStore.data.map { preferences ->
+        val jsonString = preferences[ANDROID_AUTO_NAV_ITEMS_KEY]
+        val defaultValue = listOf(
+            BottomNavItem("Home", R.drawable.rounded_home_24, "home_screen"),
+            BottomNavItem("Albums", R.drawable.rounded_library_music_24, "album_screen"),
+            BottomNavItem("Songs", R.drawable.round_music_note_24, "songs_screen"),
+            BottomNavItem("Artists", R.drawable.rounded_artist_24, "artists_screen"),
+            BottomNavItem("Playlists", R.drawable.rounded_queue_music_24, "playlist_screen"),
+            BottomNavItem("Radios", R.drawable.rounded_radio, "radio_screen", false),
+            BottomNavItem("Sources", R.drawable.s_m_media_providers, "sources_screen", true)
+        )
+        try {
+            val items = jsonString?.let { Json.decodeFromString<List<BottomNavItem>>(it) } ?: defaultValue
+            val mapped = items.map { item ->
+                if (item.screenRoute == "sources_screen") {
+                    item.copy(title = "Sources", icon = R.drawable.s_m_media_providers)
+                } else item
+            }
+            if (mapped.none { it.screenRoute == "sources_screen" }) {
+                mapped + BottomNavItem("Sources", R.drawable.s_m_media_providers, "sources_screen", true)
+            } else {
+                mapped
+            }
+        } catch (e: Exception) {
+            println(e.message)
+            defaultValue
+        }
+    }
+
+    suspend fun setAndroidAutoNavItems(items: List<BottomNavItem>) {
+        withContext(NonCancellable) {
+            context.dataStore.edit { preferences ->
+                preferences[ANDROID_AUTO_NAV_ITEMS_KEY] = Json.encodeToString(items)
             }
         }
     }

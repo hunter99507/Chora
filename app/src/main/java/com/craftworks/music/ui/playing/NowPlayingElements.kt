@@ -54,6 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.core.graphics.ColorUtils
@@ -70,6 +71,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -82,6 +84,8 @@ import androidx.media3.ui.compose.state.rememberShuffleButtonState
 import com.craftworks.music.R
 import com.craftworks.music.data.repository.LyricsState
 import com.craftworks.music.formatMilliseconds
+import com.craftworks.music.player.ChoraMediaLibraryService
+import com.craftworks.music.player.SongHelper
 import com.craftworks.music.providers.navidrome.downloadNavidromeSong
 import com.craftworks.music.ui.elements.bounceClick
 import com.craftworks.music.ui.elements.moveClick
@@ -93,11 +97,11 @@ fun getVibrantSeekbarColor(accentColor: Color, isDarkTheme: Boolean = true): Col
     val hsl = FloatArray(3)
     ColorUtils.colorToHSL(accentColor.toArgb(), hsl)
     if (isDarkTheme) {
-        hsl[1] = hsl[1].coerceIn(0.65f, 1.0f)
-        hsl[2] = hsl[2].coerceIn(0.72f, 0.88f)
+        hsl[1] = hsl[1].coerceIn(0.60f, 1.0f)
+        hsl[2] = hsl[2].coerceIn(0.55f, 0.80f)
     } else {
         hsl[1] = hsl[1].coerceIn(0.70f, 1.0f)
-        hsl[2] = hsl[2].coerceIn(0.18f, 0.32f)
+        hsl[2] = hsl[2].coerceIn(0.18f, 0.35f)
     }
     return Color(ColorUtils.HSLToColor(hsl))
 }
@@ -125,10 +129,19 @@ fun PlaybackProgressSlider(
         }
     }
 
-    val queueStatus by remember(mediaController?.currentMediaItemIndex, mediaController?.mediaItemCount) {
+    var queuePosition by remember { mutableStateOf(Pair(0, 0)) }
+    fun updateQueuePosition() {
+        val player = ChoraMediaLibraryService.getInstance()?.player ?: mediaController
+        queuePosition = SongHelper.calculateQueuePosition(player)
+    }
+
+    LaunchedEffect(metadata, mediaController) {
+        updateQueuePosition()
+    }
+
+    val queueStatus by remember(queuePosition) {
         derivedStateOf {
-            val total = mediaController?.mediaItemCount ?: 0
-            val current = (mediaController?.currentMediaItemIndex ?: -1) + 1
+            val (current, total) = queuePosition
             if (total > 0 && current > 0) {
                 "$current / $total"
             } else {
@@ -185,9 +198,22 @@ fun PlaybackProgressSlider(
                 if (reason != Player.DISCONTINUITY_REASON_SEEK)
                     currentValue = newPosition.positionMs
             }
+
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                updateQueuePosition()
+            }
+
+            override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
+                updateQueuePosition()
+            }
+
+            override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+                updateQueuePosition()
+            }
         }
 
         mediaController?.addListener(listener)
+        updateQueuePosition()
 
         // Initial check in case state changed before listener was attached or for initial setup
         isPlaying = mediaController?.isPlaying ?: false
@@ -342,9 +368,20 @@ fun PlaybackProgressSlider(
 @Composable
 internal fun PreviousSongButton(player: Player, color: Color, modifier: Modifier = Modifier) {
     val state = rememberPreviousButtonState(player)
-    IconButton(onClick = state::onClick, modifier = modifier
-        .bounceClick(state.isEnabled)
-        .moveClick(false, state.isEnabled), enabled = state.isEnabled) {
+    IconButton(
+        onClick = {
+            if (player.hasPreviousMediaItem()) {
+                player.seekToPreviousMediaItem()
+            } else {
+                player.seekToPrevious()
+            }
+            player.play()
+        },
+        modifier = modifier
+            .bounceClick(state.isEnabled)
+            .moveClick(false, state.isEnabled),
+        enabled = state.isEnabled
+    ) {
         Icon(
             imageVector = ImageVector.vectorResource(R.drawable.media3_notification_seek_to_previous),
             contentDescription = "Previous song",
@@ -387,9 +424,20 @@ internal fun PlayPauseButton(player: Player, color: Color, modifier: Modifier = 
 @Composable
 internal fun NextSongButton(player: Player, color: Color, modifier: Modifier = Modifier) {
     val state = rememberNextButtonState(player)
-    IconButton(onClick = state::onClick, modifier = modifier
-        .bounceClick(state.isEnabled)
-        .moveClick(true, state.isEnabled), enabled = state.isEnabled) {
+    IconButton(
+        onClick = {
+            if (player.hasNextMediaItem()) {
+                player.seekToNextMediaItem()
+            } else {
+                player.seekToNext()
+            }
+            player.play()
+        },
+        modifier = modifier
+            .bounceClick(state.isEnabled)
+            .moveClick(true, state.isEnabled),
+        enabled = state.isEnabled
+    ) {
         Icon(
             imageVector = ImageVector.vectorResource(R.drawable.media3_notification_seek_to_next),
             contentDescription = "Next song",

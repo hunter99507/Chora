@@ -1,9 +1,13 @@
 package com.craftworks.music.data.repository
 
 import androidx.media3.common.MediaItem
+import com.craftworks.music.data.datasource.emby.EmbyJellyfinDataSource
 import com.craftworks.music.data.datasource.local.LocalDataSource
 import com.craftworks.music.data.datasource.navidrome.NavidromeDataSource
+import com.craftworks.music.managers.EmbyJellyfinManager
 import com.craftworks.music.managers.LocalProviderManager
+import com.craftworks.music.managers.MediaSource
+import com.craftworks.music.managers.MediaSourceManager
 import com.craftworks.music.managers.NavidromeManager
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
@@ -15,7 +19,8 @@ import javax.inject.Singleton
 @Singleton
 class AlbumRepository @Inject constructor(
     private val localDataSource: LocalDataSource,
-    private val navidromeDataSource: NavidromeDataSource
+    private val navidromeDataSource: NavidromeDataSource,
+    private val embyJellyfinDataSource: EmbyJellyfinDataSource
 ) {
     suspend fun getAlbums(
         sort: String? = "alphabeticalByName",
@@ -26,33 +31,38 @@ class AlbumRepository @Inject constructor(
     ): List<MediaItem> = coroutineScope {
         val deferredAlbums = mutableListOf<Deferred<List<MediaItem>>>()
 
-        if (NavidromeManager.checkActiveServers())
+        if (MediaSourceManager.isSourceActive(MediaSource.NAVIDROME) && NavidromeManager.checkActiveServers())
             deferredAlbums.add(async { navidromeDataSource.getNavidromeAlbums(sort, size, offset, ignoreCachedResponse, favoritesOnly=favoritesOnly) })
 
-        if (LocalProviderManager.checkActiveFolders())
+        if (MediaSourceManager.isSourceActive(MediaSource.EMBY) && EmbyJellyfinManager.checkActiveServers())
+            deferredAlbums.add(async { embyJellyfinDataSource.getAlbums(sort, size, offset, ignoreCachedResponse, favoritesOnly=favoritesOnly) })
+
+        if (MediaSourceManager.isSourceActive(MediaSource.LOCAL) && LocalProviderManager.checkActiveFolders())
             if (offset == 0)
                 deferredAlbums.add(async { localDataSource.getLocalAlbums(sort) })
-
 
         deferredAlbums.awaitAll().flatten()
     }
 
     suspend fun getAlbum(albumId: String, ignoreCachedResponse: Boolean = false): List<MediaItem>? = coroutineScope {
-        if (albumId.startsWith("Local_"))
-            localDataSource.getLocalAlbum(albumId)
-        else
-            navidromeDataSource.getNavidromeAlbum(albumId, ignoreCachedResponse)
-
+        when {
+            albumId.startsWith("Local_") -> localDataSource.getLocalAlbum(albumId)
+            albumId.startsWith("emby_") || albumId.startsWith("folder_album_emby_") -> embyJellyfinDataSource.getAlbum(albumId, ignoreCachedResponse)
+            else -> navidromeDataSource.getNavidromeAlbum(albumId, ignoreCachedResponse)
+        }
     }
 
     suspend fun searchAlbum(query: String): List<MediaItem> = coroutineScope {
         val deferredAlbums = mutableListOf<Deferred<List<MediaItem>>>()
 
-        if (LocalProviderManager.checkActiveFolders())
+        if (MediaSourceManager.isSourceActive(MediaSource.LOCAL) && LocalProviderManager.checkActiveFolders())
             deferredAlbums.add(async { localDataSource.searchLocalAlbums(query) })
 
-        if (NavidromeManager.checkActiveServers())
+        if (MediaSourceManager.isSourceActive(MediaSource.NAVIDROME) && NavidromeManager.checkActiveServers())
             deferredAlbums.add(async { navidromeDataSource.searchNavidromeAlbums(query) })
+
+        if (MediaSourceManager.isSourceActive(MediaSource.EMBY) && EmbyJellyfinManager.checkActiveServers())
+            deferredAlbums.add(async { embyJellyfinDataSource.getAlbums(sort = "alphabeticalByName", size = 100, offset = 0, query = query) })
 
         deferredAlbums.awaitAll().flatten()
     }

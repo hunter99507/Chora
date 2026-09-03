@@ -8,21 +8,29 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import com.craftworks.music.R
 import com.craftworks.music.data.BottomNavItem
 import com.craftworks.music.managers.settings.AppearanceSettingsManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 fun Modifier.swipeToNavigateTabs(
     navController: NavHostController,
     currentRoute: String,
-    activeTabs: List<String>
+    activeTabs: List<String>,
+    coroutineScope: CoroutineScope,
+    screenWidthPx: Float
 ): Modifier = this.pointerInput(currentRoute, activeTabs) {
     val currentIndex = activeTabs.indexOf(currentRoute)
     if (currentIndex == -1) return@pointerInput
@@ -32,16 +40,19 @@ fun Modifier.swipeToNavigateTabs(
         var totalDragX = 0f
         var totalDragY = 0f
         var isHorizontalDrag: Boolean? = null
+        var triggered = false
 
         while (true) {
             val event = awaitPointerEvent(pass = PointerEventPass.Initial)
             val change = event.changes.firstOrNull { it.id == down.id } ?: break
+
             if (!change.pressed) {
-                // Gesture ended (finger lifted)
-                if (isHorizontalDrag == true) {
-                    change.consume()
-                    if (totalDragX < -60f && currentIndex < activeTabs.size - 1) {
-                        // Swiped left -> Go to next active tab
+                // Finger lifted
+                if (isHorizontalDrag == true && !triggered) {
+                    val threshold = 50f
+                    if (totalDragX < -threshold && currentIndex < activeTabs.size - 1) {
+                        triggered = true
+                        change.consume()
                         val targetRoute = activeTabs[currentIndex + 1]
                         navController.navigate(targetRoute) {
                             popUpTo(navController.graph.findStartDestination().id) {
@@ -50,8 +61,9 @@ fun Modifier.swipeToNavigateTabs(
                             launchSingleTop = true
                             restoreState = true
                         }
-                    } else if (totalDragX > 60f && currentIndex > 0) {
-                        // Swiped right -> Go to previous active tab
+                    } else if (totalDragX > threshold && currentIndex > 0) {
+                        triggered = true
+                        change.consume()
                         val targetRoute = activeTabs[currentIndex - 1]
                         navController.navigate(targetRoute) {
                             popUpTo(navController.graph.findStartDestination().id) {
@@ -79,7 +91,35 @@ fun Modifier.swipeToNavigateTabs(
             }
 
             if (isHorizontalDrag == true) {
-                change.consume()
+                // If horizontal threshold reached during drag, trigger transition immediately
+                val swipeThreshold = 70f
+                if (!triggered) {
+                    if (totalDragX < -swipeThreshold && currentIndex < activeTabs.size - 1) {
+                        triggered = true
+                        change.consume()
+                        val targetRoute = activeTabs[currentIndex + 1]
+                        navController.navigate(targetRoute) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                        break
+                    } else if (totalDragX > swipeThreshold && currentIndex > 0) {
+                        triggered = true
+                        change.consume()
+                        val targetRoute = activeTabs[currentIndex - 1]
+                        navController.navigate(targetRoute) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                        break
+                    }
+                }
             }
         }
     }
@@ -106,10 +146,15 @@ fun SwipeableTabContent(
         navItems.filter { it.enabled }.map { it.screenRoute }
     }
 
+    val coroutineScope = rememberCoroutineScope()
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+    val density = LocalDensity.current
+    val screenWidthPx = with(density) { screenWidth.toPx() }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .swipeToNavigateTabs(navController, route, activeTabs)
+            .swipeToNavigateTabs(navController, route, activeTabs, coroutineScope, screenWidthPx)
     ) {
         content()
     }

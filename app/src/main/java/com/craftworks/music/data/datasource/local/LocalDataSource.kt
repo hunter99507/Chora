@@ -36,8 +36,8 @@ class LocalDataSource @Inject constructor(
         return localProvider.getLocalAlbum(albumId)
     }
 
-    fun getLocalSongs(): List<MediaItem> {
-        return localProvider.getLocalSongs()
+    fun getLocalSongs(forceRefresh: Boolean = false): List<MediaItem> {
+        return localProvider.getLocalSongs(forceRefresh)
     }
 
     suspend fun searchLocalSongs(query: String): List<MediaItem> {
@@ -143,7 +143,11 @@ class LocalDataSource @Inject constructor(
         val playlistToModify = currentPlaylistsFromStore.find { it.navidromeID == playlistId }
             ?: return false
 
-        val songRemoved = playlistToModify.songs?.removeAt(songIndex)
+        val songs = playlistToModify.songs ?: return false
+        // Guard against out-of-bounds indices (e.g. -1 from a failed lookup upstream)
+        if (songIndex !in songs.indices) return false
+
+        val songRemoved = songs.removeAt(songIndex)
 
         if (songRemoved != null) {
             localDataSettingsManager.saveLocalPlaylists(currentPlaylistsFromStore)

@@ -26,6 +26,7 @@ fun MediaData.Album.toMediaItem(): MediaItem {
             Bundle().apply {
                 putString("navidromeID", this@toMediaItem.navidromeID)
                 putString("starred", this@toMediaItem.starred)
+                this@toMediaItem.artistId?.let { putString("artistId", it) }
             }
         )
         .build()

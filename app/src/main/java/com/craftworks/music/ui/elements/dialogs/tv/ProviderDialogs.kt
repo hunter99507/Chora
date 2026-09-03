@@ -398,7 +398,7 @@ fun CreateNavidromeProviderDialog(
                         onClick = {
                             coroutineScope.launch {
                                 val server = NavidromeProvider(
-                                    url,
+                                    java.util.UUID.randomUUID().toString(),
                                     url,
                                     username,
                                     password,
@@ -414,6 +414,300 @@ fun CreateNavidromeProviderDialog(
                     )
 
 
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Preview(
+    showBackground = false, showSystemUi = true, device = "id:tv_1080p",
+    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_TELEVISION,
+    wallpaper = Wallpapers.BLUE_DOMINATED_EXAMPLE
+)
+@Composable
+fun CreateEmbyJellyfinProviderDialog(
+    setShowDialog: (Boolean) -> Unit = { }
+) {
+    var url: String by remember { mutableStateOf("") }
+    var username: String by remember { mutableStateOf("") }
+    var password: String by remember { mutableStateOf("") }
+    var allowCerts: Boolean by remember { mutableStateOf(false) }
+    var embyStatus by remember { mutableStateOf("") }
+    var embyAuthToken by remember { mutableStateOf<String?>(null) }
+    var embyUserId by remember { mutableStateOf<String?>(null) }
+    var embyServerId by remember { mutableStateOf<String?>(null) }
+
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
+    val backgroundColor = MaterialTheme.colorScheme.surface
+
+    var step by remember { mutableStateOf(DialogStep.URL) }
+    val (nextFocus, loginFocus, addFocus) = remember { FocusRequester.createRefs() }
+
+    val textFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedBorderColor = MaterialTheme.colorScheme.primary,
+        unfocusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        errorBorderColor = MaterialTheme.colorScheme.error,
+        cursorColor = MaterialTheme.colorScheme.primary,
+        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+        unfocusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        errorTextColor = MaterialTheme.colorScheme.error
+    )
+
+    Dialog(
+        onDismissRequest = { setShowDialog(false) },
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .drawBehind { drawRect(color = backgroundColor) }
+                .padding(horizontal = 48.dp, vertical = 48.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.Top
+        ) {
+            AnimatedContent(
+                targetState = step,
+            ) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .widthIn(max = 320.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    when (it) {
+                        DialogStep.URL -> {
+                            /* SERVER URL */
+                            OutlinedTextField(
+                                value = url,
+                                onValueChange = { url = it },
+                                label = {
+                                    Text(
+                                        text = stringResource(R.string.Label_Emby_URL),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                },
+                                placeholder = {
+                                    Text(
+                                        text = "http://192.168.0.30:8096",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                },
+                                singleLine = true,
+                                isError = embyStatus == "Invalid URL",
+                                keyboardOptions = KeyboardOptions.Default.copy(
+                                    keyboardType = KeyboardType.Uri,
+                                    imeAction = ImeAction.Next,
+                                    autoCorrectEnabled = false
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onNext = {
+                                        step = DialogStep.CREDENTIALS
+                                    }
+                                ),
+                                colors = textFieldColors
+                            )
+
+                            /* Allow Self Signed Certs */
+                            SettingsSwitchItem(
+                                title = stringResource(R.string.Label_Allow_Self_Signed_Certs),
+                                checked = allowCerts,
+                                onCheckedChange = {
+                                    allowCerts = it
+                                }
+                            )
+
+                            ListItem(
+                                selected = false,
+                                headlineContent = { Text(stringResource(R.string.Action_Done)) },
+                                modifier = Modifier.focusRequester(nextFocus),
+                                onClick = {
+                                    step = DialogStep.CREDENTIALS
+                                }
+                            )
+                        }
+
+                        DialogStep.CREDENTIALS -> {
+                            /* USERNAME */
+                            OutlinedTextField(
+                                value = username,
+                                onValueChange = { username = it },
+                                label = {
+                                    Text(
+                                        text = stringResource(R.string.Label_Navidrome_Username),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                },
+                                singleLine = true,
+                                isError = embyStatus == "Authentication Failed",
+                                keyboardOptions = KeyboardOptions.Default.copy(
+                                    keyboardType = KeyboardType.Text,
+                                    imeAction = ImeAction.Next,
+                                    autoCorrectEnabled = false
+                                ),
+                                colors = textFieldColors
+                            )
+
+                            /* PASSWORD */
+                            var passwordVisible by remember { mutableStateOf(false) }
+                            OutlinedTextField(
+                                value = password,
+                                onValueChange = { password = it },
+                                label = {
+                                    Text(
+                                        text = stringResource(R.string.Label_Navidrome_Password),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                },
+                                singleLine = true,
+                                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                trailingIcon = {
+                                    val image = if (passwordVisible)
+                                        R.drawable.round_visibility_24
+                                    else
+                                        R.drawable.round_visibility_off_24
+
+                                    val description =
+                                        if (passwordVisible) "Hide password" else "Show password"
+
+                                    androidx.compose.material3.IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                        androidx.compose.material3.Icon(
+                                            imageVector = ImageVector.vectorResource(id = image),
+                                            description,
+                                            tint = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                },
+                                keyboardOptions = KeyboardOptions.Default.copy(
+                                    keyboardType = KeyboardType.Password,
+                                    imeAction = ImeAction.Done,
+                                    autoCorrectEnabled = false
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onDone = {
+                                        coroutineScope.launch {
+                                            val auth = com.craftworks.music.data.datasource.emby.EmbyJellyfinDataSource().authenticate(
+                                                serverUrl = url,
+                                                username = username,
+                                                password = password,
+                                                allowSelfSignedCert = allowCerts
+                                            )
+                                            if (auth?.accessToken != null) {
+                                                embyAuthToken = auth.accessToken
+                                                embyUserId = auth.user?.id
+                                                embyServerId = auth.serverId
+                                                embyStatus = "ok"
+                                                addFocus.requestFocus()
+                                            } else {
+                                                embyStatus = "Authentication Failed"
+                                            }
+                                        }
+                                    }
+                                ),
+                                isError = embyStatus == "Authentication Failed",
+                                colors = textFieldColors
+                            )
+
+                            if (embyStatus.isNotEmpty()) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .animateContentSize(),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "Status: $embyStatus",
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = MaterialTheme.typography.bodyMedium.fontSize,
+                                        color = MaterialTheme.colorScheme.onBackground,
+                                        modifier = Modifier.padding(vertical = 6.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    CarouselDefaults.IndicatorRow(
+                        itemCount = 2,
+                        activeItemIndex = step.ordinal,
+                        modifier = Modifier.padding(16.dp),
+                    )
+                }
+            }
+
+            AnimatedVisibility(
+                visible = step == DialogStep.CREDENTIALS,
+                modifier = Modifier.widthIn(max = 320.dp)
+            ) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ListItem(
+                        selected = false,
+                        headlineContent = { Text(stringResource(R.string.Action_Login)) },
+                        leadingContent = {
+                            Icon(
+                                imageVector = Icons.Rounded.AccountCircle,
+                                contentDescription = stringResource(R.string.Action_Login),
+                            )
+                        },
+                        modifier = Modifier.focusRequester(loginFocus),
+                        onClick = {
+                            coroutineScope.launch {
+                                val auth = com.craftworks.music.data.datasource.emby.EmbyJellyfinDataSource().authenticate(
+                                    serverUrl = url,
+                                    username = username,
+                                    password = password,
+                                    allowSelfSignedCert = allowCerts
+                                )
+                                if (auth?.accessToken != null) {
+                                    embyAuthToken = auth.accessToken
+                                    embyUserId = auth.user?.id
+                                    embyServerId = auth.serverId
+                                    embyStatus = "ok"
+                                    addFocus.requestFocus()
+                                } else {
+                                    embyStatus = "Authentication Failed"
+                                }
+                            }
+                        }
+                    )
+
+                    ListItem(
+                        selected = false,
+                        enabled = embyStatus == "ok",
+                        headlineContent = { Text(stringResource(R.string.Action_Add)) },
+                        leadingContent = {
+                            Icon(
+                                imageVector = Icons.Rounded.Add,
+                                contentDescription = stringResource(R.string.Action_Add),
+                            )
+                        },
+                        modifier = Modifier.focusRequester(addFocus),
+                        onClick = {
+                            coroutineScope.launch {
+                                val server = com.craftworks.music.data.EmbyJellyfinProvider(
+                                    id = url,
+                                    url = url,
+                                    username = username,
+                                    password = password,
+                                    token = embyAuthToken,
+                                    userId = embyUserId,
+                                    serverId = embyServerId,
+                                    enabled = true,
+                                    allowSelfSignedCert = allowCerts
+                                )
+                                com.craftworks.music.managers.EmbyJellyfinManager.addServer(server)
+                                AppearanceSettingsManager(context).setUsername(username)
+                                embyStatus = ""
+                                setShowDialog(false)
+                            }
+                        }
+                    )
                 }
             }
         }

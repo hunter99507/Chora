@@ -51,8 +51,12 @@ class AlbumScreenViewModel @Inject constructor(
                 }
         }
         viewModelScope.launch {
-            localDataSettingsManager.sortAlbumOrder.collect { sortOrder ->
-                _sortOrder.value = sortOrder
+            DataRefreshManager.dataSourceChangedEvent.collect {
+                getAlbums()
+            }
+        }
+        viewModelScope.launch {
+            com.craftworks.music.managers.MediaSourceManager.selectedSource.collect {
                 getAlbums()
             }
         }
