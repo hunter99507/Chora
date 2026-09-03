@@ -25,6 +25,4 @@
         <string name="Setting_Transcoding_Format">Transcoding Format</string>
         <string name="Setting_Scrobble_Percent">Min. Scrobble Percentage</string>
         <string name="Setting_Scrobble_Description">Navidrome Only.</string>
-        <string name="Setting_Fade_In_Out">Seamless Track Transition</string>
-        <string name="Setting_Fade_In_Out_Description">Fade out at the end of a song and fade in the next one for a smooth transition.</string>
 </resources>

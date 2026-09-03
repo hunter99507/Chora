@@ -3,7 +3,6 @@ package com.craftworks.music.player
 import android.app.PendingIntent
 import android.content.Intent
 import android.os.Bundle
-import android.os.SystemClock
 import android.util.Log
 import android.widget.Toast
 import androidx.annotation.OptIn
@@ -101,18 +100,8 @@ class ChoraMediaLibraryService : MediaLibraryService() {
     private var _sleepTimerRemainingTime = MutableStateFlow(0)
     val sleepTimerRemainingTime: StateFlow<Int> = _sleepTimerRemainingTime.asStateFlow()
 
-    // Seamless transition (fade-out at end of track, fade-in on next track).
-    // Lives in the service so it applies to every surface (phone, Android Auto, Android TV).
-    private var fadeInOutJob: Job? = null
-
     // Preloads the next 3 queue items into the media cache (phone / Android Auto / TV).
     private var preloadJob: Job? = null
-
-    @Volatile private var fadeInOutEnabled = false
-    @Volatile private var currentTargetVolume = 1f
-    @Volatile private var fadeInActive = false
-    @Volatile private var fadeOutActive = false
-    @Volatile private var lastTransitionElapsedMs = 0L
 
     @Inject lateinit var appearanceSettingsManager: AppearanceSettingsManager
     @Inject lateinit var playbackSettingsManager: PlaybackSettingsManager
@@ -130,10 +119,6 @@ class ChoraMediaLibraryService : MediaLibraryService() {
         const val CUSTOM_ACTION_REPEAT = "com.craftworks.chora.CUSTOM_ACTION_REPEAT"
         const val CUSTOM_ACTION_CYCLE_SOURCE = "com.craftworks.chora.CUSTOM_ACTION_CYCLE_SOURCE"
         const val CUSTOM_ACTION_REFRESH = "com.craftworks.chora.CUSTOM_ACTION_REFRESH"
-
-        // Duration of the volume fade-out/fade-in used for seamless track transitions.
-        // 3s keeps it a smooth "duck" like Plex; adjust to taste.
-        private const val FADE_DURATION_MS = 3000L
 
         private var instance: ChoraMediaLibraryService? = null
 
@@ -417,7 +402,7 @@ class ChoraMediaLibraryService : MediaLibraryService() {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 // Apply ReplayGain as the target volume for this track
                 val replayGain = mediaItem?.mediaMetadata?.extras?.getFloat("replayGain")
-                currentTargetVolume =
+                val targetVolume =
                     if (mediaItem?.mediaMetadata?.extras?.containsKey("replayGain") == true && replayGain != null) {
                         clamp(
                             (10f.pow(
@@ -427,29 +412,7 @@ class ChoraMediaLibraryService : MediaLibraryService() {
                     } else {
                         1f
                     }
-
-                // Seamless transition (Plex-style crossfade):
-                // When a track ends naturally, set the next track's volume to 0 immediately
-                // and let the volume ticker ramp it up over FADE_DURATION_MS. The ticker
-                // already handles the fade-out on the current track in its last seconds.
-                // Manual seeks/queue changes snap straight to the target volume.
-                if (fadeInOutEnabled &&
-                    (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO ||
-                            reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT)
-                ) {
-                    fadeInActive = true
-                    fadeOutActive = false
-                    lastTransitionElapsedMs = SystemClock.elapsedRealtime()
-                    // Set the NEW track (the one transitioning in) to 0 — ExoPlayer's
-                    // player.volume controls whatever is currently loaded, which is now
-                    // the next track. The ticker will ramp this up to currentTargetVolume.
-                    player.volume = 0f
-                    Log.d("SEAMLESS", "Crossfade: next track starting at 0, ramping to $currentTargetVolume over ${FADE_DURATION_MS}ms")
-                } else {
-                    fadeInActive = false
-                    fadeOutActive = false
-                    player.volume = currentTargetVolume
-                }
+                player.volume = targetVolume
 
                 playerScrobbled = false
 
@@ -524,15 +487,6 @@ class ChoraMediaLibraryService : MediaLibraryService() {
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 super.onIsPlayingChanged(isPlaying)
-                // Only a real (user-initiated) pause snaps the volume back: that sets
-                // playWhenReady=false. During an automatic transition ExoPlayer briefly
-                // reports isPlaying=false while buffering the next track, but playWhenReady
-                // stays true — snapping there was killing the fade-in instantly.
-                if (!isPlaying && !player.playWhenReady && ::player.isInitialized) {
-                    fadeInActive = false
-                    fadeOutActive = false
-                    player.volume = currentTargetVolume
-                }
             }
         })
 
@@ -626,60 +580,6 @@ class ChoraMediaLibraryService : MediaLibraryService() {
                     }
                 }
                 delay(1000)
-            }
-        }
-
-        // React to the seamless transition setting immediately (restore volume when disabled).
-        serviceMainScope.launch {
-            playbackSettingsManager.fadeInOutFlow.collect { enabled ->
-                fadeInOutEnabled = enabled
-                if (!enabled && ::player.isInitialized) {
-                    fadeInActive = false
-                    fadeOutActive = false
-                    player.volume = currentTargetVolume
-                }
-            }
-        }
-
-        // Volume ticker driving the seamless transition fades (~25 updates/sec).
-        // Fade-out: last FADE_DURATION_MS of the current track. Fade-in: first
-        // FADE_DURATION_MS after an automatic transition to the next track,
-        // ramping even while the next track buffers so the effect is gapless.
-        fadeInOutJob = serviceMainScope.launch {
-            while (isActive) {
-                if (fadeInOutEnabled && ::player.isInitialized) {
-                    var volume = currentTargetVolume
-
-                    if (fadeInActive) {
-                        val sinceTransition = SystemClock.elapsedRealtime() - lastTransitionElapsedMs
-                        if (sinceTransition >= FADE_DURATION_MS) {
-                            fadeInActive = false
-                            volume = currentTargetVolume
-                            Log.d("SEAMLESS", "Fade-in complete (volume: $currentTargetVolume)")
-                        } else {
-                            volume = currentTargetVolume *
-                                    (sinceTransition.coerceIn(0L, FADE_DURATION_MS) / FADE_DURATION_MS.toFloat())
-                        }
-                    } else if (player.isPlaying) {
-                        val duration = player.duration
-                        if (duration > FADE_DURATION_MS) {
-                            val remaining = duration - player.currentPosition
-                            if (remaining < FADE_DURATION_MS) {
-                                if (!fadeOutActive) {
-                                    fadeOutActive = true
-                                    Log.d("SEAMLESS", "Fading out last ${FADE_DURATION_MS / 1000}s of current track")
-                                }
-                                volume = currentTargetVolume *
-                                        (remaining.coerceIn(0L, FADE_DURATION_MS) / FADE_DURATION_MS.toFloat())
-                            } else {
-                                fadeOutActive = false
-                            }
-                        }
-                    }
-
-                    if (player.volume != volume) player.volume = volume
-                }
-                delay(40)
             }
         }
 
@@ -1490,7 +1390,6 @@ class ChoraMediaLibraryService : MediaLibraryService() {
         }
         scrobbleJob?.cancel()
         sleepTimerJob?.cancel()
-        fadeInOutJob?.cancel()
         preloadJob?.cancel()
         serviceMainScope.cancel()
         serviceIOScope.cancel()

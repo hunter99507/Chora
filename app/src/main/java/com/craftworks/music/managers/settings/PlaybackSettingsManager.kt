@@ -27,8 +27,6 @@ class PlaybackSettingsManager @Inject constructor(
 
         private val SCROBBLE_PERCENT_KEY = intPreferencesKey("scrobble_percent")
 
-        private val FADE_IN_OUT_KEY = booleanPreferencesKey("fade_in_out")
-
         private val DEFAULT_SHUFFLE_KEY = booleanPreferencesKey("default_shuffle")
         private val DEFAULT_REPEAT_KEY = intPreferencesKey("default_repeat")
     }
@@ -101,18 +99,6 @@ class PlaybackSettingsManager @Inject constructor(
         withContext(NonCancellable) {
             context.dataStore.edit { preferences ->
                 preferences[SCROBBLE_PERCENT_KEY] = scrobblePercent
-            }
-        }
-    }
-
-    val fadeInOutFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
-        preferences[FADE_IN_OUT_KEY] ?: false
-    }
-
-    suspend fun setFadeInOut(enabled: Boolean) {
-        withContext(NonCancellable) {
-            context.dataStore.edit { preferences ->
-                preferences[FADE_IN_OUT_KEY] = enabled
             }
         }
     }

@@ -196,18 +196,6 @@ fun S_PlaybackScreen(navHostController: NavHostController = rememberNavControlle
                         settingsIcon = ImageVector.vectorResource(R.drawable.rounded_repeat_24),
                         toggleEvent = { showDefaultRepeatDialog = true }
                     )
-
-                    val fadeInOut by PlaybackSettingsManager(context).fadeInOutFlow.collectAsStateWithLifecycle(false)
-                    SettingsSwitch(
-                        fadeInOut,
-                        stringResource(R.string.Setting_Fade_In_Out),
-                        ImageVector.vectorResource(R.drawable.rounded_seamless_24),
-                        toggleEvent = {
-                            coroutineScope.launch {
-                                PlaybackSettingsManager(context).setFadeInOut(!fadeInOut)
-                            }
-                        }
-                    )
                 }
 
                 // Scrobble Percent

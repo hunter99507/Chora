@@ -51,7 +51,6 @@ fun TvS_PlaybackScreen() {
 
     val defaultShuffle by PlaybackSettingsManager(context).defaultShuffleFlow.collectAsState(true)
     val defaultRepeat by PlaybackSettingsManager(context).defaultRepeatFlow.collectAsState(androidx.media3.common.Player.REPEAT_MODE_ALL)
-    val fadeInOut by PlaybackSettingsManager(context).fadeInOutFlow.collectAsState(false)
     val defaultRepeatLabel = when (defaultRepeat) {
         androidx.media3.common.Player.REPEAT_MODE_ALL -> "Repeat All"
         androidx.media3.common.Player.REPEAT_MODE_ONE -> "Repeat One"
@@ -91,19 +90,6 @@ fun TvS_PlaybackScreen() {
                 subtitle = defaultRepeatLabel,
                 icon = ImageVector.vectorResource(R.drawable.rounded_repeat_24),
                 onClick = { showDefaultRepeatDialog = true }
-            )
-        }
-
-        item {
-            SettingsSwitchItem(
-                title = stringResource(R.string.Setting_Fade_In_Out),
-                icon = ImageVector.vectorResource(R.drawable.rounded_seamless_24),
-                checked = fadeInOut,
-                onCheckedChange = {
-                    coroutineScope.launch {
-                        PlaybackSettingsManager(context).setFadeInOut(it)
-                    }
-                }
             )
         }
 
