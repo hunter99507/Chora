@@ -37,6 +37,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
+import androidx.compose.foundation.layout.Box
 import com.craftworks.music.R
 import com.craftworks.music.formatMilliseconds
 
@@ -47,6 +48,8 @@ fun TvHorizontalSongCard(
     song: MediaItem = MediaItem.EMPTY,
     modifier: Modifier = Modifier,
     showTrackNumber: Boolean = false,
+    showArtwork: Boolean = true,
+    showArtistAndAlbum: Boolean = true,
     onClick: () -> Unit = { },
     onLongClick: () -> Unit = { }
 ) {
@@ -63,48 +66,68 @@ fun TvHorizontalSongCard(
         onClick = onClick,
         onLongClick = onLongClick,
         modifier = modifier.fillMaxWidth(),
-        shape = ListItemDefaults.shape(shape = RoundedCornerShape(12.dp)),
+        shape = ListItemDefaults.shape(shape = RoundedCornerShape(if (showArtwork) 12.dp else 8.dp)),
         colors = ListItemDefaults.colors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
+            containerColor = if (showArtwork) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f),
             focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
             contentColor = MaterialTheme.colorScheme.onSurface,
             focusedContentColor = MaterialTheme.colorScheme.onSurface
         ),
         border = ListItemDefaults.border(
             border = Border(
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
-                shape = RoundedCornerShape(12.dp)
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = if (showArtwork) 0.08f else 0.04f)),
+                shape = RoundedCornerShape(if (showArtwork) 12.dp else 8.dp)
             ),
             focusedBorder = Border(
                 border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(if (showArtwork) 12.dp else 8.dp)
             )
         ),
         scale = ListItemDefaults.scale(focusedScale = 1.015f),
-        leadingContent = {
-            SubcomposeAsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(artworkData)
-                    .error(R.drawable.placeholder)
-                    .fallback(R.drawable.placeholder)
-                    .diskCachePolicy(coil.request.CachePolicy.DISABLED)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-            )
+        leadingContent = when {
+            showArtwork -> {
+                {
+                    SubcomposeAsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(artworkData)
+                            .error(R.drawable.placeholder)
+                            .fallback(R.drawable.placeholder)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                    )
+                }
+            }
+            showTrackNumber -> {
+                {
+                    val trackNum = song.mediaMetadata.trackNumber ?: 0
+                    Box(
+                        modifier = Modifier.width(30.dp),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        Text(
+                            text = if (trackNum > 0) trackNum.toString() else "-",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    }
+                }
+            }
+            else -> null
         },
         headlineContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val trackNum = song.mediaMetadata.trackNumber ?: 0
-                val titlePrefix = if (showTrackNumber && trackNum > 0) "$trackNum. " else ""
+                val titlePrefix = if (showTrackNumber && showArtwork && trackNum > 0) "$trackNum. " else ""
                 Text(
                     text = "$titlePrefix${song.mediaMetadata.title ?: ""}",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                    style = if (showArtwork) MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+                            else MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -118,25 +141,27 @@ fun TvHorizontalSongCard(
                 }
             }
         },
-        supportingContent = {
-            val artist = song.mediaMetadata.artist?.toString() ?: ""
-            val album = song.mediaMetadata.albumTitle?.toString() ?: ""
-            val subtitle = when {
-                !showTrackNumber && artist.isNotBlank() && album.isNotBlank() -> "$artist  •  $album"
-                artist.isNotBlank() -> artist
-                album.isNotBlank() -> album
-                else -> ""
+        supportingContent = if (showArtistAndAlbum) {
+            {
+                val artist = song.mediaMetadata.artist?.toString() ?: ""
+                val album = song.mediaMetadata.albumTitle?.toString() ?: ""
+                val subtitle = when {
+                    !showTrackNumber && artist.isNotBlank() && album.isNotBlank() -> "$artist  •  $album"
+                    artist.isNotBlank() -> artist
+                    album.isNotBlank() -> album
+                    else -> ""
+                }
+                if (subtitle.isNotBlank()) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
-            if (subtitle.isNotBlank()) {
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        },
+        } else null,
         trailingContent = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -155,8 +180,8 @@ fun TvHorizontalSongCard(
                 if (formattedDuration.isNotBlank()) {
                     Text(
                         text = formattedDuration,
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Medium),
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Normal),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
                     )
                 }
             }

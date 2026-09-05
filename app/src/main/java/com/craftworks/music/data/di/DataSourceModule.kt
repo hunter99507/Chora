@@ -25,9 +25,10 @@ object DataSourceModule {
     fun provideLocalDataSource(
         localProvider: LocalProvider,
         localDataSettingsManager: LocalDataSettingsManager,
-        appearanceSettingsManager: AppearanceSettingsManager
+        appearanceSettingsManager: AppearanceSettingsManager,
+        localMusicStatsManager: com.craftworks.music.managers.LocalMusicStatsManager
     ): LocalDataSource {
-        return LocalDataSource(localProvider, localDataSettingsManager, appearanceSettingsManager)
+        return LocalDataSource(localProvider, localDataSettingsManager, appearanceSettingsManager, localMusicStatsManager)
     }
 
     @Singleton

@@ -2,6 +2,7 @@
 <resources>
     <!-- Common -->
     <string name="Action_Done">Done</string>
+    <string name="Action_Close">Close</string>
     <string name="Action_Remove">Remove</string>
     <string name="Action_Reset">Reset</string>
 

@@ -26,7 +26,15 @@ class SongHelper {
             shuffle: Boolean = false
         ) {
             val playableItems = mediaItems.filter {
-                it.mediaMetadata.isPlayable != false && !it.mediaId.startsWith("folder_album_") && it.mediaId.isNotBlank()
+                it.mediaMetadata.isPlayable != false &&
+                !it.mediaId.startsWith("folder_album_") &&
+                it.mediaId.isNotBlank() &&
+                it.mediaMetadata.mediaType != androidx.media3.common.MediaMetadata.MEDIA_TYPE_ALBUM &&
+                it.mediaMetadata.mediaType != androidx.media3.common.MediaMetadata.MEDIA_TYPE_FOLDER_ALBUMS &&
+                it.mediaMetadata.mediaType != androidx.media3.common.MediaMetadata.MEDIA_TYPE_ARTIST &&
+                it.mediaMetadata.mediaType != androidx.media3.common.MediaMetadata.MEDIA_TYPE_FOLDER_ARTISTS &&
+                it.mediaMetadata.mediaType != androidx.media3.common.MediaMetadata.MEDIA_TYPE_FOLDER_PLAYLISTS &&
+                !it.mediaId.startsWith("action_")
             }
             if (playableItems.isEmpty())
                 return
@@ -36,16 +44,27 @@ class SongHelper {
             val service = ChoraMediaLibraryService.getInstance()
             val playbackSettings = service?.playbackSettingsManager ?: service?.applicationContext?.let { PlaybackSettingsManager(it) }
             val defaultRepeat = playbackSettings?.defaultRepeatFlow?.first() ?: Player.REPEAT_MODE_ALL
+            val isSmartShuffle = playbackSettings?.smartShuffleFlow?.first() ?: true
+            android.util.Log.d("SmartShuffle", "SongHelper.play: shuffle=$shuffle, isSmartShuffle=$isSmartShuffle, totalPlayable=${playableItems.size}")
+
+            val preparedItems = if (shuffle) {
+                withContext(Dispatchers.Default) {
+                    if (isSmartShuffle) SmartShuffleHelper.smartShuffle(playableItems) else playableItems.shuffled()
+                }
+            } else {
+                playableItems
+            }
 
             withContext(Dispatchers.Main) {
                 mediaController?.repeatMode = defaultRepeat
+                service?.isQueuePreShuffled = shuffle
                 if (shuffle) {
                     mediaController?.shuffleModeEnabled = true
-                    mediaController?.setMediaItems(playableItems, true)
+                    mediaController?.setMediaItems(preparedItems, 0, 0)
                 } else {
                     val defaultShuffle = playbackSettings?.defaultShuffleFlow?.first() ?: false
                     mediaController?.shuffleModeEnabled = defaultShuffle
-                    mediaController?.setMediaItems(playableItems, safeIndex, 0)
+                    mediaController?.setMediaItems(preparedItems, safeIndex, 0)
                 }
                 mediaController?.prepare()
                 mediaController?.play()

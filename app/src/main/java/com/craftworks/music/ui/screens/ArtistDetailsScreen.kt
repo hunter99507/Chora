@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import com.craftworks.music.ui.elements.LocalBottomPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -188,7 +189,7 @@ fun ArtistDetails(
                     .fillMaxSize()
                     .dialogFocusable(),
                 contentPadding = PaddingValues(
-                    bottom = 80.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                    bottom = 64.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + LocalBottomPadding.current
                 )
             ) {
             // 1. Header with 2x2 collage or artist artwork

@@ -242,7 +242,7 @@ fun NowPlayingLandscape(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                ChoraMediaLibraryService.getInstance()?.player?.let {
+                (ChoraMediaLibraryService.getInstance()?.player ?: mediaController)?.let {
                     ShuffleButton(
                         it,
                         vibrantControlsColor,

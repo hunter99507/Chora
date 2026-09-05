@@ -80,7 +80,12 @@ fun OnboardingDialog(
     val navidromeServers by NavidromeManager.allServers.collectAsStateWithLifecycle()
     val embyServers by EmbyJellyfinManager.allServers.collectAsStateWithLifecycle()
 
-    val hasProviders = localProviders.isNotEmpty() || navidromeServers.isNotEmpty() || embyServers.isNotEmpty()
+    val hasProviders = when (com.craftworks.music.BuildConfig.DEDICATED_SOURCE) {
+        "LOCAL" -> localProviders.isNotEmpty()
+        "NAVIDROME" -> navidromeServers.isNotEmpty()
+        "EMBY" -> embyServers.isNotEmpty()
+        else -> localProviders.isNotEmpty() || navidromeServers.isNotEmpty() || embyServers.isNotEmpty()
+    }
 
     Dialog(
         onDismissRequest = {},
@@ -235,14 +240,20 @@ private fun OverviewStep(
             contentPadding = PaddingValues(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(localProviders) { local ->
-                LocalProviderCard(local)
+            if (com.craftworks.music.BuildConfig.DEDICATED_SOURCE == "ALL" || com.craftworks.music.BuildConfig.DEDICATED_SOURCE == "LOCAL") {
+                items(localProviders) { local ->
+                    LocalProviderCard(local)
+                }
             }
-            items(navidromeServers, key = { it.id }) { server ->
-                NavidromeProviderCard(server)
+            if (com.craftworks.music.BuildConfig.DEDICATED_SOURCE == "ALL" || com.craftworks.music.BuildConfig.DEDICATED_SOURCE == "NAVIDROME") {
+                items(navidromeServers, key = { it.id }) { server ->
+                    NavidromeProviderCard(server)
+                }
             }
-            items(embyServers, key = { it.id }) { server ->
-                EmbyJellyfinProviderCard(server)
+            if (com.craftworks.music.BuildConfig.DEDICATED_SOURCE == "ALL" || com.craftworks.music.BuildConfig.DEDICATED_SOURCE == "EMBY") {
+                items(embyServers, key = { it.id }) { server ->
+                    EmbyJellyfinProviderCard(server)
+                }
             }
         }
 

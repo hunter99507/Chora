@@ -51,6 +51,9 @@ fun EmbyItem.toSongMediaItem(serverUrl: String, token: String): MediaItem {
             putLong("bitrate", bitrate?.toLong() ?: 0L)
             putBoolean("isRadio", false)
             putBoolean("isFavorite", userData?.isFavorite == true)
+            putInt("timesPlayed", userData?.playCount ?: 0)
+            putString("starred", if (userData?.isFavorite == true) "starred" else "")
+            putString("lastPlayed", if (userData?.played == true) "played" else "")
         })
         .build()
 

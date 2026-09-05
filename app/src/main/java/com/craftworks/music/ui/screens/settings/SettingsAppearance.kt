@@ -12,12 +12,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import com.craftworks.music.ui.elements.LocalBottomPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Menu
@@ -93,8 +95,6 @@ fun S_AppearanceScreen(navHostController: NavHostController = rememberNavControl
     }
 
     var showNameDialog by remember { mutableStateOf(false) }
-    var showBackgroundDialog by remember { mutableStateOf(false) }
-    var showThemesDialog by remember { mutableStateOf(false) }
     var showNavbarItemsDialog by remember { mutableStateOf(false) }
     var showHomeItemsDialog by remember { mutableStateOf(false) }
     var showNowPlayingTitleAlignmentDialog by remember { mutableStateOf(false) }
@@ -157,50 +157,49 @@ fun S_AppearanceScreen(navHostController: NavHostController = rememberNavControl
                 .verticalScroll(rememberScrollState())
                 .dialogFocusable()
         ) {
-            /* HEADER */
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = 12.dp)
-            ) {
-                Icon(
-                    imageVector = ImageVector.vectorResource(R.drawable.s_a_palette),
-                    contentDescription = "Settings Icon",
-                    tint = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.size(48.dp)
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    text = stringResource(R.string.Settings_Header_Appearance),
-                    color = MaterialTheme.colorScheme.onBackground,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = MaterialTheme.typography.headlineLarge.fontSize,
-                    modifier = Modifier.weight(1f)
-                )
-                Box {
-                    IconButton(
-                        onClick = {
-                            navHostController.navigate(Screen.Setting.route) {
-                                launchSingleTop = true
-                            }
-                        },
-                        modifier = Modifier
-                            .size(56.dp, 70.dp)
-                            .focusRequester(focusRequester)
-                            .focusProperties { left = FocusRequester.Cancel }) {
-                        Icon(
-                            Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = "Back To Settings",
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
-            }
-
             Column(
                 Modifier
                     .padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                /* HEADER */
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                ) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(R.drawable.s_a_palette),
+                        contentDescription = "Settings Icon",
+                        tint = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = stringResource(R.string.Settings_Header_Appearance),
+                        color = MaterialTheme.colorScheme.onBackground,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = MaterialTheme.typography.headlineLarge.fontSize,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Box {
+                        IconButton(
+                            onClick = {
+                                navHostController.navigate(Screen.Setting.route) {
+                                    launchSingleTop = true
+                                }
+                            },
+                            modifier = Modifier
+                                .size(56.dp, 70.dp)
+                                .focusRequester(focusRequester)
+                                .focusProperties { left = FocusRequester.Cancel }) {
+                            Icon(
+                                Icons.AutoMirrored.Rounded.ArrowBack,
+                                contentDescription = "Back To Settings",
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                }
                 Column(
                     modifier = Modifier.clip(RoundedCornerShape(16.dp))
                 ) {
@@ -221,50 +220,6 @@ fun S_AppearanceScreen(navHostController: NavHostController = rememberNavControl
                     modifier = Modifier.clip(RoundedCornerShape(16.dp)),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    //Theme
-                    val selectedTheme by AppearanceSettingsManager(context).appTheme.collectAsState(
-                        AppTheme.SYSTEM.name
-                    )
-                    val themes = listOf(
-                        AppTheme.DARK.name,
-                        AppTheme.LIGHT.name,
-                        AppTheme.SYSTEM.name
-                    )
-                    val themeStrings = listOf(
-                        R.string.Theme_Dark, R.string.Theme_Light, R.string.Theme_System
-                    )
-                    SettingsDialogButton(
-                        stringResource(R.string.Dialog_Theme),
-                        stringResource(
-                            id = themeStrings[themes.indexOf(selectedTheme)]
-                        ),
-                        ImageVector.vectorResource(R.drawable.s_a_palette),
-                        toggleEvent = {
-                            showThemesDialog = true
-                        }
-                    )
-
-                    //Background Style
-                    val backgroundType by AppearanceSettingsManager(context).npBackgroundFlow.collectAsState(
-                        NowPlayingBackground.STATIC_BLUR
-                    )
-
-                    val backgroundTypeLabels = mapOf(
-                        NowPlayingBackground.PLAIN to R.string.Background_Plain,
-                        NowPlayingBackground.STATIC_BLUR to R.string.Background_Blur,
-                        NowPlayingBackground.ANIMATED_BLUR to R.string.Background_Anim,
-                    )
-                    SettingsDialogButton(
-                        stringResource(R.string.Setting_Background),
-                        stringResource(
-                            backgroundTypeLabels[backgroundType]
-                                ?: androidx.media3.session.R.string.error_message_invalid_state
-                        ),
-                        ImageVector.vectorResource(R.drawable.s_a_background),
-                        toggleEvent = {
-                            showBackgroundDialog = true
-                        }
-                    )
 
                     //Disable Screen Standby
                     val disableScreenStandby =
@@ -302,6 +257,7 @@ fun S_AppearanceScreen(navHostController: NavHostController = rememberNavControl
                     //Home Items
                     val titleMap = remember {
                         mapOf(
+                            "song_of_the_day" to R.string.song_of_the_day,
                             "playlists" to R.string.playlists,
                             "recently_played" to R.string.recently_played,
                             "recently_added" to R.string.recently_added,
@@ -488,19 +444,6 @@ fun S_AppearanceScreen(navHostController: NavHostController = rememberNavControl
                         }
                     )
 
-                    //Show Navidrome Logo
-                    val showNavidromeLogo =
-                        AppearanceSettingsManager(context).showNavidromeLogoFlow.collectAsState(true)
-                    SettingsSwitch(
-                        showNavidromeLogo.value,
-                        stringResource(R.string.Setting_NavidromeLogo),
-                        ImageVector.vectorResource(R.drawable.s_m_navidrome_bw),
-                        toggleEvent = {
-                            coroutineScope.launch {
-                                AppearanceSettingsManager(context).setShowNavidromeLogo(!showNavidromeLogo.value)
-                            }
-                        }
-                    )
 
                     //Show Provider Dividers
                     val showProviderDividers =
@@ -547,17 +490,14 @@ fun S_AppearanceScreen(navHostController: NavHostController = rememberNavControl
                         }
                     )
                 }
+
+                Spacer(modifier = Modifier.height(LocalBottomPadding.current + 48.dp))
             }
         }
 
         if(showNameDialog)
             NameDialog(setShowDialog = { showNameDialog = it })
 
-        if(showBackgroundDialog)
-            BackgroundDialog(setShowDialog = { showBackgroundDialog = it })
-
-        if(showThemesDialog)
-            ThemeDialog(setShowDialog = { showThemesDialog = it })
 
         if(showNavbarItemsDialog)
             NavbarItemsDialog(setShowDialog = { showNavbarItemsDialog = it })

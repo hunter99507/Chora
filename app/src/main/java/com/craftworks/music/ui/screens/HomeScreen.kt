@@ -1,6 +1,7 @@
 package com.craftworks.music.ui.screens
 
 import com.craftworks.music.managers.DataRefreshManager
+import com.craftworks.music.ui.elements.LocalBottomPadding
 
 import android.content.res.Configuration
 import androidx.compose.animation.core.Spring
@@ -70,6 +71,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
@@ -81,6 +83,7 @@ import com.craftworks.music.managers.settings.AppearanceSettingsManager
 import com.craftworks.music.player.SongHelper
 import com.craftworks.music.ui.elements.AlbumRow
 import com.craftworks.music.ui.elements.RippleEffect
+import com.craftworks.music.ui.elements.SongOfTheDayCard
 import com.craftworks.music.ui.playing.dpToPx
 import com.craftworks.music.ui.viewmodels.HomeScreenViewModel
 import kotlinx.coroutines.launch
@@ -121,6 +124,9 @@ fun HomeScreen(
     val recentAlbums by viewModel.recentAlbums.collectAsStateWithLifecycle()
     val mostPlayedAlbums by viewModel.mostPlayedAlbums.collectAsStateWithLifecycle()
     val shuffledAlbums by viewModel.shuffledAlbums.collectAsStateWithLifecycle()
+    val songOfTheDay by viewModel.songOfTheDay.collectAsStateWithLifecycle()
+    val artistOfTheDay by viewModel.artistOfTheDay.collectAsStateWithLifecycle()
+    val coroutineScope = rememberCoroutineScope()
 
     val state = rememberPullToRefreshState()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
@@ -138,6 +144,11 @@ fun HomeScreen(
     val navidromeLibraries by NavidromeManager.libraries.collectAsStateWithLifecycle()
     val embyLibraries by EmbyJellyfinManager.libraries.collectAsStateWithLifecycle()
     val isEmbyActive = EmbyJellyfinManager.checkActiveServers()
+
+    val navItems by AppearanceSettingsManager(context).bottomNavItemsFlow.collectAsStateWithLifecycle(emptyList())
+    val activeTabs = remember(navItems) {
+        navItems.filter { it.enabled && it.screenRoute != "radio_screen" }.map { it.screenRoute }
+    }
 
     PullToRefreshBox(
         modifier = Modifier,
@@ -176,7 +187,7 @@ fun HomeScreen(
                     )
                     @OptIn(ExperimentalTextApi::class)
                     Text(
-                        text = "Chora",
+                        text = stringResource(R.string.app_name),
                         style = MaterialTheme.typography.headlineLarge.merge(
                             TextStyle(
                                 brush = choraGradient,
@@ -185,7 +196,9 @@ fun HomeScreen(
                             )
                         )
                     )
-                    com.craftworks.music.ui.elements.SourceSelectorPill()
+                    if (com.craftworks.music.BuildConfig.DEDICATED_SOURCE == "ALL") {
+                        com.craftworks.music.ui.elements.SourceSelectorPill()
+                    }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(
@@ -225,6 +238,10 @@ fun HomeScreen(
             val orderedHomeItems = AppearanceSettingsManager(context).homeItemsItemsFlow.collectAsState(
                 initial = listOf(
                     HomeItem(
+                        "song_of_the_day",
+                        true
+                    ),
+                    HomeItem(
                         "playlists",
                         true
                     ),
@@ -249,7 +266,36 @@ fun HomeScreen(
 
             orderedHomeItems.forEach { item ->
                 if (item.enabled) {
-                    if (item.key == "playlists") {
+                    if (item.key == "song_of_the_day") {
+                        val currentArtist = artistOfTheDay
+                        val currentSong = songOfTheDay
+                        if (currentArtist != null || currentSong != null) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 12.dp)
+                            ) {
+                                SongOfTheDayCard(
+                                    artistOfTheDay = currentArtist,
+                                    fallbackSong = currentSong,
+                                    onPlaySong = { selectedSong, allSongs ->
+                                        coroutineScope.launch {
+                                            val otherSongs = allSongs.filter { it.mediaId != selectedSong.mediaId }.shuffled()
+                                            val queue = listOf(selectedSong) + otherSongs
+                                            SongHelper.play(
+                                                mediaItems = queue,
+                                                index = 0,
+                                                mediaController = mediaController,
+                                                expandSheet = true,
+                                                shuffle = false
+                                            )
+                                            mediaController?.repeatMode = Player.REPEAT_MODE_ALL
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    } else if (item.key == "playlists") {
                         if (playlists.isNotEmpty()) {
                             Column(
                                 modifier = Modifier
@@ -260,13 +306,7 @@ fun HomeScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 12.dp, vertical = 12.dp)
-                                        .clickable {
-                                            navHostController.navigate(Screen.Playlists.route) {
-                                                launchSingleTop = true
-                                                restoreState = true
-                                            }
-                                        }
+                                        .padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp)
                                 ) {
                                     Text(
                                         text = stringResource(R.string.playlists),
@@ -277,13 +317,26 @@ fun HomeScreen(
 
                                     Spacer(modifier = Modifier.weight(1f))
 
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onBackground,
-                                        modifier = Modifier
-                                            .size(MaterialTheme.typography.headlineSmall.fontSize.value.dp * 1.2f)
-                                    )
+                                    IconButton(
+                                        onClick = {
+                                            val activeTabIdx = activeTabs.indexOf("playlist_screen")
+                                            if (activeTabIdx != -1) {
+                                                com.craftworks.music.ui.elements.TabStateHolder.scrollToTab(activeTabIdx)
+                                            } else {
+                                                navHostController.navigate(Screen.Playlists.route) {
+                                                    launchSingleTop = true
+                                                }
+                                            }
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                                            contentDescription = stringResource(R.string.playlists),
+                                            tint = MaterialTheme.colorScheme.onBackground,
+                                            modifier = Modifier
+                                                .size(MaterialTheme.typography.headlineSmall.fontSize.value.dp * 1.2f)
+                                        )
+                                    }
                                 }
 
                                 LazyRow(
@@ -338,6 +391,10 @@ fun HomeScreen(
                         )
                     }
                 }
+            }
+            val bottomPadding = LocalBottomPadding.current
+            if (bottomPadding > 0.dp) {
+                Spacer(modifier = Modifier.height(bottomPadding))
             }
         }
     }
@@ -400,20 +457,9 @@ fun HomeScreen(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = if (LocalConfiguration.current.uiMode and Configuration.UI_MODE_TYPE_MASK == Configuration.UI_MODE_TYPE_TELEVISION)
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 12.dp)
-            else
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 12.dp)
-                    .clickable {
-                        navHostController.navigate(Screen.HomeLists.route + "/$key") {
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    }
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp)
         ) {
             Text(
                 text = stringResource(title ?: androidx.media3.session.R.string.error_message_fallback),
@@ -424,13 +470,32 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier
-                    .size(MaterialTheme.typography.headlineSmall.fontSize.value.dp * 1.2f)
-            )
+            if (LocalConfiguration.current.uiMode and Configuration.UI_MODE_TYPE_MASK == Configuration.UI_MODE_TYPE_TELEVISION) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier
+                        .size(MaterialTheme.typography.headlineSmall.fontSize.value.dp * 1.2f)
+                )
+            } else {
+                IconButton(
+                    onClick = {
+                        navHostController.navigate(Screen.HomeLists.route + "/$key") {
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier
+                            .size(MaterialTheme.typography.headlineSmall.fontSize.value.dp * 1.2f)
+                    )
+                }
+            }
         }
 
         AlbumRow(
@@ -444,12 +509,18 @@ fun HomeScreen(
             onPlay = { album ->
                 coroutineScope.launch {
                     val mediaItems = viewModel.getAlbumSongs(album.mediaMetadata.extras?.getString("navidromeID") ?: "")
-                    if (mediaItems.isNotEmpty())
+                    val playableSongs = if (mediaItems.isNotEmpty() && mediaItems.first().mediaMetadata.isPlayable == false) {
+                        mediaItems.drop(1)
+                    } else {
+                        mediaItems
+                    }
+                    if (playableSongs.isNotEmpty()) {
                         SongHelper.play(
-                            mediaItems = mediaItems.subList(1, mediaItems.size),
+                            mediaItems = playableSongs,
                             index = 0,
                             mediaController = mediaController
                         )
+                    }
                 }
             }
         )

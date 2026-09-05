@@ -81,5 +81,13 @@
             </intent-filter>
         </receiver>
 
+        <!-- Restore Backup Receiver -->
+        <receiver android:name=".receivers.RestoreBackupReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.craftworks.music.ACTION_RESTORE_BACKUP" />
+            </intent-filter>
+        </receiver>
+
     </application>
 </manifest>

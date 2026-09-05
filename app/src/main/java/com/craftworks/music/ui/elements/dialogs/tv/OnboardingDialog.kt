@@ -203,84 +203,94 @@ private fun OnboardingSetupProviders(
         contentPadding = PaddingValues(vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        item {
-            Text(
-                text = stringResource(R.string.Source_Local),
-                color = MaterialTheme.colorScheme.onBackground,
-            )
+        if (com.craftworks.music.BuildConfig.DEDICATED_SOURCE == "ALL" || com.craftworks.music.BuildConfig.DEDICATED_SOURCE == "LOCAL") {
+            item {
+                Text(
+                    text = stringResource(R.string.Source_Local),
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+            }
+
+            items(localProviders, key = { it }) { local ->
+                LocalProviderCard(local)
+            }
+            item {
+                ListItem(
+                    selected = false,
+                    headlineContent = { Text(stringResource(R.string.Action_Add)) },
+                    leadingContent = {
+                        Icon(
+                            imageVector = Icons.Rounded.Add,
+                            contentDescription = stringResource(R.string.Action_Login),
+                        )
+                    },
+                    onClick = showLocalFolderDialog
+                )
+            }
         }
 
-        items(localProviders, key = { it }) { local ->
-            LocalProviderCard(local)
-        }
-        item {
-            ListItem(
-                selected = false,
-                headlineContent = { Text(stringResource(R.string.Action_Add)) },
-                leadingContent = {
-                    Icon(
-                        imageVector = Icons.Rounded.Add,
-                        contentDescription = stringResource(R.string.Action_Login),
-                    )
-                },
-                onClick = showLocalFolderDialog
-            )
+        if (com.craftworks.music.BuildConfig.DEDICATED_SOURCE == "ALL") {
+            item {
+                HorizontalDivider()
+            }
         }
 
-        item {
-            HorizontalDivider()
+        if (com.craftworks.music.BuildConfig.DEDICATED_SOURCE == "ALL" || com.craftworks.music.BuildConfig.DEDICATED_SOURCE == "NAVIDROME") {
+            item {
+                Text(
+                    text = stringResource(R.string.Source_Navidrome),
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+            }
+
+            items(navidromeServers, key = { it.id }) { server ->
+                NavidromeProviderCard(server)
+            }
+            item {
+                ListItem(
+                    selected = false,
+                    headlineContent = { Text(stringResource(R.string.Action_Add)) },
+                    leadingContent = {
+                        Icon(
+                            imageVector = Icons.Rounded.Add,
+                            contentDescription = stringResource(R.string.Action_Login),
+                        )
+                    },
+                    onClick = showNavidromeServerDialog
+                )
+            }
         }
 
-        item {
-            Text(
-                text = stringResource(R.string.Source_Navidrome),
-                color = MaterialTheme.colorScheme.onBackground,
-            )
+        if (com.craftworks.music.BuildConfig.DEDICATED_SOURCE == "ALL") {
+            item {
+                HorizontalDivider()
+            }
         }
 
-        items(navidromeServers, key = { it.id }) { server ->
-            NavidromeProviderCard(server)
-        }
-        item {
-            ListItem(
-                selected = false,
-                headlineContent = { Text(stringResource(R.string.Action_Add)) },
-                leadingContent = {
-                    Icon(
-                        imageVector = Icons.Rounded.Add,
-                        contentDescription = stringResource(R.string.Action_Login),
-                    )
-                },
-                onClick = showNavidromeServerDialog
-            )
-        }
+        if (com.craftworks.music.BuildConfig.DEDICATED_SOURCE == "ALL" || com.craftworks.music.BuildConfig.DEDICATED_SOURCE == "EMBY") {
+            item {
+                Text(
+                    text = stringResource(R.string.Source_Emby),
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+            }
 
-        item {
-            HorizontalDivider()
-        }
-
-        item {
-            Text(
-                text = stringResource(R.string.Source_Emby),
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-        }
-
-        items(embyServers, key = { it.id }) { server ->
-            EmbyJellyfinProviderCard(server)
-        }
-        item {
-            ListItem(
-                selected = false,
-                headlineContent = { Text(stringResource(R.string.Action_Add)) },
-                leadingContent = {
-                    Icon(
-                        imageVector = Icons.Rounded.Add,
-                        contentDescription = stringResource(R.string.Action_Login),
-                    )
-                },
-                onClick = showEmbyServerDialog
-            )
+            items(embyServers, key = { it.id }) { server ->
+                EmbyJellyfinProviderCard(server)
+            }
+            item {
+                ListItem(
+                    selected = false,
+                    headlineContent = { Text(stringResource(R.string.Action_Add)) },
+                    leadingContent = {
+                        Icon(
+                            imageVector = Icons.Rounded.Add,
+                            contentDescription = stringResource(R.string.Action_Login),
+                        )
+                    },
+                    onClick = showEmbyServerDialog
+                )
+            }
         }
     }
 

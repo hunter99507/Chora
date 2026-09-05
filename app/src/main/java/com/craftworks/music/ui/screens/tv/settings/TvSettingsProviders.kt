@@ -56,7 +56,12 @@ fun TvS_ProviderScreen() {
     val embyServers by EmbyJellyfinManager.allServers.collectAsStateWithLifecycle()
 
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Default Library", "Navidrome", "Emby / Jellyfin", "Folders", "Lyrics")
+    val tabs = when (com.craftworks.music.BuildConfig.DEDICATED_SOURCE) {
+        "LOCAL" -> listOf("Folders", "Lyrics")
+        "NAVIDROME" -> listOf("Navidrome", "Lyrics")
+        "EMBY" -> listOf("Emby / Jellyfin", "Lyrics")
+        else -> listOf("Default Library", "Navidrome", "Emby / Jellyfin", "Folders", "Lyrics")
+    }
 
     var showNavidromeServerDialog by remember { mutableStateOf(false) }
     var showEmbyServerDialog by remember { mutableStateOf(false) }
@@ -90,8 +95,8 @@ fun TvS_ProviderScreen() {
             }
         }
 
-        when (selectedTab) {
-            0 -> {
+        when (tabs.getOrNull(selectedTab)) {
+            "Default Library" -> {
                 val defaultSource by com.craftworks.music.managers.MediaSourceManager.defaultSource.collectAsStateWithLifecycle()
                 val availableSources = remember { com.craftworks.music.managers.MediaSourceManager.getAvailableSources() }
                 LazyColumn(
@@ -132,7 +137,7 @@ fun TvS_ProviderScreen() {
                 }
             }
 
-            1 -> LazyColumn(
+            "Navidrome" -> LazyColumn(
                 contentPadding = PaddingValues(vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -155,7 +160,7 @@ fun TvS_ProviderScreen() {
                 }
             }
 
-            2 -> LazyColumn(
+            "Emby / Jellyfin" -> LazyColumn(
                 contentPadding = PaddingValues(vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -178,7 +183,7 @@ fun TvS_ProviderScreen() {
                 }
             }
 
-            3 -> LazyColumn(
+            "Folders" -> LazyColumn(
                 contentPadding = PaddingValues(vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -201,7 +206,7 @@ fun TvS_ProviderScreen() {
                 }
             }
 
-            4 -> Column(
+            "Lyrics" -> Column(
                 modifier = Modifier.padding(vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {

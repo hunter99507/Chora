@@ -4,11 +4,14 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import com.craftworks.music.ui.elements.LocalBottomPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
@@ -34,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -70,6 +74,7 @@ fun S_ProviderScreen(navHostController: NavHostController = rememberNavControlle
     val context = LocalContext.current.applicationContext
 
     var showNavidromeServerDialog by remember { mutableStateOf(false) }
+    var showBackupRestoreDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -77,6 +82,17 @@ fun S_ProviderScreen(navHostController: NavHostController = rememberNavControlle
             TopAppBar(
                 title = { Text(text = stringResource(R.string.Settings_Header_Media)) },
                 actions = {
+                    IconButton(
+                        onClick = { showBackupRestoreDialog = true },
+                        modifier = Modifier.size(56.dp, 70.dp),
+                    ) {
+                        Icon(
+                            imageVector = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(R.drawable.s_m_backup_restore),
+                            tint = MaterialTheme.colorScheme.onBackground,
+                            contentDescription = stringResource(R.string.Settings_Header_Backup_Restore),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                     IconButton(
                         onClick = {
                             if (!navHostController.popBackStack()) {
@@ -115,31 +131,41 @@ fun S_ProviderScreen(navHostController: NavHostController = rememberNavControlle
                     .padding(12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                com.craftworks.music.ui.elements.DefaultSourceSelectorCard(context)
+                if (com.craftworks.music.BuildConfig.DEDICATED_SOURCE == "ALL") {
+                    com.craftworks.music.ui.elements.DefaultSourceSelectorCard(context)
+                }
 
                 val localProviders by LocalProviderManager.allFolders.collectAsStateWithLifecycle()
                 val navidromeServers by NavidromeManager.allServers.collectAsStateWithLifecycle()
                 val embyServers by EmbyJellyfinManager.allServers.collectAsStateWithLifecycle()
 
-                // Local Providers First
-                for (local in localProviders) {
-                    LocalProviderCard(local, context)
+                // Local Providers
+                if (com.craftworks.music.BuildConfig.DEDICATED_SOURCE == "ALL" || com.craftworks.music.BuildConfig.DEDICATED_SOURCE == "LOCAL") {
+                    for (local in localProviders) {
+                        LocalProviderCard(local, context)
+                    }
                 }
 
                 // Navidrome Providers
-                for (server in navidromeServers) {
-                    NavidromeProviderCard(server)
+                if (com.craftworks.music.BuildConfig.DEDICATED_SOURCE == "ALL" || com.craftworks.music.BuildConfig.DEDICATED_SOURCE == "NAVIDROME") {
+                    for (server in navidromeServers) {
+                        NavidromeProviderCard(server)
+                    }
                 }
 
                 // Emby / Jellyfin Providers
-                for (server in embyServers) {
-                    EmbyJellyfinProviderCard(server)
+                if (com.craftworks.music.BuildConfig.DEDICATED_SOURCE == "ALL" || com.craftworks.music.BuildConfig.DEDICATED_SOURCE == "EMBY") {
+                    for (server in embyServers) {
+                        EmbyJellyfinProviderCard(server)
+                    }
                 }
 
                 // Lyrics Providers at bottom
                 LRCLIBProviderCard(context)
 
                 NetEaseProviderCard(context)
+
+                Spacer(modifier = Modifier.height(LocalBottomPadding.current + 80.dp))
             }
 
             FloatingActionButton(
@@ -147,7 +173,9 @@ fun S_ProviderScreen(navHostController: NavHostController = rememberNavControlle
                     showNavidromeServerDialog = true
                     navidromeStatus.value = ""
                 },
-                modifier = Modifier.padding(12.dp).align(Alignment.BottomEnd),
+                modifier = Modifier
+                    .padding(end = 16.dp, bottom = 16.dp + LocalBottomPadding.current)
+                    .align(Alignment.BottomEnd),
                 shape = FloatingActionButtonDefaults.extendedFabShape,
                 containerColor = FloatingActionButtonDefaults.containerColor,
                 contentColor = contentColorFor(FloatingActionButtonDefaults.containerColor),
@@ -160,4 +188,7 @@ fun S_ProviderScreen(navHostController: NavHostController = rememberNavControlle
 
     if(showNavidromeServerDialog)
         CreateMediaProviderDialog(setShowDialog = { showNavidromeServerDialog = it })
+
+    if (showBackupRestoreDialog)
+        com.craftworks.music.ui.elements.dialogs.BackupRestoreDialog(setShowDialog = { showBackupRestoreDialog = it })
 }

@@ -52,6 +52,7 @@ import com.craftworks.music.R
 import com.craftworks.music.data.BottomNavItem
 import com.craftworks.music.managers.settings.AppTheme
 import com.craftworks.music.managers.settings.AppearanceSettingsManager
+import com.craftworks.music.managers.settings.OLEDProtectionMode
 import com.craftworks.music.ui.elements.bounceClick
 import com.craftworks.music.ui.playing.NowPlayingAlignment
 import com.craftworks.music.ui.playing.NowPlayingBackground
@@ -200,11 +201,23 @@ fun ThemeDialog(setShowDialog: (Boolean) -> Unit) {
     val themes = listOf(
        AppTheme.DARK,
        AppTheme.LIGHT,
+       AppTheme.MODERN_EDITORIAL,
+       AppTheme.NORDIC_SLATE,
+       AppTheme.APPLE_MUSIC,
+       AppTheme.APPLE_CLASSICAL,
+       AppTheme.MIDNIGHT_LAVENDER,
        AppTheme.SYSTEM
     )
 
     val themeStrings = listOf(
-        R.string.Theme_Dark, R.string.Theme_Light, R.string.Theme_System
+        R.string.Theme_Dark,
+        R.string.Theme_Light,
+        R.string.Theme_Modern_Editorial,
+        R.string.Theme_Nordic_Slate,
+        R.string.Theme_Apple_Music,
+        R.string.Theme_Apple_Classical,
+        R.string.Theme_Midnight_Lavender,
+        R.string.Theme_System
     )
 
     AlertDialog(
@@ -225,7 +238,10 @@ fun ThemeDialog(setShowDialog: (Boolean) -> Unit) {
                                             context.getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
 
                                         when (option) {
-                                            AppTheme.DARK -> {
+                                            AppTheme.DARK,
+                                            AppTheme.MODERN_EDITORIAL,
+                                            AppTheme.NORDIC_SLATE,
+                                            AppTheme.MIDNIGHT_LAVENDER -> {
                                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
                                                     uiModeManager.setApplicationNightMode(
                                                         UiModeManager.MODE_NIGHT_YES
@@ -236,7 +252,9 @@ fun ThemeDialog(setShowDialog: (Boolean) -> Unit) {
                                                     )
                                             }
 
-                                            AppTheme.LIGHT -> {
+                                            AppTheme.LIGHT,
+                                            AppTheme.APPLE_MUSIC,
+                                            AppTheme.APPLE_CLASSICAL -> {
                                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
                                                     uiModeManager.setApplicationNightMode(
                                                         UiModeManager.MODE_NIGHT_NO
@@ -273,24 +291,29 @@ fun ThemeDialog(setShowDialog: (Boolean) -> Unit) {
                                     val uiModeManager = context.getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
 
                                     when (option) {
-                                       AppTheme.DARK -> {
-                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-                                                uiModeManager.setApplicationNightMode(UiModeManager.MODE_NIGHT_YES)
-                                            else
-                                                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
-                                        }
-                                       AppTheme.LIGHT -> {
-                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-                                                uiModeManager.setApplicationNightMode(UiModeManager.MODE_NIGHT_NO)
-                                            else
-                                                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
-                                        }
-                                       AppTheme.SYSTEM -> {
-                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-                                                uiModeManager.setApplicationNightMode(UiModeManager.MODE_NIGHT_AUTO)
-                                            else
-                                                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
-                                        }
+                                        AppTheme.DARK,
+                                        AppTheme.MODERN_EDITORIAL,
+                                        AppTheme.NORDIC_SLATE,
+                                        AppTheme.MIDNIGHT_LAVENDER -> {
+                                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+                                                 uiModeManager.setApplicationNightMode(UiModeManager.MODE_NIGHT_YES)
+                                             else
+                                                 AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
+                                         }
+                                        AppTheme.LIGHT,
+                                        AppTheme.APPLE_MUSIC,
+                                        AppTheme.APPLE_CLASSICAL -> {
+                                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+                                                 uiModeManager.setApplicationNightMode(UiModeManager.MODE_NIGHT_NO)
+                                             else
+                                                 AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
+                                         }
+                                        AppTheme.SYSTEM -> {
+                                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+                                                 uiModeManager.setApplicationNightMode(UiModeManager.MODE_NIGHT_AUTO)
+                                             else
+                                                 AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+                                         }
                                     }
                                 }
                                 setShowDialog(false)
@@ -587,6 +610,7 @@ fun HomeItemsDialog(setShowDialog: (Boolean) -> Unit) {
                             )
                             val titleMap = remember {
                                 mapOf(
+                                    "song_of_the_day" to R.string.song_of_the_day,
                                     "playlists" to R.string.playlists,
                                     "recently_played" to R.string.recently_played,
                                     "recently_added" to R.string.recently_added,
@@ -711,6 +735,68 @@ fun NowPlayingTitleAlignmentDialog(
 
                         Text(
                             text = stringResource(id = alignmentStringRes),
+                            fontWeight = FontWeight.Normal,
+                            fontSize = MaterialTheme.typography.titleMedium.fontSize,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = { }
+    )
+}
+
+@Composable
+fun OledProtectionModeDialog(
+    setShowDialog: (Boolean) -> Unit = { }
+) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val protectionMode by AppearanceSettingsManager(context).oledProtectionMode.collectAsState(
+        OLEDProtectionMode.OFF
+    )
+
+    AlertDialog(
+        onDismissRequest = { setShowDialog(false) },
+        title = { Text(stringResource(R.string.Dialog_Oled_Mode)) },
+        text = {
+            Column {
+                OLEDProtectionMode.entries.forEach { mode ->
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .selectable(
+                                selected = (mode == protectionMode),
+                                onClick = {
+                                    coroutineScope.launch {
+                                        AppearanceSettingsManager(context).setOledProtectionMode(mode)
+                                    }
+                                    setShowDialog(false)
+                                },
+                                role = Role.RadioButton
+                            ),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = mode == protectionMode,
+                            onClick = {
+                                coroutineScope.launch {
+                                    AppearanceSettingsManager(context).setOledProtectionMode(mode)
+                                }
+                                setShowDialog(false)
+                            },
+                            modifier = Modifier.bounceClick()
+                        )
+                        val modeStringRes = when (mode) {
+                            OLEDProtectionMode.OFF -> R.string.Oled_Off
+                            OLEDProtectionMode.LYRICS_ONLY -> R.string.Oled_Lyrics_Only
+                            OLEDProtectionMode.MINIMAL -> R.string.Oled_Minimal
+                        }
+
+                        Text(
+                            text = stringResource(id = modeStringRes),
                             fontWeight = FontWeight.Normal,
                             fontSize = MaterialTheme.typography.titleMedium.fontSize,
                             color = MaterialTheme.colorScheme.onBackground,

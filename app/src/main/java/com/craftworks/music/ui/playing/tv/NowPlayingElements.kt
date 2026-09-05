@@ -98,7 +98,8 @@ fun PlaybackProgressSlider(
     color: Color = MaterialTheme.colorScheme.onBackground,
     iconColor: Color = MaterialTheme.colorScheme.onBackground,
     mediaController: MediaController? = null,
-    metadata: MediaMetadata? = null
+    metadata: MediaMetadata? = null,
+    modifier: Modifier = Modifier
 ) {
     val isDarkBackground = remember(iconColor) {
         ColorUtils.calculateLuminance(iconColor.toArgb()) > 0.45
@@ -219,6 +220,7 @@ fun PlaybackProgressSlider(
             enabled = metadata?.mediaType != MediaMetadata.MEDIA_TYPE_RADIO_STATION,
             modifier = Modifier
                 .fillMaxWidth()
+                .then(modifier)
                 .onFocusChanged {
                     focused.value = it.isFocused
                 }
@@ -426,7 +428,16 @@ internal fun NextSongButton(player: Player, color: Color = MaterialTheme.colorSc
     val state = rememberNextButtonState(player)
     IconButton(
         onClick = {
-            if (player.hasNextMediaItem()) {
+            if (player.shuffleModeEnabled) {
+                val total = player.mediaItemCount
+                val current = player.currentMediaItemIndex
+                if (current < total - 1) {
+                    player.seekToDefaultPosition(current + 1)
+                } else if (player.repeatMode == Player.REPEAT_MODE_ALL && total > 0) {
+                    val currentQueue = List(total) { i -> player.getMediaItemAt(i) }.shuffled()
+                    player.setMediaItems(currentQueue, 0, 0)
+                }
+            } else if (player.hasNextMediaItem()) {
                 player.seekToNextMediaItem()
             } else {
                 player.seekToNext()
@@ -525,7 +536,18 @@ fun ShuffleButton(player: Player, color: Color = MaterialTheme.colorScheme.prima
     val state = rememberShuffleButtonState(player)
     val isActive = state.shuffleOn
     IconButton(
-        onClick = state::onClick,
+        onClick = {
+            val willBeActive = !isActive
+            player.shuffleModeEnabled = willBeActive
+            val total = player.mediaItemCount
+            val currentIndex = player.currentMediaItemIndex
+            if (willBeActive && total > currentIndex + 1) {
+                val currentQueue = List(total) { i -> player.getMediaItemAt(i) }
+                val played = currentQueue.take(currentIndex + 1)
+                val upcoming = currentQueue.drop(currentIndex + 1).shuffled()
+                player.setMediaItems(played + upcoming, currentIndex, player.currentPosition)
+            }
+        },
         modifier = modifier,
         enabled = state.isEnabled,
         colors = IconButtonDefaults.colors(

@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
@@ -109,6 +110,7 @@ fun TvHomeScreen(
     val recentAlbums by viewModel.recentAlbums.collectAsStateWithLifecycle()
     val mostPlayedAlbums by viewModel.mostPlayedAlbums.collectAsStateWithLifecycle()
     val shuffledAlbums by viewModel.shuffledAlbums.collectAsStateWithLifecycle()
+    val artistOfTheDay by viewModel.artistOfTheDay.collectAsStateWithLifecycle()
 
     val orderedHomeItems = AppearanceSettingsManager(context).homeItemsItemsFlow.collectAsState(
         initial = listOf(
@@ -241,49 +243,77 @@ fun TvHomeScreen(
             val carouselState = rememberCarouselState()
             var carouselFocused by remember { mutableStateOf(false) }
             val coroutineScope = rememberCoroutineScope()
+            val songs = artistOfTheDay?.slideshowSongs?.ifEmpty { null } ?: shuffledAlbums
 
-            Carousel(
-                itemCount = shuffledAlbums.size,
-                modifier = Modifier
-                    .height(320.dp)
-                    .fillMaxWidth()
-                    .padding(horizontal = 48.dp)
-                    .padding(top = 24.dp)
-                    .clip(MaterialTheme.shapes.large)
-                    .onFocusChanged {
-                        carouselFocused = it.isFocused
-                    },
-                carouselState = carouselState,
-                contentTransformEndToStart =
-                    fadeIn(tween(600)).togetherWith(fadeOut(tween(600))),
-                contentTransformStartToEnd =
-                    fadeIn(tween(600)).togetherWith(fadeOut(tween(600)))
-            ) { itemIndex ->
-                val album = shuffledAlbums[itemIndex]
-                CarouselItem(
-                    album = album,
-                    carouselFocused = carouselFocused,
-                    modifier = Modifier.animateEnterExit(
-                        enter = slideInHorizontally(animationSpec = tween(1000)) { it / 16 },
-                        exit = slideOutHorizontally(animationSpec = tween(1000)) { -it / 16 }
-                    ),
-                    onPlay = {
-                        coroutineScope.launch {
-                            val mediaItems = viewModel.getAlbumSongs(
-                                album.mediaMetadata.extras?.getString("navidromeID") ?: ""
-                            )
-                            if (mediaItems.size > 1)
-                                SongHelper.play(
-                                    mediaItems = mediaItems.subList(1, mediaItems.size),
-                                    index = 0,
-                                    mediaController = mediaController
-                                )
-                            navHostController.navigate(Screen.NowPlayingLandscape.route) {
-                                launchSingleTop = true
+            if (songs.isNotEmpty()) {
+                Carousel(
+                    itemCount = songs.size,
+                    modifier = Modifier
+                        .height(320.dp)
+                        .fillMaxWidth()
+                        .padding(horizontal = 48.dp)
+                        .padding(top = 24.dp)
+                        .clip(MaterialTheme.shapes.large)
+                        .onFocusChanged {
+                            carouselFocused = it.isFocused
+                        },
+                    carouselState = carouselState,
+                    autoScrollDurationMillis = if (songs.size > 1) 5000L else Long.MAX_VALUE,
+                    carouselIndicator = {},
+                    contentTransformEndToStart =
+                        fadeIn(tween(600)).togetherWith(fadeOut(tween(600))),
+                    contentTransformStartToEnd =
+                        fadeIn(tween(600)).togetherWith(fadeOut(tween(600)))
+                ) { itemIndex ->
+                    val song = songs[itemIndex]
+                    CarouselItem(
+                        album = song,
+                        carouselFocused = carouselFocused,
+                        modifier = Modifier.animateEnterExit(
+                            enter = slideInHorizontally(animationSpec = tween(1000)) { it / 16 },
+                            exit = slideOutHorizontally(animationSpec = tween(1000)) { -it / 16 }
+                        ),
+                        onPlay = {
+                            coroutineScope.launch {
+                                val allSongs = artistOfTheDay?.allArtistSongs
+                                if (allSongs != null && allSongs.isNotEmpty()) {
+                                    val otherSongs = allSongs.filter { it.mediaId != song.mediaId }.shuffled()
+                                    val queue = listOf(song) + otherSongs
+                                    SongHelper.play(
+                                        mediaItems = queue,
+                                        index = 0,
+                                        mediaController = mediaController,
+                                        expandSheet = false,
+                                        shuffle = false
+                                    )
+                                    mediaController?.repeatMode = Player.REPEAT_MODE_ALL
+                                } else {
+                                    val mediaItems = viewModel.getAlbumSongs(
+                                        song.mediaMetadata.extras?.getString("navidromeID") ?: ""
+                                    )
+                                    if (mediaItems.size > 1) {
+                                        SongHelper.play(
+                                            mediaItems = mediaItems.subList(1, mediaItems.size),
+                                            index = 0,
+                                            mediaController = mediaController,
+                                            expandSheet = false
+                                        )
+                                    } else {
+                                        SongHelper.play(
+                                            mediaItems = listOf(song),
+                                            index = 0,
+                                            mediaController = mediaController,
+                                            expandSheet = false
+                                        )
+                                    }
+                                }
+                                navHostController.navigate(Screen.NowPlayingLandscape.route) {
+                                    launchSingleTop = true
+                                }
                             }
                         }
-                    }
-                )
+                    )
+                }
             }
         }
 

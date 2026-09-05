@@ -28,6 +28,7 @@ class PlaybackSettingsManager @Inject constructor(
         private val SCROBBLE_PERCENT_KEY = intPreferencesKey("scrobble_percent")
 
         private val DEFAULT_SHUFFLE_KEY = booleanPreferencesKey("default_shuffle")
+        private val SMART_SHUFFLE_KEY = booleanPreferencesKey("smart_shuffle")
         private val DEFAULT_REPEAT_KEY = intPreferencesKey("default_repeat")
     }
 
@@ -39,6 +40,18 @@ class PlaybackSettingsManager @Inject constructor(
         withContext(NonCancellable) {
             context.dataStore.edit { preferences ->
                 preferences[DEFAULT_SHUFFLE_KEY] = shuffle
+            }
+        }
+    }
+
+    val smartShuffleFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[SMART_SHUFFLE_KEY] ?: true
+    }
+
+    suspend fun setSmartShuffle(smartShuffle: Boolean) {
+        withContext(NonCancellable) {
+            context.dataStore.edit { preferences ->
+                preferences[SMART_SHUFFLE_KEY] = smartShuffle
             }
         }
     }

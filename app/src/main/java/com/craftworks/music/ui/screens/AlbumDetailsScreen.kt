@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import com.craftworks.music.ui.elements.LocalBottomPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -196,7 +197,7 @@ fun AlbumDetails(
                     .fillMaxSize()
                     .dialogFocusable(),
                 contentPadding = PaddingValues(
-                    bottom = 80.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                    bottom = 64.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + LocalBottomPadding.current
                 ),
             ) {
                 // 1. Header (Crisp artwork with gradient fade to ambient background)

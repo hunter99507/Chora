@@ -132,7 +132,7 @@ fun ThemeDialog(
         AppTheme.SYSTEM.name
     )
 
-    val themes = AppTheme.entries
+    val themes = listOf(AppTheme.DARK, AppTheme.LIGHT, AppTheme.SYSTEM)
     val currentTheme = themes.find { it.name == selectedThemeName }
         ?: AppTheme.SYSTEM
 
@@ -170,7 +170,7 @@ fun ThemeDialog(
                             )
                     }
 
-                    AppTheme.SYSTEM -> {
+                    else -> {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
                             uiModeManager.setApplicationNightMode(
                                 UiModeManager.MODE_NIGHT_AUTO
@@ -185,10 +185,10 @@ fun ThemeDialog(
         },
         label = { theme ->
             stringResource(
-            when (theme) {
+                when (theme) {
                     AppTheme.DARK -> R.string.Theme_Dark
                     AppTheme.LIGHT -> R.string.Theme_Light
-                    AppTheme.SYSTEM -> R.string.Theme_System
+                    else -> R.string.Theme_System
                 }
             )
         }
@@ -343,6 +343,7 @@ fun HomeItemsDialog(setShowDialog: (Boolean) -> Unit) {
 
     val titleMap = remember {
         mapOf(
+            "song_of_the_day" to R.string.song_of_the_day,
             "playlists" to R.string.playlists,
             "recently_played" to R.string.recently_played,
             "recently_added" to R.string.recently_added,

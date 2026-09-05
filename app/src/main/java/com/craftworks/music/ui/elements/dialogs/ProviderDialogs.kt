@@ -2,6 +2,8 @@ package com.craftworks.music.ui.elements.dialogs
 
 import android.content.Context
 import android.util.Patterns
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -9,10 +11,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
@@ -23,6 +28,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import com.craftworks.music.util.StorageHelper
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -179,6 +185,19 @@ fun CreateMediaProviderDialog(
     var allowCerts: Boolean by remember { mutableStateOf(false) }
 
     var dir: String by remember { mutableStateOf("/Music/") }
+    var showFolderPicker by remember { mutableStateOf(false) }
+
+    val safLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) {
+            val resolved = StorageHelper.parseTreeUriToPath(context, uri)
+            if (!resolved.isNullOrBlank()) {
+                dir = resolved
+            }
+        }
+    }
+
     val coroutineScope = rememberCoroutineScope()
     val configuration = LocalConfiguration.current
     val maxDialogHeight = (configuration.screenHeightDp * 0.70f).dp.coerceAtMost(520.dp)
@@ -214,16 +233,21 @@ fun CreateMediaProviderDialog(
             var embyServerId by remember { mutableStateOf<String?>(null) }
             var embyLibrariesSelection by remember { mutableStateOf<List<Pair<EmbyJellyfinLibrary, Boolean>>>(emptyList()) }
 
-            val options = listOf(
-                stringResource(R.string.Source_Local),
-                stringResource(R.string.Source_Navidrome),
-                stringResource(R.string.Source_Emby)
-            )
-            var selectedOptionText by remember { mutableStateOf(options[1]) }
+            val options = when (com.craftworks.music.BuildConfig.DEDICATED_SOURCE) {
+                "LOCAL" -> listOf(stringResource(R.string.Source_Local))
+                "NAVIDROME" -> listOf(stringResource(R.string.Source_Navidrome))
+                "EMBY" -> listOf(stringResource(R.string.Source_Emby))
+                else -> listOf(
+                    stringResource(R.string.Source_Local),
+                    stringResource(R.string.Source_Navidrome),
+                    stringResource(R.string.Source_Emby)
+                )
+            }
+            var selectedOptionText by remember { mutableStateOf(options[0]) }
 
             ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = !expanded },
+                expanded = expanded && options.size > 1,
+                onExpandedChange = { if (options.size > 1) expanded = !expanded },
             ) {
                 TextField(
                     modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable),
@@ -231,23 +255,27 @@ fun CreateMediaProviderDialog(
                     value = selectedOptionText,
                     onValueChange = {},
                     label = { Text(stringResource(R.string.Dialog_Media_Source)) },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    trailingIcon = if (options.size > 1) {
+                        { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) }
+                    } else null,
                     colors = ExposedDropdownMenuDefaults.textFieldColors()
                 )
 
-                ExposedDropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false },
-                ) {
-                    options.forEach { selectionOption ->
-                        DropdownMenuItem(
-                            text = { Text(selectionOption) },
-                            onClick = {
-                                selectedOptionText = selectionOption
-                                expanded = false
-                            },
-                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
-                        )
+                if (options.size > 1) {
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                    ) {
+                        options.forEach { selectionOption ->
+                            DropdownMenuItem(
+                                text = { Text(selectionOption) },
+                                onClick = {
+                                    selectedOptionText = selectionOption
+                                    expanded = false
+                                },
+                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                            )
+                        }
                     }
                 }
             }
@@ -256,14 +284,62 @@ fun CreateMediaProviderDialog(
             if (selectedOptionText == stringResource(R.string.Source_Local))
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Button(
+                            onClick = { showFolderPicker = true },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = ImageVector.vectorResource(R.drawable.ic_folder_open),
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(stringResource(R.string.Action_Browse_Folders))
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                try {
+                                    safLauncher.launch(null)
+                                } catch (_: Exception) {
+                                    showFolderPicker = true
+                                }
+                            },
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = ImageVector.vectorResource(R.drawable.ic_open_in_new),
+                                contentDescription = stringResource(R.string.Action_System_Picker),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
                     /* Directory */
                     OutlinedTextField(
                         value = dir,
                         onValueChange = { dir = it },
                         label = { Text(stringResource(R.string.Label_Local_Directory)) },
-                        singleLine = true
+                        trailingIcon = {
+                            IconButton(onClick = { showFolderPicker = true }) {
+                                Icon(
+                                    imageVector = ImageVector.vectorResource(R.drawable.ic_folder_open),
+                                    contentDescription = stringResource(R.string.Action_Browse_Folders),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
                     )
 
                     Button(
@@ -664,6 +740,16 @@ fun CreateMediaProviderDialog(
                 }
             //endregion
         }
+    }
+
+    if (showFolderPicker) {
+        LocalFolderPickerDialog(
+            initialPath = dir,
+            onDismiss = { showFolderPicker = false },
+            onFolderSelected = { selected ->
+                dir = selected
+            }
+        )
     }
 }
 

@@ -7,9 +7,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import com.craftworks.music.ui.elements.LocalBottomPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.Button
@@ -43,6 +49,7 @@ import androidx.navigation.compose.rememberNavController
 import com.craftworks.music.R
 import com.craftworks.music.data.model.Screen
 import com.craftworks.music.ui.elements.dialogs.AndroidAutoItemsDialog
+import com.craftworks.music.ui.elements.dialogs.BackupRestoreDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview(
@@ -62,6 +69,7 @@ fun SettingScreen(
     }
 
     var showAndroidAutoItemsDialog by remember { mutableStateOf(false) }
+    var showBackupRestoreDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -92,6 +100,8 @@ fun SettingScreen(
                 .padding(
                     top = innerPadding.calculateTopPadding()
                 )
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
         ) {
             Column(
                 modifier = Modifier
@@ -100,8 +110,15 @@ fun SettingScreen(
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 SettingsButton(
-                    Screen.S_Appearance.route,
+                    Screen.S_Theme.route,
                     R.drawable.s_a_palette,
+                    R.string.Settings_Header_Theme,
+                    navHostController
+                )
+
+                SettingsButton(
+                    Screen.S_Appearance.route,
+                    R.drawable.s_a_navbar_items,
                     R.string.Settings_Header_Appearance,
                     navHostController
                 )
@@ -125,12 +142,24 @@ fun SettingScreen(
                     text = stringResource(R.string.Setting_Android_Auto_Items),
                     onClick = { showAndroidAutoItemsDialog = true }
                 )
+
+                SettingsActionButton(
+                    icon = R.drawable.s_m_backup_restore,
+                    text = stringResource(R.string.Settings_Header_Backup_Restore),
+                    onClick = { showBackupRestoreDialog = true }
+                )
+
+                Spacer(modifier = Modifier.height(LocalBottomPadding.current + 48.dp))
             }
         }
     }
 
     if (showAndroidAutoItemsDialog) {
         AndroidAutoItemsDialog(setShowDialog = { showAndroidAutoItemsDialog = it })
+    }
+
+    if (showBackupRestoreDialog) {
+        BackupRestoreDialog(setShowDialog = { showBackupRestoreDialog = it })
     }
 }
 

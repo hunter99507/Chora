@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "exportedAt": "2026-09-04 18:25:00",
+  "navidromeServers": [
+    {
+      "id": "1",
+      "url": "https://navi.shunter.pp.ua",
+      "username": "hunter99507",
+      "password": "Hunter010",
+      "enabled": true,
+      "allowSelfSignedCert": false,
+      "libraryIds": [
+        {
+          "first": {
+            "id": 0,
+            "name": "Media Library"
+          },
+          "second": true
+        }
+      ]
+    }
+  ],
+  "currentNavidromeServerId": "1",
+  "embyJellyfinServers": [
+    {
+      "id": "1",
+      "url": "https://emby.shunter.pp.ua",
+      "username": "hunter99507",
+      "password": "Hunter010",
+      "token": null,
+      "userId": null,
+      "serverId": null,
+      "enabled": true,
+      "allowSelfSignedCert": false,
+      "libraryIds": [
+        {
+          "first": {
+            "id": "0",
+            "name": "Music"
+          },
+          "second": true
+        }
+      ]
+    }
+  ],
+  "currentEmbyServerId": "1",
+  "localFolders": [],
+  "disabledLocalFolders": [],
+  "defaultMediaSource": "all"
+}

@@ -13,3 +13,7 @@ local.properties
 /crowdin.yml
 /.idea/
 /.kotlin/
+/logs/
+logs/
+/.build_config
+.build_config

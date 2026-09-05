@@ -8,9 +8,12 @@ import com.craftworks.music.managers.DataRefreshManager
 import com.craftworks.music.managers.EmbyJellyfinManager
 import com.craftworks.music.managers.NavidromeManager
 import com.craftworks.music.data.repository.PlaylistRepository
+import com.craftworks.music.managers.ArtistOfTheDayData
+import com.craftworks.music.managers.ArtistOfTheDayManager
+import com.craftworks.music.managers.SongOfTheDayManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,8 +25,16 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeScreenViewModel @Inject constructor(
     private val albumRepository: AlbumRepository,
-    private val playlistRepository: PlaylistRepository
+    private val playlistRepository: PlaylistRepository,
+    private val songOfTheDayManager: SongOfTheDayManager,
+    private val artistOfTheDayManager: ArtistOfTheDayManager
 ) : ViewModel() {
+    private val _artistOfTheDay = MutableStateFlow<ArtistOfTheDayData?>(null)
+    val artistOfTheDay: StateFlow<ArtistOfTheDayData?> = _artistOfTheDay.asStateFlow()
+
+    private val _songOfTheDay = MutableStateFlow<MediaItem?>(null)
+    val songOfTheDay: StateFlow<MediaItem?> = _songOfTheDay.asStateFlow()
+
     private val _playlists = MutableStateFlow<List<MediaItem>>(emptyList())
     val playlists: StateFlow<List<MediaItem>> = _playlists.asStateFlow()
 
@@ -81,26 +92,62 @@ class HomeScreenViewModel @Inject constructor(
     fun loadHomeScreenData(forceRefresh: Boolean = false) {
         viewModelScope.launch {
             _isLoading.value = true
-            coroutineScope {
+            supervisorScope {
                 launch {
-                    val data = playlistRepository.getPlaylists(forceRefresh)
-                    _playlists.value = data
+                    try {
+                        val data = playlistRepository.getPlaylists(forceRefresh)
+                        _playlists.value = data
+                    } catch (e: Exception) {
+                        android.util.Log.e("HomeScreenVM", "Failed to load playlists", e)
+                    }
                 }
                 launch {
-                    val data = albumRepository.getAlbums("recent", 20, 0, forceRefresh)
-                    _recentlyPlayedAlbums.value = data
+                    try {
+                        val data = albumRepository.getAlbums("recent", 20, 0, forceRefresh)
+                        _recentlyPlayedAlbums.value = data
+                    } catch (e: Exception) {
+                        android.util.Log.e("HomeScreenVM", "Failed to load recently played", e)
+                    }
                 }
                 launch {
-                    val data = albumRepository.getAlbums("newest", 20, 0, forceRefresh)
-                    _recentAlbums.value = data
+                    try {
+                        val data = albumRepository.getAlbums("newest", 20, 0, forceRefresh)
+                        _recentAlbums.value = data
+                    } catch (e: Exception) {
+                        android.util.Log.e("HomeScreenVM", "Failed to load recently added", e)
+                    }
                 }
                 launch {
-                    val data = albumRepository.getAlbums("frequent", 20, 0, forceRefresh)
-                    _mostPlayedAlbums.value = data
+                    try {
+                        val data = albumRepository.getAlbums("frequent", 20, 0, forceRefresh)
+                        _mostPlayedAlbums.value = data
+                    } catch (e: Exception) {
+                        android.util.Log.e("HomeScreenVM", "Failed to load most played", e)
+                    }
                 }
                 launch {
-                    val data = albumRepository.getAlbums("random", 20, 0, forceRefresh)
-                    _shuffledAlbums.value = data
+                    try {
+                        val data = albumRepository.getAlbums("random", 20, 0, forceRefresh)
+                        _shuffledAlbums.value = data
+                    } catch (e: Exception) {
+                        android.util.Log.e("HomeScreenVM", "Failed to load random albums", e)
+                    }
+                }
+                launch {
+                    try {
+                        val sotd = songOfTheDayManager.getSongOfTheDay(forceRefresh)
+                        _songOfTheDay.value = sotd
+                    } catch (e: Exception) {
+                        android.util.Log.e("HomeScreenVM", "Failed to load song of the day", e)
+                    }
+                }
+                launch {
+                    try {
+                        val aotd = artistOfTheDayManager.getArtistOfTheDay(forceRefresh)
+                        _artistOfTheDay.value = aotd
+                    } catch (e: Exception) {
+                        android.util.Log.e("HomeScreenVM", "Failed to load artist of the day", e)
+                    }
                 }
             }
             _isLoading.value = false

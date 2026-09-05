@@ -9,13 +9,19 @@ import androidx.media3.common.MediaMetadata
 var albumList:MutableList<MediaData.Album> = mutableStateListOf()
 
 fun MediaData.Album.toMediaItem(): MediaItem {
+    val albumTitle = this@toMediaItem.name?.ifBlank { null }
+        ?: this@toMediaItem.title?.ifBlank { null }
+        ?: this@toMediaItem.album?.ifBlank { null }
+        ?: "Unknown Album"
+    val albumArtist = this@toMediaItem.artist.ifBlank { "Unknown Artist" }
+
     val mediaMetadata = MediaMetadata.Builder()
-        .setTitle(this@toMediaItem.name)
-        .setArtist(this@toMediaItem.artist)
-        .setAlbumTitle(this@toMediaItem.name)
-        .setDisplayTitle(this@toMediaItem.name)
-        .setAlbumArtist(this@toMediaItem.artist)
-        .setArtworkUri(this@toMediaItem.coverArt?.toUri())
+        .setTitle(albumTitle)
+        .setArtist(albumArtist)
+        .setAlbumTitle(albumTitle)
+        .setDisplayTitle(albumTitle)
+        .setAlbumArtist(albumArtist)
+        .setArtworkUri(this@toMediaItem.coverArt?.ifBlank { null }?.toUri())
         .setRecordingYear(this@toMediaItem.year)
         .setDurationMs(this@toMediaItem.duration?.times(1000)?.toLong())
         .setIsBrowsable(true)
@@ -45,16 +51,22 @@ fun MediaData.Album.toMediaItem(): MediaItem {
 fun MediaItem.toAlbum(): MediaData.Album {
     val mediaMetadata = this.mediaMetadata
     val extras = mediaMetadata.extras
+    val title = mediaMetadata.albumTitle?.toString()?.ifBlank { null }
+        ?: mediaMetadata.title?.toString()?.ifBlank { null }
+        ?: ""
 
+    val cover = mediaMetadata.artworkUri?.toString() ?: ""
     return MediaData.Album(
-        navidromeID = extras?.getString("navidromeID") ?: "",
-        name = mediaMetadata.albumTitle.toString(),
-        artist = mediaMetadata.artist.toString(),
-        year = mediaMetadata.releaseYear ?: 0,
-        coverArt = mediaMetadata.artworkUri.toString(),
-        duration = extras?.getInt("Duration") ?: 0,
+        navidromeID = extras?.getString("navidromeID") ?: this.mediaId.removePrefix("folder_album_"),
+        name = title,
+        title = title,
+        album = title,
+        artist = mediaMetadata.artist?.toString() ?: "",
+        year = mediaMetadata.recordingYear ?: mediaMetadata.releaseYear ?: 0,
+        coverArt = cover,
+        duration = extras?.getInt("Duration") ?: ((mediaMetadata.durationMs ?: 0L) / 1000L).toInt(),
         songs = mutableListOf(),
         songCount = 0,
-        artistId = ""
+        artistId = extras?.getString("artistId") ?: ""
     )
 }

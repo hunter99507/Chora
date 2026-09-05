@@ -38,7 +38,6 @@ fun TvAlbumCard(
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(coverArtUrl)
-                            .diskCachePolicy(coil.request.CachePolicy.DISABLED)
                             .crossfade(true)
                             .build(),
                         fallback = painterResource(R.drawable.placeholder),

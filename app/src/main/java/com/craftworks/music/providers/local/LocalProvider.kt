@@ -22,7 +22,8 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 class LocalProvider @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val localMusicStatsManager: com.craftworks.music.managers.LocalMusicStatsManager
 ) {
     private companion object {
         private const val TAG = "LOCAL_PROVIDER"
@@ -122,7 +123,51 @@ class LocalProvider @Inject constructor(
             }
         }
 
-        albums
+        when (sort) {
+            "alphabeticalByName" -> albums.sortedBy { it.mediaMetadata.albumTitle?.toString() ?: "" }
+            "random" -> albums.shuffled()
+            "newest", "recentlyAdded" -> {
+                val songs = getLocalSongs()
+                val albumDateMap = songs.groupBy { it.mediaMetadata.albumTitle?.toString() ?: "" }
+                    .mapValues { (_, songList) ->
+                        songList.maxOfOrNull { it.mediaMetadata.extras?.getString("dateAdded")?.toLongOrNull() ?: 0L } ?: 0L
+                    }
+                albums.sortedByDescending { albumDateMap[it.mediaMetadata.albumTitle?.toString() ?: ""] ?: 0L }
+            }
+            "recent", "recentlyPlayed" -> {
+                val songs = getLocalSongs()
+                val albumPlayedMap = songs.groupBy { it.mediaMetadata.albumTitle?.toString() ?: "" }
+                    .mapValues { (_, songList) ->
+                        songList.maxOfOrNull { it.mediaMetadata.extras?.getString("lastPlayed")?.toLongOrNull() ?: 0L } ?: 0L
+                    }
+                val playedAlbums = albums.filter { (albumPlayedMap[it.mediaMetadata.albumTitle?.toString() ?: ""] ?: 0L) > 0L }
+                    .sortedByDescending { albumPlayedMap[it.mediaMetadata.albumTitle?.toString() ?: ""] ?: 0L }
+                playedAlbums.ifEmpty {
+                    val albumDateMap = songs.groupBy { it.mediaMetadata.albumTitle?.toString() ?: "" }
+                        .mapValues { (_, songList) ->
+                            songList.maxOfOrNull { it.mediaMetadata.extras?.getString("dateAdded")?.toLongOrNull() ?: 0L } ?: 0L
+                        }
+                    albums.sortedByDescending { albumDateMap[it.mediaMetadata.albumTitle?.toString() ?: ""] ?: 0L }
+                }
+            }
+            "frequent", "mostPlayed" -> {
+                val songs = getLocalSongs()
+                val albumPlayCountMap = songs.groupBy { it.mediaMetadata.albumTitle?.toString() ?: "" }
+                    .mapValues { (_, songList) ->
+                        songList.sumOf { it.mediaMetadata.extras?.getInt("timesPlayed") ?: 0 }
+                    }
+                val frequentAlbums = albums.filter { (albumPlayCountMap[it.mediaMetadata.albumTitle?.toString() ?: ""] ?: 0) > 0 }
+                    .sortedByDescending { albumPlayCountMap[it.mediaMetadata.albumTitle?.toString() ?: ""] ?: 0 }
+                frequentAlbums.ifEmpty {
+                    val albumDateMap = songs.groupBy { it.mediaMetadata.albumTitle?.toString() ?: "" }
+                        .mapValues { (_, songList) ->
+                            songList.maxOfOrNull { it.mediaMetadata.extras?.getString("dateAdded")?.toLongOrNull() ?: 0L } ?: 0L
+                        }
+                    albums.sortedByDescending { albumDateMap[it.mediaMetadata.albumTitle?.toString() ?: ""] ?: 0L }
+                }
+            }
+            else -> albums
+        }
     }
 
     private fun getAlbumIdsInFolders(folders: List<String>): Set<Long> {
@@ -206,7 +251,7 @@ class LocalProvider @Inject constructor(
                     .setRecordingYear(year)
                     .setGenre(genre)
                     .setIsBrowsable(true)
-                    .setIsPlayable(true)
+                    .setIsPlayable(false)
                     .setDurationMs(totalDuration)
                     .setMediaType(MediaMetadata.MEDIA_TYPE_ALBUM)
                     .setExtras(Bundle().apply {
@@ -311,13 +356,31 @@ class LocalProvider @Inject constructor(
                     .setRecordingYear(year)
                     .setDurationMs(duration.toLong())
                     .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
+                    .apply {
+                        val rawId = "$LOCAL_PREFIX$id"
+                        val userRating = localMusicStatsManager.getRating(rawId)
+                        if (userRating > 0) {
+                            setUserRating(androidx.media3.common.StarRating(5, userRating.toFloat()))
+                        }
+                    }
                     .setExtras(Bundle().apply {
-                        putString("navidromeID", "$LOCAL_PREFIX$id")
+                        val rawId = "$LOCAL_PREFIX$id"
+                        putString("navidromeID", rawId)
                         putString("artistId", "$LOCAL_PREFIX${artist.hashCode()}")
                         putString("lyricsArtist", artist)
                         putString("format", format.drop(6))
                         putInt("bitrate", bitrate / 1000)
                         putString("path", path)
+                        putString("dateAdded", dateAdded)
+                        putInt("timesPlayed", localMusicStatsManager.getPlayCount(rawId))
+                        if (localMusicStatsManager.isStarred(rawId)) {
+                            putString("starred", "starred")
+                            putBoolean("isFavorite", true)
+                        }
+                        val lastPlayedMs = localMusicStatsManager.getLastPlayed(rawId)
+                        if (lastPlayedMs > 0L) {
+                            putString("lastPlayed", lastPlayedMs.toString())
+                        }
                     })
                     .build()
 
@@ -428,13 +491,31 @@ class LocalProvider @Inject constructor(
                     .setRecordingYear(year)
                     .setDurationMs(duration.toLong())
                     .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
+                    .apply {
+                        val rawId = "$LOCAL_PREFIX$id"
+                        val userRating = localMusicStatsManager.getRating(rawId)
+                        if (userRating > 0) {
+                            setUserRating(androidx.media3.common.StarRating(5, userRating.toFloat()))
+                        }
+                    }
                     .setExtras(Bundle().apply {
-                        putString("navidromeID", "$LOCAL_PREFIX$id")
+                        val rawId = "$LOCAL_PREFIX$id"
+                        putString("navidromeID", rawId)
                         putString("artistId", "$LOCAL_PREFIX${artist.hashCode()}")
                         putString("lyricsArtist", artist)
                         putString("format", format.drop(6))
                         putInt("bitrate", bitrate / 1000)
                         putString("path", path)
+                        putString("dateAdded", dateAdded)
+                        putInt("timesPlayed", localMusicStatsManager.getPlayCount(rawId))
+                        if (localMusicStatsManager.isStarred(rawId)) {
+                            putString("starred", "starred")
+                            putBoolean("isFavorite", true)
+                        }
+                        val lastPlayedMs = localMusicStatsManager.getLastPlayed(rawId)
+                        if (lastPlayedMs > 0L) {
+                            putString("lastPlayed", lastPlayedMs.toString())
+                        }
                     })
                     .build()
 

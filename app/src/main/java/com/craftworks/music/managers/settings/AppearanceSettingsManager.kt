@@ -25,7 +25,7 @@ enum class OLEDProtectionMode {
     OFF, LYRICS_ONLY, MINIMAL,
 }
 enum class AppTheme {
-    LIGHT, DARK, SYSTEM
+    LIGHT, DARK, MODERN_EDITORIAL, NORDIC_SLATE, APPLE_MUSIC, APPLE_CLASSICAL, MIDNIGHT_LAVENDER, SYSTEM
 }
 
 @Singleton
@@ -54,6 +54,7 @@ class AppearanceSettingsManager @Inject constructor(
         private val OLED_PROTECTION_MODE = stringPreferencesKey("oled_protection")
         private val DISABLE_SCREEN_STANDBY = booleanPreferencesKey("disable_screen_standby")
         private val ANDROID_AUTO_NAV_ITEMS_KEY = stringPreferencesKey("android_auto_nav_items")
+        private val FLOATING_NAVBAR_KEY = booleanPreferencesKey("floating_navbar")
     }
 
     val usernameFlow: Flow<String> = context.dataStore.data.map { preferences ->
@@ -131,6 +132,7 @@ class AppearanceSettingsManager @Inject constructor(
     val homeItemsItemsFlow: Flow<List<HomeItem>> = context.dataStore.data.map { preferences ->
         val jsonString = preferences[HOME_ITEMS_KEY]
         val defaultValue = listOf(
+            HomeItem("song_of_the_day", true),
             HomeItem("playlists", true),
             HomeItem("recently_played", true),
             HomeItem("recently_added", true),
@@ -139,11 +141,14 @@ class AppearanceSettingsManager @Inject constructor(
         )
         try {
             val items = jsonString?.let { Json.decodeFromString<List<HomeItem>>(it) } ?: defaultValue
-            if (items.none { it.key == "playlists" }) {
-                listOf(HomeItem("playlists", true)) + items
-            } else {
-                items
+            var result = items
+            if (result.none { it.key == "playlists" }) {
+                result = listOf(HomeItem("playlists", true)) + result
             }
+            if (result.none { it.key == "song_of_the_day" }) {
+                result = listOf(HomeItem("song_of_the_day", true)) + result
+            }
+            result
         } catch (e: Exception) {
             println(e.message)
             defaultValue
@@ -364,6 +369,18 @@ class AppearanceSettingsManager @Inject constructor(
         withContext(NonCancellable) {
             context.dataStore.edit { preferences ->
                 preferences[DISABLE_SCREEN_STANDBY] = enabled
+            }
+        }
+    }
+
+    val floatingNavbarFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[FLOATING_NAVBAR_KEY] ?: false
+    }
+
+    suspend fun setFloatingNavbar(enabled: Boolean) {
+        withContext(NonCancellable) {
+            context.dataStore.edit { preferences ->
+                preferences[FLOATING_NAVBAR_KEY] = enabled
             }
         }
     }

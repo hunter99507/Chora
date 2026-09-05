@@ -1,0 +1,10 @@
+Android Auto Fix Backup
+Timestamp: 2026-09-04 11:45:14
+Archive: Chora_android_auto_fix_backup_20260904_114514.zip
+
+Features included in this backup:
+- Android Auto Main Views: Artists and Albums root screens displayed as high-resolution image cards in grid format matching Home tab recently played.
+- Android Auto Subpages: Artists tracks/albums and Album song lists formatted as clean vertical lists.
+- Android Auto Content Style Flags: Explicit MediaConstants list styling on child items and onGetChildren LibraryParams.
+- Android Auto Shuffle State: Retains player.shuffleModeEnabled = true on shuffle actions so shuffle icon does not appear crossed out.
+- MediaSource Creation Guard: Safe playable item checks (isValidPlayableAudioItem) preventing NPE in ExoPlayer MediaSourceFactory on empty or header-only tracks.

@@ -5,12 +5,15 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import com.craftworks.music.ui.elements.LocalBottomPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -171,14 +174,14 @@ fun S_PlaybackScreen(navHostController: NavHostController = rememberNavControlle
                     modifier = Modifier.clip(RoundedCornerShape(16.dp)),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    val defaultShuffle by PlaybackSettingsManager(context).defaultShuffleFlow.collectAsStateWithLifecycle(true)
+                    val smartShuffle by PlaybackSettingsManager(context).smartShuffleFlow.collectAsStateWithLifecycle(true)
                     SettingsSwitch(
-                        defaultShuffle,
-                        "Default Shuffle Mode",
+                        smartShuffle,
+                        stringResource(R.string.Setting_Smart_Shuffle),
                         ImageVector.vectorResource(R.drawable.round_shuffle_28),
                         toggleEvent = {
                             coroutineScope.launch {
-                                PlaybackSettingsManager(context).setDefaultShuffle(!defaultShuffle)
+                                PlaybackSettingsManager(context).setSmartShuffle(!smartShuffle)
                             }
                         }
                     )
@@ -218,6 +221,8 @@ fun S_PlaybackScreen(navHostController: NavHostController = rememberNavControlle
                         }
                     )
                 }
+
+                Spacer(modifier = Modifier.height(LocalBottomPadding.current + 48.dp))
             }
         }
 

@@ -14,6 +14,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -70,6 +71,7 @@ import com.craftworks.music.ui.screens.SongsScreen
 import com.craftworks.music.ui.screens.settings.S_AppearanceScreen
 import com.craftworks.music.ui.screens.settings.S_PlaybackScreen
 import com.craftworks.music.ui.screens.settings.S_ProviderScreen
+import com.craftworks.music.ui.screens.settings.S_ThemeScreen
 import com.craftworks.music.ui.screens.tv.TvAlbumDetails
 import com.craftworks.music.ui.screens.tv.TvAlbumScreen
 import com.craftworks.music.ui.screens.tv.TvArtistDetailsScreen
@@ -122,30 +124,48 @@ fun SetupNavGraph(
     NavHost(
         navController = navController,
         startDestination = "tabs_screen",
-        modifier = Modifier.padding(bottom = bottomPadding, start = leftPadding),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(bottom = bottomPadding, start = leftPadding),
         enterTransition = {
-            slideIntoContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                animationSpec = tween(220, easing = FastOutSlowInEasing)
-            ) + fadeIn(animationSpec = tween(220))
+            if (isTv) {
+                fadeIn(animationSpec = tween(150))
+            } else {
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                    animationSpec = tween(220, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(220))
+            }
         },
         exitTransition = {
-            slideOutOfContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                animationSpec = tween(220, easing = FastOutSlowInEasing)
-            ) + fadeOut(animationSpec = tween(200))
+            if (isTv) {
+                fadeOut(animationSpec = tween(150))
+            } else {
+                slideOutOfContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                    animationSpec = tween(220, easing = FastOutSlowInEasing)
+                ) + fadeOut(animationSpec = tween(200))
+            }
         },
         popEnterTransition = {
-            slideIntoContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.End,
-                animationSpec = tween(300, easing = FastOutSlowInEasing)
-            ) + fadeIn(animationSpec = tween(300))
+            if (isTv) {
+                fadeIn(animationSpec = tween(150))
+            } else {
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.End,
+                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(300))
+            }
         },
         popExitTransition = {
-            slideOutOfContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.End,
-                animationSpec = tween(300, easing = FastOutSlowInEasing)
-            ) + fadeOut(animationSpec = tween(250))
+            if (isTv) {
+                fadeOut(animationSpec = tween(150))
+            } else {
+                slideOutOfContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.End,
+                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                ) + fadeOut(animationSpec = tween(250))
+            }
         },
         route = "main_graph"
     ) {
@@ -183,11 +203,12 @@ fun SetupNavGraph(
                 }
             } else {
                 com.craftworks.music.ui.elements.TabStateHolder.selectTab("home_screen")
-                MainTabsPagerScreen(
-                    parentBackStackEntry = parentEntry,
-                    navController = navController,
-                    mediaController = mediaController
-                )
+                if (!navController.popBackStack("tabs_screen", false)) {
+                    navController.navigate("tabs_screen") {
+                        popUpTo(navController.graph.id) { inclusive = false }
+                        launchSingleTop = true
+                    }
+                }
             }
         }
 
@@ -201,11 +222,11 @@ fun SetupNavGraph(
                     TvAlbumScreen(navController, viewModel)
                 }
             } else {
-                com.craftworks.music.ui.elements.TabStateHolder.selectTab("album_screen")
-                MainTabsPagerScreen(
-                    parentBackStackEntry = parentEntry,
-                    navController = navController,
-                    mediaController = mediaController
+                val viewModel: AlbumScreenViewModel = hiltViewModel(parentEntry)
+                AlbumScreen(
+                    navHostController = navController,
+                    mediaController = mediaController,
+                    viewModel = viewModel
                 )
             }
         }
@@ -220,11 +241,10 @@ fun SetupNavGraph(
                     TvSongsScreen(mediaController, navController, viewModel)
                 }
             } else {
-                com.craftworks.music.ui.elements.TabStateHolder.selectTab("songs_screen")
-                MainTabsPagerScreen(
-                    parentBackStackEntry = parentEntry,
-                    navController = navController,
-                    mediaController = mediaController
+                val viewModel: SongsScreenViewModel = hiltViewModel(parentEntry)
+                SongsScreen(
+                    mediaController = mediaController,
+                    viewModel = viewModel
                 )
             }
         }
@@ -239,11 +259,11 @@ fun SetupNavGraph(
                     TvArtistScreen(navController, viewModel)
                 }
             } else {
-                com.craftworks.music.ui.elements.TabStateHolder.selectTab("artists_screen")
-                MainTabsPagerScreen(
-                    parentBackStackEntry = parentEntry,
-                    navController = navController,
-                    mediaController = mediaController
+                val viewModel: ArtistsScreenViewModel = hiltViewModel(parentEntry)
+                ArtistsScreen(
+                    navHostController = navController,
+                    mediaController = mediaController,
+                    viewModel = viewModel
                 )
             }
         }
@@ -258,11 +278,11 @@ fun SetupNavGraph(
                     TvPlaylistScreen(navController, viewModel)
                 }
             } else {
-                com.craftworks.music.ui.elements.TabStateHolder.selectTab("playlist_screen")
-                MainTabsPagerScreen(
-                    parentBackStackEntry = parentEntry,
-                    navController = navController,
-                    mediaController = mediaController
+                val viewModel: PlaylistScreenViewModel = hiltViewModel(parentEntry)
+                PlaylistScreen(
+                    navHostController = navController,
+                    viewModel = viewModel,
+                    isStandalone = true
                 )
             }
         }
@@ -371,6 +391,24 @@ fun SetupNavGraph(
                     SettingScreen(navController)
             }
             composable(
+                route = Screen.S_Theme.route,
+                enterTransition = {
+                    slideInHorizontally(animationSpec = tween(durationMillis = 300)) { fullWidth ->
+                        fullWidth / 4
+                    } + fadeIn(animationSpec)
+                },
+                exitTransition = {
+                    slideOutHorizontally(animationSpec = tween(durationMillis = 300)) { fullWidth ->
+                        fullWidth / 4
+                    } + fadeOut(animationSpec)
+                }
+            ) {
+                if (isTv)
+                    TvS_AppearanceScreen()
+                else
+                    S_ThemeScreen(navController)
+            }
+            composable(
                 route = Screen.S_Appearance.route,
                 enterTransition = {
                     slideInHorizontally(animationSpec = tween(durationMillis = 300)) { fullWidth ->
@@ -468,7 +506,13 @@ fun SetupNavGraph(
                 metadata = metadata,
                 viewModel = viewModel,
                 isExpanded = true,
-                onClose = { navController.popBackStack() }
+                onClose = {
+                    if (!navController.popBackStack()) {
+                        navController.navigate("tabs_screen") {
+                            launchSingleTop = true
+                        }
+                    }
+                }
             )
 
             // Keep screen on

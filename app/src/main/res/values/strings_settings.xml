@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="Settings_Header_Theme">Theme</string>
+        <string name="Setting_Floating_Navbar">Floating Navigation Bar</string>
     <string name="Settings_Header_Appearance">Appearance</string>
         <string name="Setting_Username">Name</string>
         <string name="Setting_Background">Background Style</string>
@@ -25,4 +27,13 @@
         <string name="Setting_Transcoding_Format">Transcoding Format</string>
         <string name="Setting_Scrobble_Percent">Min. Scrobble Percentage</string>
         <string name="Setting_Scrobble_Description">Navidrome Only.</string>
+        <string name="Setting_Smart_Shuffle">Smart Shuffle</string>
+    <string name="Setting_Smart_Shuffle_Description">Balances favorites and discovery while spacing out repeat artists</string>
+    <string name="Settings_Header_Backup_Restore">Backup &amp; Restore</string>
+    <string name="Setting_Backup_Restore_Description">Export or import media providers, libraries, and settings</string>
+    <string name="Setting_Export_Backup">Export Backup</string>
+    <string name="Setting_Import_Backup">Import Backup</string>
+    <string name="Setting_Export_Success">Backup exported successfully!</string>
+    <string name="Setting_Import_Success">Backup imported successfully!</string>
+    <string name="Setting_Backup_Failed">Operation failed: </string>
 </resources>

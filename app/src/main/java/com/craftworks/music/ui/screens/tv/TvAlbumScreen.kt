@@ -54,22 +54,17 @@ fun TvAlbumScreen(
         stringResource(R.string.recently_added),
         stringResource(R.string.recently_played),
         stringResource(R.string.most_played),
-        stringResource(R.string.Label_Sort_Starred),
     )
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
-    val showFavoritesOnly by viewModel.showFavoritesOnly.collectAsStateWithLifecycle()
 
-    val selectedTabIndex by remember(sortOrder, showFavoritesOnly) {
+    val selectedTabIndex by remember(sortOrder) {
         derivedStateOf {
-            if (showFavoritesOnly)
-                4
-            else
-                when (sortOrder) {
-                    SortOrder.ALPHABETICAL -> 0
-                    SortOrder.NEWEST -> 1
-                    SortOrder.RECENT -> 2
-                    SortOrder.FREQUENT -> 3
-                }
+            when (sortOrder) {
+                SortOrder.ALPHABETICAL -> 0
+                SortOrder.NEWEST -> 1
+                SortOrder.RECENT -> 2
+                SortOrder.FREQUENT -> 3
+            }
         }
     }
     val tabFocusRequester = remember { FocusRequester() }
@@ -123,20 +118,15 @@ fun TvAlbumScreen(
                         Tab(
                             selected = index == selectedTabIndex,
                             onFocus = {
-                                if (index == 4) {
-                                    viewModel.setShowFavoritesOnly(true)
-                                }
-                                else {
-                                    viewModel.setShowFavoritesOnly(false)
-                                    viewModel.setSorting(
-                                        when (index) {
-                                            0 -> SortOrder.ALPHABETICAL
-                                            1 -> SortOrder.NEWEST
-                                            2 -> SortOrder.RECENT
-                                            else -> SortOrder.FREQUENT
-                                        }
-                                    )
-                                }
+                                viewModel.setShowFavoritesOnly(false)
+                                viewModel.setSorting(
+                                    when (index) {
+                                        0 -> SortOrder.ALPHABETICAL
+                                        1 -> SortOrder.NEWEST
+                                        2 -> SortOrder.RECENT
+                                        else -> SortOrder.FREQUENT
+                                    }
+                                )
                             },
                             modifier = if (index == selectedTabIndex)
                                 Modifier.focusRequester(tabFocusRequester)

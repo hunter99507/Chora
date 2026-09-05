@@ -6,14 +6,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -42,9 +41,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.tv.material3.Button
 import androidx.tv.material3.Icon
-import androidx.tv.material3.Tab
-import androidx.tv.material3.TabRow
+import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import androidx.compose.ui.text.font.FontWeight
 import com.craftworks.music.R
 import com.craftworks.music.data.model.Screen
 import com.craftworks.music.managers.NavidromeManager
@@ -63,17 +62,6 @@ fun TvSongsScreen(
     viewModel: SongsScreenViewModel = hiltViewModel(),
 ) {
     val songs by viewModel.allSongs.collectAsStateWithLifecycle()
-    val tabs = listOf(
-        stringResource(R.string.songs),
-        stringResource(R.string.Label_Sort_Starred),
-    )
-    val showFavoritesOnly by viewModel.showFavoritesOnly.collectAsStateWithLifecycle()
-
-    val selectedTabIndex by remember(showFavoritesOnly) {
-        derivedStateOf {
-            if (showFavoritesOnly) 1 else 0
-        }
-    }
 
     var selectedSong by remember { mutableStateOf(MediaItem.EMPTY) }
     var showSongDialog by remember { mutableStateOf(false) }
@@ -81,7 +69,6 @@ fun TvSongsScreen(
     val coroutineScope = rememberCoroutineScope()
     val gridState = rememberLazyGridState()
 
-    val tabFocusRequester = remember { FocusRequester() }
     val focusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
@@ -107,54 +94,29 @@ fun TvSongsScreen(
 
     LazyVerticalGrid(
         state = gridState,
-        columns = GridCells.Fixed(1),
+        columns = GridCells.Fixed(2),
         modifier = Modifier
             .fillMaxSize()
             .focusGroup()
             .focusRequester(focusRequester)
             .focusRestorer(focusRequester),
         contentPadding = PaddingValues(start = 32.dp, end = 48.dp, top = 20.dp, bottom = 28.dp),
-        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(20.dp),
-        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(14.dp),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp),
     ) {
-        item {
+        item(span = { GridItemSpan(2) }) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 12.dp),
+                    .padding(bottom = 12.dp, end = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                TabRow(
-                    selectedTabIndex = selectedTabIndex,
-                    modifier = Modifier
-                        .focusGroup()
-                        .focusRestorer(tabFocusRequester)
-                ) {
-                    tabs.forEachIndexed { index, tab ->
-                        key(index) {
-                            Tab(
-                                selected = index == selectedTabIndex,
-                                onFocus = {
-                                    if (index == 1)
-                                        viewModel.setShowFavoritesOnly(true)
-                                    else
-                                        viewModel.setShowFavoritesOnly(false)
-                                },
-                                modifier = if (index == selectedTabIndex)
-                                    Modifier.focusRequester(tabFocusRequester)
-                                else
-                                    Modifier
-                            ) {
-                                Text(
-                                    text = tab,
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-
+                Text(
+                    text = "${songs.size} ${if (songs.size == 1) "Song" else "Songs"}",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
                 Button(
                     onClick = {
                         viewModel.shuffleAll(mediaController)

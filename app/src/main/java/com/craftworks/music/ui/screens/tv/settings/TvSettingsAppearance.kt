@@ -40,10 +40,8 @@ import com.craftworks.music.ui.elements.dialogs.tv.BackgroundDialog
 import com.craftworks.music.ui.elements.dialogs.tv.HomeItemsDialog
 import com.craftworks.music.ui.elements.dialogs.tv.NameDialog
 import com.craftworks.music.ui.elements.dialogs.tv.NavbarItemsDialog
-import com.craftworks.music.ui.elements.dialogs.tv.NowPlayingAlignmentDialog
 import com.craftworks.music.ui.elements.dialogs.tv.OledProtectionModeDialog
 import com.craftworks.music.ui.elements.dialogs.tv.ThemeDialog
-import com.craftworks.music.ui.playing.NowPlayingAlignment
 import com.craftworks.music.ui.playing.NowPlayingBackground
 import kotlinx.coroutines.launch
 
@@ -57,14 +55,9 @@ fun TvS_AppearanceScreen() {
     var showThemesDialog by remember { mutableStateOf(false) }
     var showNavbarItemsDialog by remember { mutableStateOf(false) }
     var showHomeItemsDialog by remember { mutableStateOf(false) }
-    var showNowPlayingLyricsAlignmentDialog by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-
-    val nowPlayingTitleAlignment by AppearanceSettingsManager(context).nowPlayingLyricsAlignment.collectAsState(
-        NowPlayingAlignment.LEFT
-    )
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -174,6 +167,7 @@ fun TvS_AppearanceScreen() {
 
                 // Home Items
                 val titleMap = mapOf(
+                    "song_of_the_day" to R.string.song_of_the_day,
                     "playlists" to R.string.playlists,
                     "recently_played" to R.string.recently_played,
                     "recently_added" to R.string.recently_added,
@@ -193,67 +187,12 @@ fun TvS_AppearanceScreen() {
                     onClick = { showHomeItemsDialog = true }
                 )
 
-                // Now Playing Lyrics Alignment
-                val alignmentLabels = mapOf(
-                    NowPlayingAlignment.LEFT to R.string.NowPlayingTitleAlignment_Left,
-                    NowPlayingAlignment.CENTER to R.string.NowPlayingTitleAlignment_Center,
-                    NowPlayingAlignment.RIGHT to R.string.NowPlayingTitleAlignment_Right
-                )
-
-                SettingsButtonItem(
-                    title = stringResource(R.string.Setting_NowPlayingLyricsAlignment),
-                    subtitle = stringResource(
-                        alignmentLabels[nowPlayingTitleAlignment]
-                            ?: R.string.NowPlayingTitleAlignment_Left
-                    ),
-                    icon = ImageVector.vectorResource(R.drawable.rounded_sort_24),
-                    onClick = { showNowPlayingLyricsAlignmentDialog = true }
-                )
             }
         }
 
         // Switches
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                // Lyrics blur
-                val nowPlayingLyricsBlur by AppearanceSettingsManager(context).nowPlayingLyricsBlurFlow.collectAsState(
-                    true
-                )
-                SettingsSwitchItem(
-                    title = stringResource(R.string.Setting_NowPlayingLyricsBlur),
-                    icon = ImageVector.vectorResource(R.drawable.outline_line_weight_24),
-                    checked = nowPlayingLyricsBlur,
-                    onCheckedChange = {
-                        coroutineScope.launch {
-                            AppearanceSettingsManager(context).setNowPlayingLyricsBlur(it)
-                        }
-                    },
-                    enabled = Build.VERSION.SDK_INT > Build.VERSION_CODES.TIRAMISU
-                )
-                val lyricsAutoScroll by AppearanceSettingsManager(context).lyricsAutoScroll.collectAsStateWithLifecycle(true)
-                SettingsSwitchItem(
-                    title = stringResource(R.string.Setting_LyricsAutoscroll),
-                    icon = ImageVector.vectorResource(R.drawable.rounded_text_select_move_down_24),
-                    checked = lyricsAutoScroll,
-                    onCheckedChange = {
-                        coroutineScope.launch {
-                            AppearanceSettingsManager(context).setLyricsAutoScroll(!lyricsAutoScroll)
-                        }
-                    }
-                )
-
-                val lyricsRecenterAfterScroll by AppearanceSettingsManager(context).lyricsRecenterAfterScroll.collectAsStateWithLifecycle(true)
-                SettingsSwitchItem(
-                    title = stringResource(R.string.Setting_LyricsRecenter),
-                    icon = ImageVector.vectorResource(R.drawable.rounded_vertical_align_center_24),
-                    checked = lyricsRecenterAfterScroll,
-                    onCheckedChange = {
-                        coroutineScope.launch {
-                            AppearanceSettingsManager(context).setLyricsRecenterAfterScroll(it)
-                        }
-                    }
-                )
-
                 // More Song Info
                 val showMoreInfo by AppearanceSettingsManager(context).showMoreInfoFlow.collectAsState(
                     true
@@ -265,21 +204,6 @@ fun TvS_AppearanceScreen() {
                     onCheckedChange = {
                         coroutineScope.launch {
                             AppearanceSettingsManager(context).setShowMoreInfo(it)
-                        }
-                    }
-                )
-
-                // Show Navidrome Logo
-                val showNavidromeLogo by AppearanceSettingsManager(context).showNavidromeLogoFlow.collectAsState(
-                    true
-                )
-                SettingsSwitchItem(
-                    title = stringResource(R.string.Setting_NavidromeLogo),
-                    icon = ImageVector.vectorResource(R.drawable.s_m_navidrome_bw),
-                    checked = showNavidromeLogo,
-                    onCheckedChange = {
-                        coroutineScope.launch {
-                            AppearanceSettingsManager(context).setShowNavidromeLogo(it)
                         }
                     }
                 )
@@ -299,24 +223,6 @@ fun TvS_AppearanceScreen() {
                     }
                 )
 
-                // Refresh Ripple
-                /*
-                val refreshRipple by AppearanceSettingsManager(context).refreshAnimationFlow.collectAsState(
-                    true
-                )
-                SettingsSwitchItem(
-                    title = stringResource(R.string.Setting_RefreshAnimation),
-                    icon = ImageVector.vectorResource(R.drawable.placeholder),
-                    checked = refreshRipple,
-                    onCheckedChange = {
-                        coroutineScope.launch {
-                            AppearanceSettingsManager(context).setUseRefreshAnimation(it)
-                        }
-                    },
-                    enabled = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-                )
-                */
-
                 // Track numbers in album view
                 val showTrackNumbers by AppearanceSettingsManager(context).showTrackNumbersFlow.collectAsState(
                     true
@@ -334,72 +240,6 @@ fun TvS_AppearanceScreen() {
             }
         }
 
-        // Lyrics Animation Speed Slider
-        item {
-            val lyricsAnimationSpeed by AppearanceSettingsManager(context).lyricsAnimationSpeedFlow.collectAsState(
-                1200
-            )
-            val sliderValue = 2400f - lyricsAnimationSpeed.toFloat() + 600f
-            Surface(
-                shape = MaterialTheme.shapes.medium,
-                modifier = Modifier
-                    .padding(vertical = 8.dp),
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.Setting_LyricsAnimationSpeed),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    Slider(
-                        value = sliderValue,
-                        onValueChange = { uiValue ->
-                            val real = (2400f - (uiValue - 600f)).coerceIn(600f, 2400f)
-                            coroutineScope.launch {
-                                AppearanceSettingsManager(context).setLyricsAnimationSpeed(real.toInt())
-                            }
-                        },
-                        valueRange = 600f..2400f,
-                        steps = 5,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .onKeyEvent { keyEvent ->
-                                when (keyEvent.key) {
-                                    Key.DirectionRight -> {
-                                        coroutineScope.launch {
-                                            AppearanceSettingsManager(context)
-                                                .setLyricsAnimationSpeed(
-                                                    (lyricsAnimationSpeed - 300).coerceAtLeast(
-                                                        600
-                                                    )
-                                                )
-                                        }
-                                        true
-                                    }
-
-                                    Key.DirectionLeft -> {
-                                        coroutineScope.launch {
-                                            AppearanceSettingsManager(context)
-                                                .setLyricsAnimationSpeed(
-                                                    (lyricsAnimationSpeed + 300).coerceAtMost(
-                                                        2400
-                                                    )
-                                                )
-                                        }
-                                        true
-                                    }
-
-                                    else -> false
-                                }
-                            }
-                    )
-                }
-            }
-        }
     }
 
     // Dialogs (still need TV adaptation, but keep original for now)
@@ -409,13 +249,4 @@ fun TvS_AppearanceScreen() {
     if (showThemesDialog) ThemeDialog(setShowDialog = { showThemesDialog = it })
     if (showNavbarItemsDialog) NavbarItemsDialog(setShowDialog = { showNavbarItemsDialog = it })
     if (showHomeItemsDialog) HomeItemsDialog(setShowDialog = { showHomeItemsDialog = it })
-    if (showNowPlayingLyricsAlignmentDialog) NowPlayingAlignmentDialog(
-        setShowDialog = { showNowPlayingLyricsAlignmentDialog = it },
-        selection = nowPlayingTitleAlignment,
-        onSet = {
-            coroutineScope.launch {
-                AppearanceSettingsManager(context).setNowPlayingLyricsAlignment(it)
-            }
-        }
-    )
 }

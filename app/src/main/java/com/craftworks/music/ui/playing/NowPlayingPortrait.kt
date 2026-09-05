@@ -37,8 +37,6 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -161,6 +159,14 @@ fun NowPlayingPortrait(
     val lyrics by LyricsState.lyrics.collectAsStateWithLifecycle()
     val loadingLyrics by LyricsState.loading.collectAsStateWithLifecycle()
 
+    val appearanceSettings = remember { AppearanceSettingsManager(context) }
+    val titleAlignment by appearanceSettings.nowPlayingTitleAlignment.collectAsStateWithLifecycle(NowPlayingAlignment.LEFT)
+    val titleTextAlign = when (titleAlignment) {
+        NowPlayingAlignment.LEFT -> TextAlign.Start
+        NowPlayingAlignment.CENTER -> TextAlign.Center
+        NowPlayingAlignment.RIGHT -> TextAlign.End
+    }
+
     val isLyricsActive = lyricsOpen && (lyrics.isNotEmpty() || loadingLyrics)
     val isRadio = metadata?.mediaType == MediaMetadata.MEDIA_TYPE_RADIO_STATION
 
@@ -267,7 +273,7 @@ fun NowPlayingPortrait(
                     } else null
                 }
 
-                val isDragged by pagerState.interactionSource.collectIsDraggedAsState()
+                val isScrollEnabled = !isRadio && (prevItem != null || nextItem != null)
                 var hasTriggeredForTarget by remember { mutableStateOf(false) }
 
                 DisposableEffect(mediaController) {
@@ -277,10 +283,16 @@ fun NowPlayingPortrait(
                     } else {
                         val listener = object : Player.Listener {
                             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                                updateAdjacentItems()
-                                hasTriggeredForTarget = false
                                 coroutineScope.launch {
-                                    pagerState.scrollToPage(1)
+                                    // Update current item first so page 1 immediately renders the new artwork
+                                    currentItem = mediaItem ?: p.currentMediaItem
+                                    // Silently reset pager to page 1 without animation
+                                    if (pagerState.currentPage != 1) {
+                                        pagerState.scrollToPage(1)
+                                    }
+                                    // Update adjacent items while off-screen
+                                    updateAdjacentItems()
+                                    hasTriggeredForTarget = false
                                 }
                             }
                             override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
@@ -299,44 +311,52 @@ fun NowPlayingPortrait(
                     }
                 }
 
-                // Trigger song seek immediately upon finger release towards targetPage or on settle, eliminating delay
-                LaunchedEffect(pagerState, isDragged) {
-                    snapshotFlow {
-                        Triple(isDragged, pagerState.targetPage, pagerState.settledPage)
-                    }.collect { (dragged, target, settled) ->
-                        if (target == 1 && settled == 1) {
+                // Trigger song seek once the pager has naturally settled on target page (0 or 2)
+                LaunchedEffect(pagerState) {
+                    snapshotFlow { pagerState.settledPage }.collect { settled ->
+                        if (settled == 1) {
                             hasTriggeredForTarget = false
                             return@collect
                         }
+                        if (hasTriggeredForTarget) return@collect
 
-                        // As soon as the user lets go (or on quick flick) and target is 0 or 2, trigger skip IMMEDIATELY
-                        if (!dragged && (target != 1 || settled != 1) && !hasTriggeredForTarget) {
-                            val destination = if (target != 1) target else settled
-                            val p = ChoraMediaLibraryService.getInstance()?.player ?: mediaController ?: return@collect
-                            hasTriggeredForTarget = true
-                            if (destination == 2) {
-                                if (p.hasNextMediaItem()) {
-                                    p.seekToNextMediaItem()
-                                } else {
-                                    p.seekToNext()
-                                }
-                                p.play()
-                            } else if (destination == 0) {
-                                if (p.hasPreviousMediaItem()) {
-                                    p.seekToPreviousMediaItem()
-                                } else {
-                                    p.seekToPrevious()
-                                }
-                                p.play()
-                            }
+                        val p = ChoraMediaLibraryService.getInstance()?.player ?: mediaController ?: return@collect
 
-                            // Safety reset if onMediaItemTransition didn't trigger
-                            kotlinx.coroutines.delay(200)
-                            updateAdjacentItems()
-                            if (pagerState.currentPage != 1) {
-                                pagerState.scrollToPage(1)
+                        if (settled == 2) {
+                            if (p.hasNextMediaItem()) {
+                                hasTriggeredForTarget = true
+                                p.seekToNextMediaItem()
+                                p.play()
+                            } else {
+                                // Reached end of playlist or cannot skip next, smoothly bounce back
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(1)
+                                }
                             }
-                            hasTriggeredForTarget = false
+                        } else if (settled == 0) {
+                            if (p.hasPreviousMediaItem()) {
+                                hasTriggeredForTarget = true
+                                p.seekToPreviousMediaItem()
+                                p.play()
+                            } else {
+                                // Reached beginning of playlist or cannot skip previous, smoothly bounce back
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(1)
+                                }
+                            }
+                        }
+
+                        // Safety watchdog: ensure pager never stays stuck on page 0 or 2
+                        if (hasTriggeredForTarget) {
+                            coroutineScope.launch {
+                                kotlinx.coroutines.delay(600)
+                                if (pagerState.currentPage != 1) {
+                                    currentItem = p.currentMediaItem
+                                    pagerState.scrollToPage(1)
+                                    updateAdjacentItems()
+                                    hasTriggeredForTarget = false
+                                }
+                            }
                         }
                     }
                 }
@@ -355,7 +375,8 @@ fun NowPlayingPortrait(
                         state = pagerState,
                         modifier = Modifier.fillMaxSize(),
                         beyondViewportPageCount = 1,
-                        pageSpacing = 0.dp,
+                        pageSpacing = 16.dp,
+                        userScrollEnabled = isScrollEnabled,
                         key = { it }
                     ) { page ->
                         val pageArtworkUri = when (page) {
@@ -381,28 +402,6 @@ fun NowPlayingPortrait(
                                 .fadingEdge(imageFadingEdge)
                         )
                     }
-
-                    // Left edge back gesture guard: consumes horizontal drags in the system back zone so pager doesn't move
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.CenterStart)
-                            .width(24.dp)
-                            .fillMaxHeight()
-                            .pointerInput(Unit) {
-                                detectHorizontalDragGestures { _, _ -> }
-                            }
-                    )
-
-                    // Right edge back gesture guard
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                            .width(24.dp)
-                            .fillMaxHeight()
-                            .pointerInput(Unit) {
-                                detectHorizontalDragGestures { _, _ -> }
-                            }
-                    )
                 }
             }
         }
@@ -449,7 +448,7 @@ fun NowPlayingPortrait(
                         maxLines = 1,
                         overflow = TextOverflow.Visible,
                         softWrap = false,
-                        textAlign = TextAlign.Center,
+                        textAlign = titleTextAlign,
                         modifier = Modifier
                             .fillMaxWidth()
                             .marqueeHorizontalFadingEdges(marqueeProvider = { Modifier.basicMarquee() })
@@ -482,7 +481,7 @@ fun NowPlayingPortrait(
                         color = iconColor.copy(alpha = 0.85f),
                         maxLines = 1,
                         softWrap = false,
-                        textAlign = TextAlign.Center,
+                        textAlign = titleTextAlign,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -506,7 +505,7 @@ fun NowPlayingPortrait(
                             color = iconColor.copy(alpha = 0.65f),
                             maxLines = 1,
                             softWrap = false,
-                            textAlign = TextAlign.Center,
+                            textAlign = titleTextAlign,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -543,7 +542,7 @@ fun NowPlayingPortrait(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            ChoraMediaLibraryService.getInstance()?.player?.let { player ->
+            (ChoraMediaLibraryService.getInstance()?.player ?: mediaController)?.let { player ->
                 RepeatButton(player, vibrantControlsColor, Modifier.size(28.dp))
                 PreviousSongButton(player, vibrantControlsColor, Modifier.size(34.dp))
                 PlayPauseButton(player, vibrantControlsColor, Modifier.size(76.dp))

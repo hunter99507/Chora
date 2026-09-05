@@ -6,6 +6,7 @@
     <string name="most_played">Most Played</string>
     <string name="recently_played">Recently Played</string>
     <string name="random_songs">Explore From Your Library</string>
+    <string name="song_of_the_day">Song of the Day</string>
 
     <!-- Artist Details -->
     <string name="Screen_Discography">Discography</string>

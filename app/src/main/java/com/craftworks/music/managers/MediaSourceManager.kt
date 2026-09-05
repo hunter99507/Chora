@@ -43,7 +43,27 @@ object MediaSourceManager {
 
         // On startup, the default source is always selected and shown
         _selectedSource.value = loadedDefault
-        Log.d("MEDIA_SOURCE", "MediaSourceManager initialized. Default/Selected: ${loadedDefault.displayName}")
+
+        // If built with a dedicated flavor source (Sonora, Lyra, Aria), lock to it
+        when (com.craftworks.music.BuildConfig.DEDICATED_SOURCE) {
+            "LOCAL" -> {
+                _defaultSource.value = MediaSource.LOCAL
+                _selectedSource.value = MediaSource.LOCAL
+            }
+            "NAVIDROME" -> {
+                _defaultSource.value = MediaSource.NAVIDROME
+                _selectedSource.value = MediaSource.NAVIDROME
+            }
+            "EMBY" -> {
+                _defaultSource.value = MediaSource.EMBY
+                _selectedSource.value = MediaSource.EMBY
+            }
+            else -> {
+                // "ALL" (Chora) retains full switchability exactly as today
+            }
+        }
+
+        Log.d("MEDIA_SOURCE", "MediaSourceManager initialized. Default/Selected: ${_selectedSource.value.displayName}")
     }
 
     fun getAvailableSources(): List<MediaSource> {
@@ -83,6 +103,12 @@ object MediaSourceManager {
             }
         }
         Log.d("MEDIA_SOURCE", "Default source saved as: ${source.displayName}")
+    }
+
+    fun restoreDefaultSource(sourceId: String?) {
+        val source = MediaSource.fromId(sourceId)
+        setDefaultSource(source)
+        setSelectedSource(source)
     }
 
     fun isSourceActive(source: MediaSource): Boolean {

@@ -11,6 +11,11 @@
     <string name="Dialog_Theme">Theme</string>
         <string name="Theme_Dark">Dark</string>
         <string name="Theme_Light">Light</string>
+        <string name="Theme_Modern_Editorial">Modern Editorial</string>
+        <string name="Theme_Nordic_Slate">Nordic Slate</string>
+        <string name="Theme_Apple_Music">Apple Music</string>
+        <string name="Theme_Apple_Classical">Apple Classical</string>
+        <string name="Theme_Midnight_Lavender">Midnight Lavender</string>
         <string name="Theme_System">System</string>
 
     <!-- OLED Dialog -->
@@ -28,6 +33,15 @@
         <string name="Source_Local">Local Folder</string>
         <!-- Local -->
             <string name="Label_Local_Directory">Directory:</string>
+            <string name="Action_Browse_Folders">Browse Folders</string>
+            <string name="Action_System_Picker">System Picker</string>
+            <string name="Dialog_Select_Folder">Select Music Folder</string>
+            <string name="Dialog_Select_This_Folder">Select This Folder</string>
+            <string name="Storage_Internal">Internal Storage</string>
+            <string name="Storage_Music">Music</string>
+            <string name="Storage_Downloads">Downloads</string>
+            <string name="Storage_External">External Storage</string>
+            <string name="Storage_No_Subfolders">No subfolders found</string>
         <!-- Navidrome -->
             <string name="Label_Navidrome_URL">Navidrome URL:</string>
             <string name="Label_Navidrome_Username">Username:</string>

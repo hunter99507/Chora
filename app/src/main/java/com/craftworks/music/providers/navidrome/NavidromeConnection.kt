@@ -13,10 +13,10 @@ import kotlinx.serialization.json.jsonObject
 data class SubsonicResponse(
     val status: String,
     val error: SubsonicError? = null,
-    val version: String,
-    val type: String,
-    val serverVersion: String,
-    val openSubsonic: Boolean,
+    val version: String? = null,
+    val type: String? = null,
+    val serverVersion: String? = null,
+    val openSubsonic: Boolean? = false,
 
     // Music folders
     val musicFolders: MusicFolder? = null,
@@ -27,6 +27,7 @@ data class SubsonicResponse(
 
     // Albums
     val albumList: albumList? = null,
+    val albumList2: albumList? = null,
     val album: MediaData.Album? = null,
 
     // Artists

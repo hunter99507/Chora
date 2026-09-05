@@ -100,10 +100,11 @@ fun NowPlayingContent(
 
     if (LocalConfiguration.current.uiMode and Configuration.UI_MODE_TYPE_MASK == Configuration.UI_MODE_TYPE_TELEVISION) {
         TvNowPlaying(
-            mediaController,
-            iconTextColor,
+            mediaController = mediaController,
+            iconColor = iconTextColor,
             accentColor = colors.firstOrNull() ?: iconTextColor,
-            metadata = metadata
+            metadata = metadata,
+            onClose = onClose
         )
     } else if (LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE) {
         NowPlayingLandscape(

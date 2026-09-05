@@ -1,9 +1,14 @@
 package com.craftworks.music.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -46,8 +51,19 @@ import kotlinx.coroutines.launch
 @Composable
 fun PlaylistScreen(
     navHostController: NavHostController = rememberNavController(),
-    viewModel: PlaylistScreenViewModel = hiltViewModel()
+    viewModel: PlaylistScreenViewModel = hiltViewModel(),
+    isStandalone: Boolean = false
 ) {
+    if (isStandalone) {
+        BackHandler {
+            if (!navHostController.popBackStack()) {
+                navHostController.navigate(Screen.Home.route) {
+                    launchSingleTop = true
+                }
+            }
+        }
+    }
+
     val playlists by viewModel.allPlaylists.collectAsStateWithLifecycle()
 
     val state = rememberPullToRefreshState()
@@ -84,6 +100,23 @@ fun PlaylistScreen(
             topBar = {
                 TopAppBar(
                     title = { Text(text = stringResource(R.string.playlists)) },
+                    navigationIcon = {
+                        if (isStandalone) {
+                            IconButton(onClick = {
+                                if (!navHostController.popBackStack()) {
+                                    navHostController.navigate(Screen.Home.route) {
+                                        launchSingleTop = true
+                                    }
+                                }
+                            }) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                    tint = MaterialTheme.colorScheme.onBackground,
+                                    contentDescription = "Back"
+                                )
+                            }
+                        }
+                    },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = Color.Transparent,
                         scrolledContainerColor = Color.Transparent

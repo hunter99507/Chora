@@ -92,7 +92,7 @@ import kotlin.math.pow
 @AndroidEntryPoint
 class ChoraMediaLibraryService : MediaLibraryService() {
     //region Vars
-    lateinit var player: Player
+    lateinit var player: ExoPlayer
     var session: MediaLibrarySession? = null
 
     private var scrobbleJob: Job? = null
@@ -113,6 +113,7 @@ class ChoraMediaLibraryService : MediaLibraryService() {
     @Inject lateinit var radioRepository: RadioRepository
     @Inject lateinit var playlistRepository: PlaylistRepository
     @Inject lateinit var lyricsRepository: LyricsRepository
+    @Inject lateinit var localMusicStatsManager: com.craftworks.music.managers.LocalMusicStatsManager
 
     companion object {
         const val CUSTOM_ACTION_SHUFFLE = "com.craftworks.chora.CUSTOM_ACTION_SHUFFLE"
@@ -139,6 +140,8 @@ class ChoraMediaLibraryService : MediaLibraryService() {
             return simpleCache!!
         }
     }
+
+    var isQueuePreShuffled: Boolean = false
 
     private val rootItem = MediaItem.Builder()
         .setMediaId("nodeROOT")
@@ -176,8 +179,18 @@ class ChoraMediaLibraryService : MediaLibraryService() {
             MediaMetadata.Builder()
                 .setIsBrowsable(true)
                 .setIsPlayable(false)
-                .setMediaType(MediaMetadata.MEDIA_TYPE_FOLDER_PLAYLISTS)
+                .setMediaType(MediaMetadata.MEDIA_TYPE_FOLDER_ALBUMS)
                 .setTitle("Albums")
+                .setExtras(Bundle().apply {
+                    putInt(
+                        MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE,
+                        MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM
+                    )
+                    putInt(
+                        MediaConstants.EXTRAS_KEY_CONTENT_STYLE_PLAYABLE,
+                        MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM
+                    )
+                })
                 .build()
         )
         .build()
@@ -208,6 +221,16 @@ class ChoraMediaLibraryService : MediaLibraryService() {
                 .setIsPlayable(false)
                 .setMediaType(MediaMetadata.MEDIA_TYPE_FOLDER_ARTISTS)
                 .setTitle("Artists")
+                .setExtras(Bundle().apply {
+                    putInt(
+                        MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE,
+                        MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM
+                    )
+                    putInt(
+                        MediaConstants.EXTRAS_KEY_CONTENT_STYLE_PLAYABLE,
+                        MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM
+                    )
+                })
                 .build()
         )
         .build()
@@ -502,13 +525,25 @@ class ChoraMediaLibraryService : MediaLibraryService() {
         )
 
         val sessionPlayer = object : androidx.media3.common.ForwardingPlayer(player) {
+            private fun isRadioTrack(): Boolean {
+                val item = currentMediaItem ?: return false
+                return item.mediaMetadata.mediaType == MediaMetadata.MEDIA_TYPE_RADIO_STATION ||
+                        item.mediaMetadata.extras?.getBoolean("isRadio") == true
+            }
+
             override fun getAvailableCommands(): Player.Commands {
-                return super.getAvailableCommands().buildUpon()
+                val builder = super.getAvailableCommands().buildUpon()
                     .add(Player.COMMAND_SEEK_TO_PREVIOUS)
                     .add(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
                     .add(Player.COMMAND_SEEK_TO_NEXT)
                     .add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
-                    .build()
+                if (!isRadioTrack()) {
+                    builder.add(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+                    builder.add(Player.COMMAND_SEEK_BACK)
+                    builder.add(Player.COMMAND_SEEK_FORWARD)
+                    builder.add(Player.COMMAND_SEEK_TO_DEFAULT_POSITION)
+                }
+                return builder.build()
             }
 
             override fun isCommandAvailable(command: Int): Boolean {
@@ -519,7 +554,45 @@ class ChoraMediaLibraryService : MediaLibraryService() {
                 ) {
                     return true
                 }
+                if (!isRadioTrack() && (
+                    command == Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM ||
+                    command == Player.COMMAND_SEEK_BACK ||
+                    command == Player.COMMAND_SEEK_FORWARD ||
+                    command == Player.COMMAND_SEEK_TO_DEFAULT_POSITION
+                )) {
+                    return true
+                }
                 return super.isCommandAvailable(command)
+            }
+
+            override fun isCurrentMediaItemSeekable(): Boolean {
+                if (!isRadioTrack() && (duration > 0 || (currentMediaItem?.mediaMetadata?.durationMs ?: 0L) > 0)) {
+                    return true
+                }
+                return super.isCurrentMediaItemSeekable
+            }
+
+            override fun isCurrentMediaItemDynamic(): Boolean {
+                if (!isRadioTrack()) {
+                    return false
+                }
+                return super.isCurrentMediaItemDynamic
+            }
+
+            override fun getDuration(): Long {
+                val baseDuration = super.getDuration()
+                if (baseDuration > 0 && baseDuration != C.TIME_UNSET) {
+                    return baseDuration
+                }
+                val metaDuration = currentMediaItem?.mediaMetadata?.durationMs
+                if (metaDuration != null && metaDuration > 0) {
+                    return metaDuration
+                }
+                val extraDuration = currentMediaItem?.mediaMetadata?.extras?.getInt("duration", 0)?.times(1000L) ?: 0L
+                if (extraDuration > 0) {
+                    return extraDuration
+                }
+                return baseDuration
             }
 
             override fun seekToPrevious() {
@@ -549,6 +622,36 @@ class ChoraMediaLibraryService : MediaLibraryService() {
                 play()
                 super.seekToNextMediaItem()
             }
+
+            override fun setShuffleModeEnabled(shuffleModeEnabled: Boolean) {
+                setPlayerShuffleMode(shuffleModeEnabled)
+                super.setShuffleModeEnabled(shuffleModeEnabled)
+            }
+
+            override fun setMediaItems(mediaItems: MutableList<MediaItem>) {
+                super.setMediaItems(mediaItems)
+                if (player.shuffleModeEnabled && isQueuePreShuffled && mediaItems.size > 0) {
+                    player.setShuffleOrder(androidx.media3.exoplayer.source.ShuffleOrder.UnshuffledShuffleOrder(mediaItems.size))
+                }
+            }
+
+            override fun setMediaItems(mediaItems: MutableList<MediaItem>, resetPosition: Boolean) {
+                super.setMediaItems(mediaItems, resetPosition)
+                if (player.shuffleModeEnabled && isQueuePreShuffled && mediaItems.size > 0) {
+                    player.setShuffleOrder(androidx.media3.exoplayer.source.ShuffleOrder.UnshuffledShuffleOrder(mediaItems.size))
+                }
+            }
+
+            override fun setMediaItems(
+                mediaItems: MutableList<MediaItem>,
+                startIndex: Int,
+                startPositionMs: Long
+            ) {
+                super.setMediaItems(mediaItems, startIndex, startPositionMs)
+                if (player.shuffleModeEnabled && isQueuePreShuffled && mediaItems.size > 0) {
+                    player.setShuffleOrder(androidx.media3.exoplayer.source.ShuffleOrder.UnshuffledShuffleOrder(mediaItems.size))
+                }
+            }
         }
 
         session = MediaLibrarySession.Builder(this, sessionPlayer, LibrarySessionCallback())
@@ -568,13 +671,17 @@ class ChoraMediaLibraryService : MediaLibraryService() {
 
                     if (progress >= scrobblePercentage) {
                         playerScrobbled = true
-                        if (NavidromeManager.checkActiveServers() &&
-                            mediaItem?.mediaMetadata?.extras?.getString("navidromeID")
-                                ?.startsWith("Local") == false &&
-                            mediaItem.mediaMetadata.mediaType != MediaMetadata.MEDIA_TYPE_RADIO_STATION
+                        val navId = mediaItem?.mediaMetadata?.extras?.getString("navidromeID") ?: ""
+                        val mediaId = mediaItem?.mediaId ?: ""
+                        if (navId.startsWith("Local") || mediaId.startsWith("content://") || mediaId.startsWith("file://")) {
+                            serviceIOScope.launch {
+                                songRepository.scrobbleSong(navId.ifEmpty { mediaId }, true)
+                            }
+                        } else if (NavidromeManager.checkActiveServers() &&
+                            mediaItem?.mediaMetadata?.mediaType != MediaMetadata.MEDIA_TYPE_RADIO_STATION
                         ) {
                             serviceIOScope.launch {
-                                songRepository.scrobbleSong(mediaItem.mediaMetadata.extras?.getString("navidromeID") ?: "", true)
+                                songRepository.scrobbleSong(navId, true)
                             }
                         }
                     }
@@ -683,7 +790,7 @@ class ChoraMediaLibraryService : MediaLibraryService() {
         ): ListenableFuture<SessionResult> {
             when (customCommand.customAction) {
                 CUSTOM_ACTION_SHUFFLE -> {
-                    player.shuffleModeEnabled = !player.shuffleModeEnabled
+                    setPlayerShuffleMode(!player.shuffleModeEnabled)
                     updateCustomLayout()
                     return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
@@ -850,6 +957,7 @@ class ChoraMediaLibraryService : MediaLibraryService() {
         }
         */
 
+        @OptIn(UnstableApi::class)
         override fun onAddMediaItems(
             mediaSession: MediaSession,
             controller: MediaSession.ControllerInfo,
@@ -877,67 +985,75 @@ class ChoraMediaLibraryService : MediaLibraryService() {
                         if (requestedId.startsWith("action_play_playlist_")) {
                             val playlistId = requestedId.removePrefix("action_play_playlist_")
                             val playlistSongs = playlistRepository.getPlaylistSongs(playlistId)
-                            if (playlistSongs.isNotEmpty()) {
-                                val queue = playlistSongs.map { it.withHighResArtwork().buildUpon().setUri(it.mediaId).build() }
+                            val validSongs = playlistSongs.filter { isValidPlayableAudioItem(it) }
+                            if (validSongs.isNotEmpty()) {
+                                val queue = validSongs.map { it.withHighResArtwork().buildUpon().setUri(it.mediaId).build() }
                                 withContext(Dispatchers.Main) {
                                     player.shuffleModeEnabled = false
                                     player.repeatMode = Player.REPEAT_MODE_ALL
                                 }
                                 settable.set(queue)
-                                return@launch
+                            } else {
+                                settable.set(emptyList())
                             }
+                            return@launch
                         }
 
                         if (requestedId.startsWith("action_shuffle_playlist_")) {
                             val playlistId = requestedId.removePrefix("action_shuffle_playlist_")
                             val playlistSongs = playlistRepository.getPlaylistSongs(playlistId)
-                            if (playlistSongs.isNotEmpty()) {
-                                val shuffled = playlistSongs.shuffled().map { it.withHighResArtwork().buildUpon().setUri(it.mediaId).build() }
+                            val validSongs = playlistSongs.filter { isValidPlayableAudioItem(it) }
+                            if (validSongs.isNotEmpty()) {
+                                val isSmartShuffle = playbackSettingsManager.smartShuffleFlow.first()
+                                val prepared = if (isSmartShuffle) SmartShuffleHelper.smartShuffle(validSongs) else validSongs.shuffled()
+                                val shuffled = prepared.map { it.withHighResArtwork().buildUpon().setUri(it.mediaId).build() }
                                 withContext(Dispatchers.Main) {
+                                    isQueuePreShuffled = true
                                     player.shuffleModeEnabled = true
                                     player.repeatMode = Player.REPEAT_MODE_ALL
                                 }
                                 settable.set(shuffled)
-                                return@launch
+                            } else {
+                                settable.set(emptyList())
                             }
+                            return@launch
                         }
 
                         if (requestedId.startsWith("action_play_album_")) {
                             val albumId = requestedId.removePrefix("action_play_album_")
                             val albumSongs = albumRepository.getAlbum(albumId)
-                            if (!albumSongs.isNullOrEmpty()) {
-                                val songsList = if (albumSongs.size > 1 && albumSongs[0].mediaMetadata.mediaType == MediaMetadata.MEDIA_TYPE_ALBUM) {
-                                    albumSongs.subList(1, albumSongs.size)
-                                } else {
-                                    albumSongs
-                                }
-                                val queue = songsList.map { it.withHighResArtwork().buildUpon().setUri(it.mediaId).build() }
+                            val validSongs = (albumSongs ?: emptyList()).filter { isValidPlayableAudioItem(it) }
+                            if (validSongs.isNotEmpty()) {
+                                val queue = validSongs.map { it.withHighResArtwork().buildUpon().setUri(it.mediaId).build() }
                                 withContext(Dispatchers.Main) {
                                     player.shuffleModeEnabled = false
                                     player.repeatMode = Player.REPEAT_MODE_ALL
                                 }
                                 settable.set(queue)
-                                return@launch
+                            } else {
+                                settable.set(emptyList())
                             }
+                            return@launch
                         }
 
                         if (requestedId.startsWith("action_shuffle_album_")) {
                             val albumId = requestedId.removePrefix("action_shuffle_album_")
                             val albumSongs = albumRepository.getAlbum(albumId)
-                            if (!albumSongs.isNullOrEmpty()) {
-                                val songsList = if (albumSongs.size > 1 && albumSongs[0].mediaMetadata.mediaType == MediaMetadata.MEDIA_TYPE_ALBUM) {
-                                    albumSongs.subList(1, albumSongs.size)
-                                } else {
-                                    albumSongs
-                                }
-                                val shuffled = songsList.shuffled().map { it.withHighResArtwork().buildUpon().setUri(it.mediaId).build() }
+                            val validSongs = (albumSongs ?: emptyList()).filter { isValidPlayableAudioItem(it) }
+                            if (validSongs.isNotEmpty()) {
+                                val isSmartShuffle = playbackSettingsManager.smartShuffleFlow.first()
+                                val prepared = if (isSmartShuffle) SmartShuffleHelper.smartShuffle(validSongs) else validSongs.shuffled()
+                                val shuffled = prepared.map { it.withHighResArtwork().buildUpon().setUri(it.mediaId).build() }
                                 withContext(Dispatchers.Main) {
+                                    isQueuePreShuffled = true
                                     player.shuffleModeEnabled = true
                                     player.repeatMode = Player.REPEAT_MODE_ALL
                                 }
                                 settable.set(shuffled)
-                                return@launch
+                            } else {
+                                settable.set(emptyList())
                             }
+                            return@launch
                         }
 
                         if (requestedId.startsWith("action_play_artist_") || requestedId.startsWith("action_shuffle_artist_")) {
@@ -947,42 +1063,63 @@ class ChoraMediaLibraryService : MediaLibraryService() {
                             val allSongs = albums.flatMap { albumItem ->
                                 val albumId = albumItem.mediaMetadata.extras?.getString("navidromeID") ?: albumItem.mediaId
                                 val albumTracks = albumRepository.getAlbum(albumId) ?: emptyList()
-                                if (albumTracks.size > 1 && albumTracks[0].mediaMetadata.mediaType == MediaMetadata.MEDIA_TYPE_ALBUM) {
-                                    albumTracks.subList(1, albumTracks.size)
-                                } else {
-                                    albumTracks
-                                }
+                                albumTracks.filter { isValidPlayableAudioItem(it) }
                             }
                             if (allSongs.isNotEmpty()) {
-                                val prepared = if (isShuffle) allSongs.shuffled() else allSongs
+                                val isSmartShuffle = if (isShuffle) playbackSettingsManager.smartShuffleFlow.first() else false
+                                val prepared = if (isShuffle) {
+                                    if (isSmartShuffle) SmartShuffleHelper.smartShuffle(allSongs) else allSongs.shuffled()
+                                } else allSongs
                                 val queue = prepared.map { it.withHighResArtwork().buildUpon().setUri(it.mediaId).build() }
                                 withContext(Dispatchers.Main) {
-                                    player.shuffleModeEnabled = isShuffle
+                                    if (isShuffle) {
+                                        isQueuePreShuffled = true
+                                        player.shuffleModeEnabled = true
+                                    } else {
+                                        isQueuePreShuffled = false
+                                        player.shuffleModeEnabled = false
+                                    }
                                     player.repeatMode = Player.REPEAT_MODE_ALL
                                 }
                                 settable.set(queue)
-                                return@launch
+                            } else {
+                                settable.set(emptyList())
                             }
+                            return@launch
                         }
 
                         if (requestedId == "action_play_all_songs") {
-                            val allSongs = songRepository.getSongs(songCount = 5000).map { it.withHighResArtwork().buildUpon().setUri(it.mediaId).build() }
-                            withContext(Dispatchers.Main) {
-                                player.shuffleModeEnabled = false
-                                player.repeatMode = Player.REPEAT_MODE_ALL
+                            val rawSongs = songRepository.getSongs(songCount = 5000)
+                            val allSongs = rawSongs.filter { isValidPlayableAudioItem(it) }
+                            if (allSongs.isNotEmpty()) {
+                                val queue = allSongs.map { it.withHighResArtwork().buildUpon().setUri(it.mediaId).build() }
+                                withContext(Dispatchers.Main) {
+                                    player.shuffleModeEnabled = false
+                                    player.repeatMode = Player.REPEAT_MODE_ALL
+                                }
+                                settable.set(queue)
+                            } else {
+                                settable.set(emptyList())
                             }
-                            settable.set(allSongs)
                             return@launch
                         }
 
                         if (requestedId == "action_shuffle_all_songs") {
-                            val allSongs = songRepository.getSongs(songCount = 5000).map { it.withHighResArtwork().buildUpon().setUri(it.mediaId).build() }
-                            val shuffled = allSongs.shuffled()
-                            withContext(Dispatchers.Main) {
-                                player.shuffleModeEnabled = true
-                                player.repeatMode = Player.REPEAT_MODE_ALL
+                            val rawSongs = songRepository.getSongs(songCount = 5000)
+                            val allSongs = rawSongs.filter { isValidPlayableAudioItem(it) }
+                            if (allSongs.isNotEmpty()) {
+                                val isSmartShuffle = playbackSettingsManager.smartShuffleFlow.first()
+                                val shuffled = if (isSmartShuffle) SmartShuffleHelper.smartShuffle(allSongs) else allSongs.shuffled()
+                                val queue = shuffled.map { it.withHighResArtwork().buildUpon().setUri(it.mediaId).build() }
+                                withContext(Dispatchers.Main) {
+                                    isQueuePreShuffled = true
+                                    player.shuffleModeEnabled = true
+                                    player.repeatMode = Player.REPEAT_MODE_ALL
+                                }
+                                settable.set(queue)
+                            } else {
+                                settable.set(emptyList())
                             }
-                            settable.set(shuffled)
                             return@launch
                         }
 
@@ -1179,8 +1316,22 @@ class ChoraMediaLibraryService : MediaLibraryService() {
                             }
                         }
                     }
+                    val isGridParent = parentId == "nodeALBUMS" ||
+                            parentId == "nodeARTISTS" ||
+                            parentId == "nodeHOME"
+                    val returnParams = if (isGridParent) {
+                        val b = params?.extras?.let { Bundle(it) } ?: Bundle()
+                        b.putInt(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE, MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM)
+                        b.putInt(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_PLAYABLE, MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM)
+                        LibraryParams.Builder().setExtras(b).build()
+                    } else {
+                        val b = params?.extras?.let { Bundle(it) } ?: Bundle()
+                        b.putInt(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE, MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM)
+                        b.putInt(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_PLAYABLE, MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM)
+                        LibraryParams.Builder().setExtras(b).build()
+                    }
                     com.craftworks.music.managers.FileLogger.log("AA_SERVICE", "onGetChildren returning ${items.size} items for $parentId: ${items.map { "${it.mediaId}->${it.mediaMetadata.title}" }}")
-                    settable.set(LibraryResult.ofItemList(items, params))
+                    settable.set(LibraryResult.ofItemList(items, returnParams))
                 } catch (e: Exception) {
                     com.craftworks.music.managers.FileLogger.log("AA_SERVICE", "Error in onGetChildren for $parentId: ${e.message}")
                     Log.e("AA", "Error in onGetChildren for parentId: $parentId", e)
@@ -1363,6 +1514,24 @@ class ChoraMediaLibraryService : MediaLibraryService() {
         }
     }
 
+    fun setPlayerShuffleMode(enabled: Boolean) {
+        if (!::player.isInitialized) return
+        if (enabled) {
+            val total = player.mediaItemCount
+            val currentIndex = player.currentMediaItemIndex
+            if (total > 1) {
+                val safeCurrent = currentIndex.coerceIn(0, total - 1)
+                val pastAndCurrent = (0..safeCurrent).toList()
+                val remaining = ((safeCurrent + 1) until total).shuffled()
+                val order = (pastAndCurrent + remaining).toIntArray()
+                player.setShuffleOrder(androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder(order, System.currentTimeMillis()))
+            }
+        } else {
+            player.setShuffleOrder(androidx.media3.exoplayer.source.ShuffleOrder.UnshuffledShuffleOrder(player.mediaItemCount))
+        }
+        player.shuffleModeEnabled = enabled
+    }
+
     private fun updateTranscodingDuringPlayback() {
         val currentWindowIndex = player.currentMediaItemIndex
         val currentPlaybackPosition = player.currentPosition
@@ -1425,6 +1594,43 @@ class ChoraMediaLibraryService : MediaLibraryService() {
                     .build()
             )
             .build()
+    }
+
+    private fun MediaItem.withListContentStyle(): MediaItem {
+        val currentExtras = this.mediaMetadata.extras ?: Bundle()
+        val newExtras = Bundle(currentExtras).apply {
+            putInt(
+                MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE,
+                MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM
+            )
+            putInt(
+                MediaConstants.EXTRAS_KEY_CONTENT_STYLE_PLAYABLE,
+                MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM
+            )
+        }
+        return this.buildUpon()
+            .setMediaMetadata(
+                this.mediaMetadata.buildUpon()
+                    .setExtras(newExtras)
+                    .build()
+            )
+            .build()
+    }
+
+    private fun isValidPlayableAudioItem(item: MediaItem): Boolean {
+        if (item.mediaMetadata.mediaType == MediaMetadata.MEDIA_TYPE_ALBUM ||
+            item.mediaMetadata.mediaType == MediaMetadata.MEDIA_TYPE_FOLDER_ALBUMS ||
+            item.mediaMetadata.mediaType == MediaMetadata.MEDIA_TYPE_ARTIST ||
+            item.mediaMetadata.mediaType == MediaMetadata.MEDIA_TYPE_FOLDER_ARTISTS ||
+            item.mediaMetadata.mediaType == MediaMetadata.MEDIA_TYPE_FOLDER_PLAYLISTS
+        ) {
+            return false
+        }
+        val mediaId = item.mediaId
+        return mediaId.startsWith("http://") ||
+                mediaId.startsWith("https://") ||
+                mediaId.startsWith("content://") ||
+                mediaId.startsWith("file://")
     }
 
     //region getChildren
@@ -1632,7 +1838,7 @@ class ChoraMediaLibraryService : MediaLibraryService() {
         if (aAlbumScreenItems.isEmpty()) {
             try {
                 val albums = albumRepository.getAlbums("alphabeticalByName", 100, 0)
-                aAlbumScreenItems = albums.map { it.withHighResArtwork() }
+                aAlbumScreenItems = albums.map { it.withHighResArtwork().withListContentStyle() }
             } catch (e: Exception) {
                 Log.e("AA", "Error loading album screen items", e)
             }
@@ -1701,6 +1907,16 @@ class ChoraMediaLibraryService : MediaLibraryService() {
                                     .setArtworkUri(highResArt?.toUri())
                                     .setIsBrowsable(true)
                                     .setIsPlayable(false)
+                                    .setExtras(Bundle().apply {
+                                        putInt(
+                                            MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE,
+                                            MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM
+                                        )
+                                        putInt(
+                                            MediaConstants.EXTRAS_KEY_CONTENT_STYLE_PLAYABLE,
+                                            MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM
+                                        )
+                                    })
                                     .build()
                             )
                             .setMediaId(it.navidromeID)
@@ -1856,7 +2072,7 @@ class ChoraMediaLibraryService : MediaLibraryService() {
                         result.add(shuffleItem)
                     }
                     result.addAll(
-                        artistAlbums.map { it.withHighResArtwork() }
+                        artistAlbums.map { it.withHighResArtwork().withListContentStyle() }
                     )
                 }
             }

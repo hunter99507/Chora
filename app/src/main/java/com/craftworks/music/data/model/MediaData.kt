@@ -59,7 +59,7 @@ sealed class MediaData {
     @Serializable
     data class Album(
         @SerialName("id")
-        val navidromeID : String,
+        val navidromeID : String = "",
         val parent : String? = "",
 
         val album : String? = "",
@@ -68,7 +68,7 @@ sealed class MediaData {
 
         val isDir : Boolean? = false,
         var coverArt : String? = "",
-        val songCount : Int,
+        val songCount : Int = 0,
 
         val played : String? = "",
         val created : String? = "",
@@ -76,7 +76,7 @@ sealed class MediaData {
         val playCount : Int? = 0,
 
         val artistId : String? = "",
-        val artist : String,
+        val artist : String = "",
         val year : Int? = 0,
         val genre : String? = "",
         val genres : List<Genre>? = listOf(),

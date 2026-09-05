@@ -64,6 +64,9 @@ fun MediaData.Song.toMediaItem(): MediaItem {
                 if (this@toMediaItem.replayGain?.trackGain != null)
                     putFloat("replayGain", this@toMediaItem.replayGain.trackGain)
                 putBoolean(METADATA_KEY_IS_EXPLICIT, this@toMediaItem.explicitStatus == "explicit")
+                putInt("timesPlayed", this@toMediaItem.timesPlayed ?: 0)
+                putString("starred", this@toMediaItem.starred ?: "")
+                putString("lastPlayed", this@toMediaItem.lastPlayed ?: "")
             }).build()
 
     return MediaItem.Builder()
@@ -97,6 +100,10 @@ fun MediaItem.toSong(): MediaData.Song {
         parent = "",
         dateAdded = "",
         bpm = 0,
-        albumId = ""
+        albumId = "",
+        timesPlayed = extras?.getInt("timesPlayed") ?: 0,
+        starred = extras?.getString("starred")?.takeIf { it.isNotBlank() },
+        lastPlayed = extras?.getString("lastPlayed") ?: "",
+        userRating = (mediaMetadata.userRating as? StarRating)?.starRating?.toInt()
     )
 }

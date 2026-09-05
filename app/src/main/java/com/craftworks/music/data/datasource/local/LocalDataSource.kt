@@ -16,7 +16,8 @@ import javax.inject.Singleton
 class LocalDataSource @Inject constructor(
     private val localProvider: LocalProvider,
     private val localDataSettingsManager: LocalDataSettingsManager,
-    private val appearanceSettingsManager: AppearanceSettingsManager
+    private val appearanceSettingsManager: AppearanceSettingsManager,
+    private val localMusicStatsManager: com.craftworks.music.managers.LocalMusicStatsManager
 ) {
 
     suspend fun getLocalAlbums(sort: String?): List<MediaItem> {
@@ -210,16 +211,22 @@ class LocalDataSource @Inject constructor(
         return removed
     }
 
-    //TODO: Local Starred Items with DB
     fun getLocalStarredItems(): List<MediaItem> {
-        return emptyList()
+        val starredIds = localMusicStatsManager.getStarredIds()
+        if (starredIds.isEmpty()) return emptyList()
+        return localProvider.getLocalSongs().filter { item ->
+            val id = com.craftworks.music.managers.LocalMusicStatsManager.cleanId(
+                item.mediaMetadata.extras?.getString("navidromeID") ?: item.mediaId
+            )
+            starredIds.contains(id)
+        }
     }
 
     fun starLocalItem(itemId: String): Boolean {
-        return false
+        return localMusicStatsManager.setStarred(itemId, true)
     }
 
     fun unstarLocalItem(itemId: String): Boolean {
-        return false
+        return localMusicStatsManager.setStarred(itemId, false)
     }
 }

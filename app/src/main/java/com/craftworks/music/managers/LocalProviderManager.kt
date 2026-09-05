@@ -29,6 +29,12 @@ object LocalProviderManager {
         saveFolders()
     }
 
+    fun restoreFolders(folders: List<String>, disabled: Set<String> = emptySet()) {
+        _allFolders.value = folders.distinct()
+        _disabledFolders.value = disabled
+        saveFolders()
+    }
+
     fun isFolderEnabled(folder: String): Boolean {
         return !_disabledFolders.value.contains(folder)
     }

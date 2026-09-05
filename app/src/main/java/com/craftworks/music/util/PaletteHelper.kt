@@ -209,9 +209,33 @@ fun SubtleAppBackground(
     val isTv = (configuration.uiMode and android.content.res.Configuration.UI_MODE_TYPE_MASK) == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
     val isDark = isTv || (backgroundColor.luminance() < 0.5f)
 
-    val topSlate = if (isDark) Color(0xFF1F2228) else Color(0xFFF1F3F7)
-    val midCharcoal = if (isDark) Color(0xFF17181C) else Color(0xFFE6E9EE)
-    val bottomPitch = if (isDark) Color(0xFF101114) else Color(0xFFDCDEE4)
+    val topColor = if (isDark) backgroundColor else backgroundColor
+    val midColor = if (isDark) {
+        Color(
+            red = (backgroundColor.red * 0.90f).coerceIn(0f, 1f),
+            green = (backgroundColor.green * 0.90f).coerceIn(0f, 1f),
+            blue = (backgroundColor.blue * 0.90f).coerceIn(0f, 1f)
+        )
+    } else {
+        Color(
+            red = (backgroundColor.red * 0.97f).coerceIn(0f, 1f),
+            green = (backgroundColor.green * 0.97f).coerceIn(0f, 1f),
+            blue = (backgroundColor.blue * 0.97f).coerceIn(0f, 1f)
+        )
+    }
+    val bottomColor = if (isDark) {
+        Color(
+            red = (backgroundColor.red * 0.80f).coerceIn(0f, 1f),
+            green = (backgroundColor.green * 0.80f).coerceIn(0f, 1f),
+            blue = (backgroundColor.blue * 0.80f).coerceIn(0f, 1f)
+        )
+    } else {
+        Color(
+            red = (backgroundColor.red * 0.94f).coerceIn(0f, 1f),
+            green = (backgroundColor.green * 0.94f).coerceIn(0f, 1f),
+            blue = (backgroundColor.blue * 0.94f).coerceIn(0f, 1f)
+        )
+    }
 
     Box(
         modifier = modifier
@@ -219,36 +243,38 @@ fun SubtleAppBackground(
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        topSlate,
-                        midCharcoal,
-                        bottomPitch
+                        topColor,
+                        midColor,
+                        bottomColor
                     )
                 )
             )
             .drawWithCache {
                 onDrawBehind {
-                    // Subtle primary accent ambient glow at top right
-                    drawRect(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                primary.copy(alpha = if (isDark) 0.12f else 0.07f),
-                                Color.Transparent
-                            ),
-                            center = Offset(size.width * 0.90f, size.height * 0.08f),
-                            radius = size.width * 1.5f
+                    if (!isTv) {
+                        // Subtle primary accent ambient glow at top right
+                        drawRect(
+                            Brush.radialGradient(
+                                colors = listOf(
+                                    primary.copy(alpha = if (isDark) 0.12f else 0.07f),
+                                    Color.Transparent
+                                ),
+                                center = Offset(size.width * 0.90f, size.height * 0.08f),
+                                radius = size.width * 1.5f
+                            )
                         )
-                    )
-                    // Ultra subtle tertiary accent glow at top left
-                    drawRect(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                tertiary.copy(alpha = if (isDark) 0.07f else 0.04f),
-                                Color.Transparent
-                            ),
-                            center = Offset(size.width * 0.10f, size.height * 0.22f),
-                            radius = size.width * 1.2f
+                        // Ultra subtle tertiary accent glow at top left
+                        drawRect(
+                            Brush.radialGradient(
+                                colors = listOf(
+                                    tertiary.copy(alpha = if (isDark) 0.07f else 0.04f),
+                                    Color.Transparent
+                                ),
+                                center = Offset(size.width * 0.10f, size.height * 0.22f),
+                                radius = size.width * 1.2f
+                            )
                         )
-                    )
+                    }
                 }
             }
     ) {

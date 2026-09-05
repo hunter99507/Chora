@@ -19,8 +19,12 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +32,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -54,6 +59,7 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -68,7 +74,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.FocusRequester.Companion.FocusRequesterFactory.component1
 import androidx.compose.ui.focus.FocusRequester.Companion.FocusRequesterFactory.component2
@@ -124,6 +132,7 @@ import com.craftworks.music.player.ChoraMediaLibraryService
 import com.craftworks.music.player.SongHelper
 import com.craftworks.music.player.rememberManagedMediaController
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import com.craftworks.music.ui.elements.LocalBottomPadding
 import com.craftworks.music.ui.elements.TabStateHolder
 import com.craftworks.music.ui.elements.dialogs.tv.OnboardingDialog
 import com.craftworks.music.ui.playing.NowPlayingContent
@@ -135,6 +144,7 @@ import com.gigamole.composefadingedges.content.FadingEdgesContentType
 import com.gigamole.composefadingedges.content.scrollconfig.FadingEdgesScrollConfig
 import com.gigamole.composefadingedges.verticalFadingEdges
 import dagger.hilt.android.AndroidEntryPoint
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -149,6 +159,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        handleRestoreIntent(intent)
+
         val serviceIntent = Intent(applicationContext, ChoraMediaLibraryService::class.java)
         this@MainActivity.startService(serviceIntent)
 
@@ -158,13 +170,20 @@ class MainActivity : ComponentActivity() {
             val selectedThemeName by AppearanceSettingsManager(this).appTheme.collectAsState(
                 AppTheme.SYSTEM.name
             )
-            val darkTheme = when (selectedThemeName) {
-                AppTheme.DARK.name -> true
-                AppTheme.LIGHT.name -> false
-                else -> isSystemInDarkTheme()
+            val currentAppTheme = remember(selectedThemeName) {
+                try {
+                    AppTheme.valueOf(selectedThemeName)
+                } catch (e: Exception) {
+                    AppTheme.SYSTEM
+                }
+            }
+            val darkTheme = when (currentAppTheme) {
+                AppTheme.DARK, AppTheme.MODERN_EDITORIAL, AppTheme.NORDIC_SLATE, AppTheme.MIDNIGHT_LAVENDER -> true
+                AppTheme.LIGHT, AppTheme.APPLE_MUSIC, AppTheme.APPLE_CLASSICAL -> false
+                AppTheme.SYSTEM -> isSystemInDarkTheme()
             }
 
-            MusicPlayerTheme (darkTheme) {
+            MusicPlayerTheme (appTheme = currentAppTheme, darkTheme = darkTheme) {
                 navController = rememberNavController()
 
                 val mediaController by rememberManagedMediaController()
@@ -253,6 +272,22 @@ class MainActivity : ComponentActivity() {
                 }
 
                 if (isTv) {
+                    try {
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                            val display = window.context.display
+                            val mode60 = display?.supportedModes?.filter { it.refreshRate >= 59f }?.maxByOrNull { it.refreshRate }
+                            if (mode60 != null) {
+                                val params = window.attributes
+                                params.preferredDisplayModeId = mode60.modeId
+                                window.attributes = params
+                            }
+                        } else {
+                            val params = window.attributes
+                            params.preferredRefreshRate = 60f
+                            window.attributes = params
+                        }
+                    } catch (_: Exception) {}
+
                     // Set background color to colorScheme.background
                     window.decorView.setBackgroundColor(Color(0xFF101114).toArgb())
 
@@ -268,81 +303,135 @@ class MainActivity : ComponentActivity() {
                     window.decorView.setBackgroundColor(MaterialTheme.colorScheme.background.toArgb())
 
                     SubtleAppBackground {
-                        Scaffold(
-                            bottomBar = {
-                                AnimatedBottomNavBar(navController, scaffoldState)
-                            },
-                            contentColor = MaterialTheme.colorScheme.onBackground,
-                            containerColor = Color.Transparent
-                        ) { paddingValues ->
-                            if (LocalWindowInfo.current.containerSize.width < dpToPx(640)) {
-                                BottomSheetScaffold(
-                                    sheetContainerColor = Color.Transparent,
-                                    containerColor = Color.Transparent,
-                                    sheetPeekHeight = peekHeight + 80.dp + WindowInsets.navigationBars.asPaddingValues()
-                                        .calculateBottomPadding(),
-                                    //sheetShadowElevation = 6.dp,
-                                    sheetShape = RoundedCornerShape(12.dp, 12.dp, 0.dp, 0.dp),
-                                    sheetDragHandle = { },
-                                    scaffoldState = scaffoldState,
-                                    sheetContent = {
-                                        val coroutineScope = rememberCoroutineScope()
-                                        val isSheetExpanded = scaffoldState.bottomSheetState.targetValue == SheetValue.Expanded ||
-                                                scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded
+                        val isFloatingNavbar by AppearanceSettingsManager(LocalContext.current).floatingNavbarFlow.collectAsStateWithLifecycle(false)
+                        val currentMetadata = metadata
+                        val hasMedia = currentMetadata?.title != null && currentMetadata.title.toString().isNotBlank()
+                        val navBarBottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
-                                        Box {
-                                            NowPlayingMiniPlayer(
-                                                scaffoldState = scaffoldState,
-                                                metadata = metadata,
-                                                onClick = {
-                                                    coroutineScope.launch {
-                                                        scaffoldState.bottomSheetState.expand()
-                                                    }
-                                                })
+                        val computedPeekHeight = when {
+                            !hasMedia -> 0.dp
+                            isFloatingNavbar -> 144.dp + navBarBottomInset
+                            else -> 72.dp + 64.dp + navBarBottomInset
+                        }
 
-                                            NowPlayingContent(
-                                                mediaController = mediaController,
-                                                metadata = metadata,
-                                                isExpanded = isSheetExpanded,
-                                                onClose = {
-                                                    coroutineScope.launch {
-                                                        scaffoldState.bottomSheetState.partialExpand()
+                        val contentBottomPadding = (if (hasMedia) (if (isFloatingNavbar) 152.dp else 72.dp) else (if (isFloatingNavbar) 80.dp else 0.dp)) + (if (isFloatingNavbar) 0.dp else 64.dp) + navBarBottomInset
+
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            Scaffold(
+                                bottomBar = {
+                                    if (!isFloatingNavbar) {
+                                        AnimatedBottomNavBar(navController, scaffoldState)
+                                    }
+                                },
+                                contentColor = MaterialTheme.colorScheme.onBackground,
+                                containerColor = Color.Transparent
+                            ) { paddingValues ->
+                                if (LocalWindowInfo.current.containerSize.width < dpToPx(640)) {
+                                    BottomSheetScaffold(
+                                        modifier = Modifier.fillMaxSize(),
+                                        sheetContainerColor = Color.Transparent,
+                                        containerColor = Color.Transparent,
+                                        sheetPeekHeight = computedPeekHeight,
+                                        sheetShape = RoundedCornerShape(12.dp, 12.dp, 0.dp, 0.dp),
+                                        sheetDragHandle = { },
+                                        scaffoldState = scaffoldState,
+                                        sheetContent = {
+                                            val coroutineScope = rememberCoroutineScope()
+                                            val isSheetExpanded = scaffoldState.bottomSheetState.targetValue == SheetValue.Expanded ||
+                                                    scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded
+
+                                            Box(modifier = Modifier.fillMaxSize()) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .graphicsLayer { alpha = if (isSheetExpanded) 1f else 0f }
+                                                ) {
+                                                    NowPlayingContent(
+                                                        mediaController = mediaController,
+                                                        metadata = metadata,
+                                                        isExpanded = isSheetExpanded,
+                                                        onClose = {
+                                                            coroutineScope.launch {
+                                                                scaffoldState.bottomSheetState.partialExpand()
+                                                            }
+                                                        }
+                                                    )
+                                                }
+
+                                                if (hasMedia) {
+                                                    Column(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .graphicsLayer { alpha = if (isSheetExpanded) 0f else 1f },
+                                                        horizontalAlignment = Alignment.CenterHorizontally
+                                                    ) {
+                                                        NowPlayingMiniPlayer(
+                                                            scaffoldState = scaffoldState,
+                                                            metadata = metadata,
+                                                            isFloating = isFloatingNavbar,
+                                                            onClick = {
+                                                                coroutineScope.launch {
+                                                                    scaffoldState.bottomSheetState.expand()
+                                                                }
+                                                            }
+                                                        )
+                                                        if (isFloatingNavbar) {
+                                                            Spacer(modifier = Modifier.height(8.dp + 64.dp + 8.dp + navBarBottomInset))
+                                                        }
                                                     }
                                                 }
+                                            }
+
+                                            val currentView = LocalView.current
+                                            val disableScreenStandy by AppearanceSettingsManager(LocalContext.current).disableScreenStandby.collectAsStateWithLifecycle(true)
+                                            DisposableEffect(scaffoldState.bottomSheetState.targetValue) {
+                                                if (scaffoldState.bottomSheetState.targetValue == SheetValue.Expanded) {
+                                                    if (disableScreenStandy)
+                                                        currentView.keepScreenOn = true
+
+                                                    Log.d("NOW-PLAYING", "KeepScreenOn: True")
+                                                } else {
+                                                    currentView.keepScreenOn = false
+                                                    Log.d("NOW-PLAYING", "KeepScreenOn: False")
+                                                }
+
+                                                onDispose {
+                                                    currentView.keepScreenOn = false
+                                                    Log.d("NOW-PLAYING", "KeepScreenOn: False")
+                                                }
+                                            }
+                                        }
+                                    ) {
+                                        CompositionLocalProvider(
+                                            LocalBottomPadding provides (if (isFloatingNavbar) contentBottomPadding else 0.dp)
+                                        ) {
+                                            SetupNavGraph(
+                                                navController = navController,
+                                                bottomPadding = if (isFloatingNavbar) 0.dp else contentBottomPadding,
+                                                mediaController = mediaController
                                             )
                                         }
-
-                                        val currentView = LocalView.current
-                                        val disableScreenStandy by AppearanceSettingsManager(LocalContext.current).disableScreenStandby.collectAsStateWithLifecycle(true)
-                                        DisposableEffect(scaffoldState.bottomSheetState.targetValue) {
-                                            if (scaffoldState.bottomSheetState.targetValue == SheetValue.Expanded) {
-                                                if (disableScreenStandy)
-                                                    currentView.keepScreenOn = true
-
-                                                Log.d("NOW-PLAYING", "KeepScreenOn: True")
-                                            } else {
-                                                currentView.keepScreenOn = false
-                                                Log.d("NOW-PLAYING", "KeepScreenOn: False")
-                                            }
-
-                                            onDispose {
-                                                currentView.keepScreenOn = false
-                                                Log.d("NOW-PLAYING", "KeepScreenOn: False")
-                                            }
-                                        }
-                                    }) {
-                                    SetupNavGraph(
-                                        navController,
-                                        peekHeight + paddingValues.calculateBottomPadding(),
-                                        mediaController
-                                    )
+                                    }
+                                } else {
+                                    CompositionLocalProvider(
+                                        LocalBottomPadding provides (if (isFloatingNavbar) contentBottomPadding else 0.dp)
+                                    ) {
+                                        SetupNavGraph(
+                                            navController = navController,
+                                            bottomPadding = 0.dp,
+                                            mediaController = mediaController
+                                        )
+                                    }
                                 }
-                            } else {
-                                SetupNavGraph(
-                                    navController,
-                                    0.dp,
-                                    mediaController
-                                )
+                            }
+
+                            if (isFloatingNavbar && LocalWindowInfo.current.containerSize.width < dpToPx(640)) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.BottomCenter
+                                ) {
+                                    AnimatedBottomNavBar(navController, scaffoldState)
+                                }
                             }
                         }
                     }
@@ -433,6 +522,26 @@ class MainActivity : ComponentActivity() {
                     println("Destroyed, Goodbye :(")
                 }
             })
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleRestoreIntent(intent)
+    }
+
+    private fun handleRestoreIntent(intent: Intent?) {
+        val json = intent?.getStringExtra("json") ?: run {
+            val file = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), "chora_backup.json")
+            if (intent?.action == "com.craftworks.music.ACTION_RESTORE_BACKUP" && file.exists()) {
+                file.readText()
+            } else null
+        }
+        if (!json.isNullOrBlank()) {
+            lifecycleScope.launch {
+                com.craftworks.music.managers.BackupManager.restoreFromJson(applicationContext, json)
+                android.widget.Toast.makeText(applicationContext, "Backup restored successfully!", android.widget.Toast.LENGTH_SHORT).show()
+            }
         }
     }
 }
@@ -735,35 +844,32 @@ fun AnimatedBottomNavBar(
 
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
 
+    val isFloatingNavbar by AppearanceSettingsManager(context).floatingNavbarFlow.collectAsStateWithLifecycle(false)
+
     if (LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT) {
         val expanded by remember { derivedStateOf { scaffoldState.bottomSheetState.targetValue == SheetValue.Expanded } }
+        val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+        val navBarHeight = 64.dp + navBarBottomPadding
 
         val yTrans by animateIntAsState(
             targetValue = if (expanded) dpToPx(
-                -80 - WindowInsets.navigationBars.asPaddingValues()
-                    .calculateBottomPadding().value.toInt()
+                -(if (isFloatingNavbar) 72 else 64) - navBarBottomPadding.value.toInt() - 24
             )
             else 0, label = "Fullscreen Translation"
         )
 
-        val navBarBrush = remember(isDark) {
+        val surfaceContainer = MaterialTheme.colorScheme.surfaceContainer
+        val surface = MaterialTheme.colorScheme.surface
+        val navBarBrush = remember(surfaceContainer, surface) {
             Brush.verticalGradient(
-                colors = if (isDark) listOf(
-                    Color(0xFF1E2026),
-                    Color(0xFF121316)
-                ) else listOf(
-                    Color(0xFFF6F8FB),
-                    Color(0xFFE4E7ED)
+                colors = listOf(
+                    surfaceContainer.copy(alpha = 0.95f),
+                    surface
                 )
             )
         }
 
-        NavigationBar(
-            containerColor = Color.Transparent,
-            modifier = Modifier
-                .offset { IntOffset(x = 0, y = -yTrans) }
-                .background(navBarBrush)
-        ) {
+        val navBarItemsContent: @Composable RowScope.(showLabels: Boolean) -> Unit = { showLabels ->
             orderedNavItems.forEachIndexed { _, item ->
                 if (!item.enabled || item.screenRoute == "radio_screen") return@forEachIndexed
 
@@ -779,60 +885,163 @@ fun AnimatedBottomNavBar(
                     item.screenRoute == currentPagerRoute
                 else
                     item.screenRoute == backStackEntry?.destination?.route
-                NavigationBarItem(
-                    selected = isSelected,
-                    onClick = {
-                        val tabIndex = activeTabs.indexOf(item.screenRoute)
-                        if (tabIndex != -1) {
-                            // Tab item: drive the pager
-                            TabStateHolder.scrollToTab(tabIndex)
-                            if (!onTabsScreen) {
-                                val popped = navController.popBackStack("tabs_screen", false)
-                                if (!popped) {
-                                    navController.navigate("tabs_screen") {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            inclusive = false
+
+                if (showLabels) {
+                    NavigationBarItem(
+                        selected = isSelected,
+                        onClick = {
+                            val tabIndex = activeTabs.indexOf(item.screenRoute)
+                            if (tabIndex != -1) {
+                                // Tab item: drive the pager
+                                TabStateHolder.scrollToTab(tabIndex)
+                                if (!onTabsScreen) {
+                                    val popped = navController.popBackStack("tabs_screen", false)
+                                    if (!popped) {
+                                        navController.navigate("tabs_screen") {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                inclusive = false
+                                            }
+                                            launchSingleTop = true
                                         }
-                                        launchSingleTop = true
                                     }
                                 }
+                            } else {
+                                // Non-tab item
+                                if (item.screenRoute == backStackEntry?.destination?.route) return@NavigationBarItem
+                                navController.navigate(item.screenRoute) { launchSingleTop = true }
                             }
-                        } else {
-                            // Non-tab item
-                            if (item.screenRoute == backStackEntry?.destination?.route) return@NavigationBarItem
-                            navController.navigate(item.screenRoute) { launchSingleTop = true }
-                        }
-                        coroutineScope.launch {
-                            if (scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded) scaffoldState.bottomSheetState.partialExpand()
-                        }
-                    },
-                    label = { Text(text = item.title) },
-                    alwaysShowLabel = false,
-                    icon = {
-                        Icon(ImageVector.vectorResource(icon), contentDescription = null)
-                    })
+                            coroutineScope.launch {
+                                if (scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded) scaffoldState.bottomSheetState.partialExpand()
+                            }
+                        },
+                        label = { Text(text = item.title) },
+                        alwaysShowLabel = false,
+                        icon = {
+                            Icon(ImageVector.vectorResource(icon), contentDescription = item.title)
+                        })
+                } else {
+                    NavigationBarItem(
+                        selected = isSelected,
+                        onClick = {
+                            val tabIndex = activeTabs.indexOf(item.screenRoute)
+                            if (tabIndex != -1) {
+                                // Tab item: drive the pager
+                                TabStateHolder.scrollToTab(tabIndex)
+                                if (!onTabsScreen) {
+                                    val popped = navController.popBackStack("tabs_screen", false)
+                                    if (!popped) {
+                                        navController.navigate("tabs_screen") {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                inclusive = false
+                                            }
+                                            launchSingleTop = true
+                                        }
+                                    }
+                                }
+                            } else {
+                                // Non-tab item
+                                if (item.screenRoute == backStackEntry?.destination?.route) return@NavigationBarItem
+                                navController.navigate(item.screenRoute) { launchSingleTop = true }
+                            }
+                            coroutineScope.launch {
+                                if (scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded) scaffoldState.bottomSheetState.partialExpand()
+                            }
+                        },
+                        alwaysShowLabel = false,
+                        icon = {
+                            Icon(ImageVector.vectorResource(icon), contentDescription = item.title)
+                        })
+                }
             }
-            if (LocalWindowInfo.current.containerSize.width > dpToPx(640))
-                NavigationBarItem(
-                    selected = Screen.NowPlayingLandscape.route == backStackEntry?.destination?.route,
-                    onClick = {
-                        if (Screen.NowPlayingLandscape.route == backStackEntry?.destination?.route) return@NavigationBarItem
-                        navController.navigate(Screen.NowPlayingLandscape.route) {
-                            launchSingleTop = true
-                        }
-                        coroutineScope.launch {
-                            if (scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded) scaffoldState.bottomSheetState.partialExpand()
-                        }
-                    },
-                    label = { Text(text = "Playing") },
-                    alwaysShowLabel = false,
-                    icon = {
-                        Icon(
-                            ImageVector.vectorResource(R.drawable.s_m_playback),
-                            contentDescription = "Playing"
+            if (LocalWindowInfo.current.containerSize.width > dpToPx(640)) {
+                if (showLabels) {
+                    NavigationBarItem(
+                        selected = Screen.NowPlayingLandscape.route == backStackEntry?.destination?.route,
+                        onClick = {
+                            if (Screen.NowPlayingLandscape.route == backStackEntry?.destination?.route) return@NavigationBarItem
+                            navController.navigate(Screen.NowPlayingLandscape.route) {
+                                launchSingleTop = true
+                            }
+                            coroutineScope.launch {
+                                if (scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded) scaffoldState.bottomSheetState.partialExpand()
+                            }
+                        },
+                        label = { Text(text = "Playing") },
+                        alwaysShowLabel = false,
+                        icon = {
+                            Icon(
+                                ImageVector.vectorResource(R.drawable.s_m_playback),
+                                contentDescription = "Playing"
+                            )
+                        },
+                    )
+                } else {
+                    NavigationBarItem(
+                        selected = Screen.NowPlayingLandscape.route == backStackEntry?.destination?.route,
+                        onClick = {
+                            if (Screen.NowPlayingLandscape.route == backStackEntry?.destination?.route) return@NavigationBarItem
+                            navController.navigate(Screen.NowPlayingLandscape.route) {
+                                launchSingleTop = true
+                            }
+                            coroutineScope.launch {
+                                if (scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded) scaffoldState.bottomSheetState.partialExpand()
+                            }
+                        },
+                        alwaysShowLabel = false,
+                        icon = {
+                            Icon(
+                                ImageVector.vectorResource(R.drawable.s_m_playback),
+                                contentDescription = "Playing"
+                            )
+                        },
+                    )
+                }
+            }
+        }
+
+        if (isFloatingNavbar) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .offset { IntOffset(x = 0, y = -yTrans) }
+                    .padding(
+                        start = 16.dp,
+                        end = 16.dp,
+                        bottom = navBarBottomPadding + 8.dp
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.92f),
+                    windowInsets = WindowInsets(0, 0, 0, 0),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(64.dp)
+                        .shadow(
+                            elevation = 8.dp,
+                            shape = RoundedCornerShape(32.dp),
+                            spotColor = if (isDark) Color.Black.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.15f)
                         )
-                    },
-                )
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (isDark) 0.35f else 0.25f),
+                            shape = RoundedCornerShape(32.dp)
+                        )
+                        .clip(RoundedCornerShape(32.dp))
+                ) {
+                    navBarItemsContent(false)
+                }
+            }
+        } else {
+            NavigationBar(
+                containerColor = Color.Transparent,
+                modifier = Modifier
+                    .height(navBarHeight)
+                    .offset { IntOffset(x = 0, y = -yTrans) }
+                    .background(navBarBrush)
+            ) {
+                navBarItemsContent(true)
+            }
         }
     } else {
         val railBrush = remember(isDark) {

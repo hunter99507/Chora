@@ -118,14 +118,6 @@ fun ArtistsScreen(
                                 )
                             }
 
-                            IconButton(
-                                onClick = { viewModel.setShowFavoritesOnly(!showFavoritesOnly) }
-                            ) {
-                                Icon(
-                                    imageVector = ImageVector.vectorResource(if (showFavoritesOnly) androidx.media3.session.R.drawable.media3_icon_heart_filled else androidx.media3.session.R.drawable.media3_icon_heart_unfilled),
-                                    contentDescription = stringResource(R.string.Label_Toggle_Favorites),
-                                )
-                            }
                         }
                     }
                 )

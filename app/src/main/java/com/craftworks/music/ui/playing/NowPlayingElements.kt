@@ -623,8 +623,8 @@ internal fun ShuffleButton(player: Player, color: Color, modifier: Modifier = Mo
         Icon(
             imageVector = ImageVector.vectorResource(R.drawable.round_shuffle_28),
             contentDescription = "Shuffle",
-            modifier = modifier,
-            tint = color.copy(if (state.shuffleOn) 1f else 0.5f)
+            modifier = Modifier.size(24.dp),
+            tint = color.copy(if (state.shuffleOn) 1f else 0.45f)
         )
     }
 }
@@ -642,8 +642,8 @@ internal fun RepeatButton(player: Player, color: Color, modifier: Modifier = Mod
         Icon(
             imageVector = icon,
             contentDescription = "Repeat",
-            modifier = modifier,
-            tint = color.copy(if (state.repeatModeState == Player.REPEAT_MODE_OFF) 0.5f else 1f)
+            modifier = Modifier.size(24.dp),
+            tint = color.copy(if (state.repeatModeState == Player.REPEAT_MODE_OFF) 0.45f else 1f)
         )
     }
 }

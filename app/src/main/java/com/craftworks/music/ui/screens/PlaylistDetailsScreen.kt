@@ -20,9 +20,11 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import com.craftworks.music.ui.elements.LocalBottomPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -185,7 +187,9 @@ fun PlaylistDetails(
                 modifier = Modifier
                     .fillMaxSize()
                     .dialogFocusable(),
-                contentPadding = PaddingValues(bottom = 80.dp),
+                contentPadding = PaddingValues(
+                    bottom = 64.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + LocalBottomPadding.current
+                ),
             ) {
                 item {
                     Box(

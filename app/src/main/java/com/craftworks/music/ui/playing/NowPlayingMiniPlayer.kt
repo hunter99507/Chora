@@ -4,6 +4,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
@@ -32,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -59,8 +61,13 @@ fun NowPlayingMiniPlayer(
     scaffoldState: BottomSheetScaffoldState = rememberBottomSheetScaffoldState(),
     metadata: MediaMetadata? = null,
     viewModel: NowPlayingViewModel = viewModel(),
+    isFloating: Boolean = false,
     onClick: () -> Unit = { }
 ) {
+    if (metadata?.title == null || metadata.title.toString().isBlank()) {
+        return
+    }
+
     val expanded by remember { derivedStateOf { scaffoldState.bottomSheetState.targetValue == SheetValue.Expanded } }
 
     val isDark = isSystemInDarkTheme()
@@ -94,14 +101,32 @@ fun NowPlayingMiniPlayer(
         label = "Fullscreen Translation"
     )
 
+    val shape = if (isFloating) RoundedCornerShape(20.dp) else RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .offset { IntOffset(x = 0, y = -yTrans) }
             .zIndex(1f)
-            .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+            .then(
+                if (isFloating) {
+                    Modifier
+                        .padding(horizontal = 16.dp)
+                        .shadow(
+                            elevation = 8.dp,
+                            shape = shape,
+                            spotColor = if (isDark) Color.Black.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.2f)
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = if (isDark) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.08f),
+                            shape = shape
+                        )
+                } else Modifier
+            )
+            .clip(shape)
             .background(animatedBarColor)
-            .height(72.dp)
+            .height(if (isFloating) 64.dp else 72.dp)
             .fillMaxWidth()
             .padding(horizontal = 12.dp)
             .clickable {

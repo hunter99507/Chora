@@ -32,16 +32,35 @@ class AlbumRepository @Inject constructor(
         val deferredAlbums = mutableListOf<Deferred<List<MediaItem>>>()
 
         if (MediaSourceManager.isSourceActive(MediaSource.NAVIDROME) && NavidromeManager.checkActiveServers())
-            deferredAlbums.add(async { navidromeDataSource.getNavidromeAlbums(sort, size, offset, ignoreCachedResponse, favoritesOnly=favoritesOnly) })
+            deferredAlbums.add(async {
+                try {
+                    navidromeDataSource.getNavidromeAlbums(sort, size, offset, ignoreCachedResponse, favoritesOnly = favoritesOnly)
+                } catch (e: Exception) {
+                    emptyList()
+                }
+            })
 
         if (MediaSourceManager.isSourceActive(MediaSource.EMBY) && EmbyJellyfinManager.checkActiveServers())
-            deferredAlbums.add(async { embyJellyfinDataSource.getAlbums(sort, size, offset, ignoreCachedResponse, favoritesOnly=favoritesOnly) })
+            deferredAlbums.add(async {
+                try {
+                    embyJellyfinDataSource.getAlbums(sort, size, offset, ignoreCachedResponse, favoritesOnly = favoritesOnly)
+                } catch (e: Exception) {
+                    emptyList()
+                }
+            })
 
         if (MediaSourceManager.isSourceActive(MediaSource.LOCAL) && LocalProviderManager.checkActiveFolders())
             if (offset == 0)
-                deferredAlbums.add(async { localDataSource.getLocalAlbums(sort) })
+                deferredAlbums.add(async {
+                    try {
+                        localDataSource.getLocalAlbums(sort)
+                    } catch (e: Exception) {
+                        emptyList()
+                    }
+                })
 
-        deferredAlbums.awaitAll().flatten()
+        val combined = deferredAlbums.awaitAll().flatten()
+        if (size != null && size > 0 && offset == 0) combined.take(size) else combined
     }
 
     suspend fun getAlbum(albumId: String, ignoreCachedResponse: Boolean = false): List<MediaItem>? = coroutineScope {

@@ -30,6 +30,20 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            val keystoreFile = rootProject.file("keystore/chora.keystore")
+            if (keystoreFile.exists()) {
+                storeFile = keystoreFile
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            } else {
+                initWith(getByName("debug"))
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -38,11 +52,71 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
         debug {
             isDebuggable = false
             isProfileable = true
+            signingConfig = signingConfigs.getByName("release")
+        }
+    }
+
+    buildFeatures {
+        buildConfig = true
+    }
+
+    flavorDimensions += "edition"
+
+    fun getDedicatedSourceFor(flavorName: String): String {
+        val specific = project.findProperty("source_${flavorName}") as? String
+        if (!specific.isNullOrBlank()) return specific.uppercase()
+
+        val general = project.findProperty("dedicatedSource") as? String
+        if (!general.isNullOrBlank()) return general.uppercase()
+
+        return when (flavorName) {
+            "sonora" -> "LOCAL"
+            "lyra" -> "NAVIDROME"
+            "aria" -> "EMBY"
+            else -> "ALL"
+        }
+    }
+
+    productFlavors {
+        create("chora") {
+            dimension = "edition"
+            isDefault = true
+            manifestPlaceholders["appLabel"] = "Chora"
+            val source = getDedicatedSourceFor("chora")
+            buildConfigField("String", "DEDICATED_SOURCE", "\"$source\"")
+            buildConfigField("String", "APP_FLAVOR_NAME", "\"Chora\"")
+        }
+        create("sonora") {
+            dimension = "edition"
+            applicationIdSuffix = ".sonora"
+            versionNameSuffix = "-sonora"
+            manifestPlaceholders["appLabel"] = "Sonora"
+            val source = getDedicatedSourceFor("sonora")
+            buildConfigField("String", "DEDICATED_SOURCE", "\"$source\"")
+            buildConfigField("String", "APP_FLAVOR_NAME", "\"Sonora\"")
+        }
+        create("lyra") {
+            dimension = "edition"
+            applicationIdSuffix = ".lyra"
+            versionNameSuffix = "-lyra"
+            manifestPlaceholders["appLabel"] = "Lyra"
+            val source = getDedicatedSourceFor("lyra")
+            buildConfigField("String", "DEDICATED_SOURCE", "\"$source\"")
+            buildConfigField("String", "APP_FLAVOR_NAME", "\"Lyra\"")
+        }
+        create("aria") {
+            dimension = "edition"
+            applicationIdSuffix = ".aria"
+            versionNameSuffix = "-aria"
+            manifestPlaceholders["appLabel"] = "Aria"
+            val source = getDedicatedSourceFor("aria")
+            buildConfigField("String", "DEDICATED_SOURCE", "\"$source\"")
+            buildConfigField("String", "APP_FLAVOR_NAME", "\"Aria\"")
         }
     }
     compileOptions {

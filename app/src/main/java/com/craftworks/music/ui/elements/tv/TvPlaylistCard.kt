@@ -40,7 +40,6 @@ fun TvPlaylistCard(
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(playlist.mediaMetadata.artworkUri.toString().replace(Regex("size=\\d+"), "size=512"))
-                            .diskCachePolicy(coil.request.CachePolicy.DISABLED)
                             .crossfade(true)
                             .build(),
                         fallback = painterResource(R.drawable.placeholder),

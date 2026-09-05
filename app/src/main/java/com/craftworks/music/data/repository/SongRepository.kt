@@ -20,7 +20,8 @@ import javax.inject.Singleton
 class SongRepository @Inject constructor(
     private val localDataSource: LocalDataSource,
     private val navidromeDataSource: NavidromeDataSource,
-    private val embyJellyfinDataSource: EmbyJellyfinDataSource
+    private val embyJellyfinDataSource: EmbyJellyfinDataSource,
+    private val localMusicStatsManager: com.craftworks.music.managers.LocalMusicStatsManager
 ) {
 
     suspend fun getSongs(
@@ -53,7 +54,7 @@ class SongRepository @Inject constructor(
         songId: String, rating: Int = 0
     ) {
         when {
-            songId.startsWith("Local_") -> return
+            songId.startsWith("Local") || songId.startsWith("content://") || songId.startsWith("file://") -> localMusicStatsManager.setRating(songId, rating)
             songId.startsWith("emby_") -> embyJellyfinDataSource.starItem(songId, rating > 0)
             else -> navidromeDataSource.setNavidromeRating(songId, rating)
         }
@@ -61,7 +62,7 @@ class SongRepository @Inject constructor(
 
     suspend fun getSong(songId: String, ignoreCachedResponse: Boolean = false): MediaItem? = coroutineScope {
         when {
-            songId.startsWith("Local_") -> localDataSource.getLocalSong(songId)
+            songId.startsWith("Local") || songId.startsWith("content://") || songId.startsWith("file://") -> localDataSource.getLocalSong(songId)
             songId.startsWith("emby_") -> embyJellyfinDataSource.getSong(songId, ignoreCachedResponse)
             else -> navidromeDataSource.getNavidromeSong(songId, ignoreCachedResponse)
         }
@@ -69,7 +70,7 @@ class SongRepository @Inject constructor(
 
     suspend fun getSimilarSongs(songId: String, count: Int) : List<MediaItem> = coroutineScope {
         when {
-            songId.startsWith("Local_") -> emptyList()
+            songId.startsWith("Local") || songId.startsWith("content://") || songId.startsWith("file://") -> emptyList()
             songId.startsWith("emby_") -> embyJellyfinDataSource.getSimilarSongs(songId, count)
             else -> navidromeDataSource.getNavidromeSimilarSong(songId, count)
         }
@@ -92,7 +93,11 @@ class SongRepository @Inject constructor(
 
     suspend fun scrobbleSong(songId: String, submission: Boolean) {
         when {
-            songId.startsWith("Local_") -> return
+            songId.startsWith("Local") || songId.startsWith("content://") || songId.startsWith("file://") -> {
+                if (submission) {
+                    localMusicStatsManager.incrementPlayCount(songId)
+                }
+            }
             songId.startsWith("emby_") -> embyJellyfinDataSource.scrobbleSong(songId, submission)
             else -> navidromeDataSource.scrobbleSong(songId, submission)
         }

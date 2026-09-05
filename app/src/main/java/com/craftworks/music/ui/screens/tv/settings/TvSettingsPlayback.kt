@@ -49,7 +49,7 @@ fun TvS_PlaybackScreen() {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    val defaultShuffle by PlaybackSettingsManager(context).defaultShuffleFlow.collectAsState(true)
+    val smartShuffle by PlaybackSettingsManager(context).smartShuffleFlow.collectAsState(true)
     val defaultRepeat by PlaybackSettingsManager(context).defaultRepeatFlow.collectAsState(androidx.media3.common.Player.REPEAT_MODE_ALL)
     val defaultRepeatLabel = when (defaultRepeat) {
         androidx.media3.common.Player.REPEAT_MODE_ALL -> "Repeat All"
@@ -71,14 +71,15 @@ fun TvS_PlaybackScreen() {
         verticalArrangement = Arrangement.spacedBy(16.dp),
         contentPadding = PaddingValues(horizontal = 32.dp, vertical = 24.dp)
     ) {
+
         item {
             SettingsSwitchItem(
-                title = "Default Shuffle Mode",
+                title = stringResource(R.string.Setting_Smart_Shuffle),
                 icon = ImageVector.vectorResource(R.drawable.round_shuffle_28),
-                checked = defaultShuffle,
+                checked = smartShuffle,
                 onCheckedChange = {
                     coroutineScope.launch {
-                        PlaybackSettingsManager(context).setDefaultShuffle(it)
+                        PlaybackSettingsManager(context).setSmartShuffle(it)
                     }
                 }
             )

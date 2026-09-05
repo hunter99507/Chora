@@ -7,7 +7,9 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,6 +18,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import com.craftworks.music.util.StorageHelper
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -723,24 +727,21 @@ fun CreateEmbyJellyfinProviderDialog(
 fun CreateLocalProviderDialog(
     setShowDialog: (Boolean) -> Unit = {}
 ) {
-    val rootOptions = remember {
-        buildList {
-            Environment.getExternalStorageDirectory()?.let { add(it) }
-            System.getenv("SECONDARY_STORAGE")
-                ?.split(":")
-                ?.map { File(it) }
-                ?.filter { it.exists() }
-                ?.let { addAll(it) }
-        }
+    val context = LocalContext.current
+    val storageRoots = remember(context) {
+        StorageHelper.getStorageRoots(context)
     }
 
-    var currentDir by remember { mutableStateOf(rootOptions.firstOrNull() ?: File("/")) }
+    var currentDir by remember {
+        mutableStateOf(
+            storageRoots.firstOrNull { it.file.name.equals("Music", ignoreCase = true) }?.file
+                ?: storageRoots.firstOrNull()?.file
+                ?: File("/storage/emulated/0")
+        )
+    }
 
     val entries = remember(currentDir) {
-        currentDir.listFiles()
-            ?.filter { it.isDirectory && !it.isHidden && it.canRead() }
-            ?.sortedBy { it.name.lowercase() }
-            ?: emptyList()
+        StorageHelper.getSubdirectories(currentDir)
     }
 
     val backgroundColor = MaterialTheme.colorScheme.surface
@@ -770,6 +771,51 @@ fun CreateLocalProviderDialog(
                 .focusGroup(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // Storage Volume Roots Quick Switcher
+            if (storageRoots.size > 1) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .focusGroup(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    storageRoots.forEach { root ->
+                        val isSelected = currentDir.canonicalPath.startsWith(root.file.canonicalPath)
+                        ListItem(
+                            selected = isSelected,
+                            modifier = Modifier.widthIn(max = 240.dp),
+                            headlineContent = {
+                                Text(
+                                    text = root.name,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            },
+                            leadingContent = {
+                                Icon(
+                                    imageVector = ImageVector.vectorResource(R.drawable.s_m_local_filled),
+                                    contentDescription = null
+                                )
+                            },
+                            onClick = {
+                                currentDir = root.file
+                                content.requestFocus()
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Current Path Banner
+            Text(
+                text = currentDir.canonicalPath,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
             val parentDir = currentDir.parentFile?.takeIf { it.canRead() }
             if (parentDir != null) {
                 ListItem(
@@ -796,43 +842,58 @@ fun CreateLocalProviderDialog(
                 )
             }
 
-            LazyColumn (
-                modifier = Modifier
-                    .weight(1f)
-                    .focusRequester(content)
-                    .focusRestorer(content)
-                    .focusGroup(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(entries, key = { it.absolutePath }) { dir ->
-                    ListItem(
-                        selected = false,
-                        modifier = Modifier.fillMaxWidth(),
-                        headlineContent = {
-                            Text(
-                                text = dir.name,
-                                style = MaterialTheme.typography.bodyLarge,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        },
-                        leadingContent = {
-                            Icon(
-                                imageVector = ImageVector.vectorResource(R.drawable.s_m_local_filled),
-                                contentDescription = null
-                            )
-                        },
-                        trailingContent = {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
-                                contentDescription = null
-                            )
-                        },
-                        onClick = {
-                            currentDir = dir
-                            content.requestFocus()
-                        }
+            if (entries.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = stringResource(R.string.Storage_No_Subfolders),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+            } else {
+                LazyColumn (
+                    modifier = Modifier
+                        .weight(1f)
+                        .focusRequester(content)
+                        .focusRestorer(content)
+                        .focusGroup(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(entries, key = { it.absolutePath }) { dir ->
+                        ListItem(
+                            selected = false,
+                            modifier = Modifier.fillMaxWidth(),
+                            headlineContent = {
+                                Text(
+                                    text = dir.name,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            },
+                            leadingContent = {
+                                Icon(
+                                    imageVector = ImageVector.vectorResource(R.drawable.s_m_local_filled),
+                                    contentDescription = null
+                                )
+                            },
+                            trailingContent = {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                                    contentDescription = null
+                                )
+                            },
+                            onClick = {
+                                currentDir = dir
+                                content.requestFocus()
+                            }
+                        )
+                    }
                 }
             }
 

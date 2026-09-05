@@ -119,6 +119,19 @@ object EmbyJellyfinManager {
         saveServers()
     }
 
+    fun restoreServers(importedServers: List<EmbyJellyfinProvider>, currentId: String? = null) {
+        servers.clear()
+        importedServers.forEach { servers[it.id] = it }
+        _currentServerId.value = if (currentId != null && servers.containsKey(currentId)) {
+            currentId
+        } else {
+            servers.values.firstOrNull { it.enabled }?.id ?: servers.keys.firstOrNull()
+        }
+        _libraries.value = _currentServerId.value?.let { servers[it]?.libraryIds } ?: emptyList()
+        updateServersFlow()
+        saveServers()
+    }
+
     fun setServerEnabled(serverId: String, enabled: Boolean) {
         servers[serverId]?.let { server ->
             server.enabled = enabled

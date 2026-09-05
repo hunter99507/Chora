@@ -26,14 +26,15 @@ fun parseNavidromeAlbumListJSON(
 
     val baseCoverArtUrl = "$navidromeUrl/rest/getCoverArt.view?u=$navidromeUsername&t=$passwordHashArt&s=$passwordSaltArt&v=1.16.1&c=Chora&size=512"
 
-    val mediaDataAlbums = subsonicResponse.albumList?.album?.map {
+    val rawAlbums = subsonicResponse.albumList?.album ?: subsonicResponse.albumList2?.album ?: emptyList()
+    val mediaDataAlbums = rawAlbums.map {
         val mediaItem = it.toMediaItem()
         mediaItem.buildUpon().setMediaMetadata(
             mediaItem.mediaMetadata.buildUpon()
                 .setArtworkUri("$baseCoverArtUrl&id=${it.navidromeID}".toUri())
                 .build()
         ).build()
-    } ?: emptyList()
+    }
 
     return mediaDataAlbums
 }

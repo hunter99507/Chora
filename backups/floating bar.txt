@@ -1,0 +1,12 @@
+Floating Bar & Theme Settings Backup
+Timestamp: 2026-09-04 09:38:55
+Archive: Chora_floating_bar_backup_20260904_093855.zip
+
+Features included in this backup:
+- Dedicated Theme settings menu (Theme, Background Style, Floating Navigation Bar switch).
+- Floating Navigation Bar pill styling with horizontal icon centering and alignment.
+- Edge-to-edge screen extension: screens, backgrounds, and ambient gradients extend to the bottom edge of the device without void space.
+- Floating MiniPlayer styling and collapsed sheet content alpha masking.
+- Coordinated scroll bottom padding via LocalBottomPadding for HomeScreen, PlaylistDetailsScreen, AlbumDetailsScreen, ArtistDetailsScreen, and SongLazyLists.
+- Fixed home screen category spacing so no extra gap appears between categories.
+- Preserved Android Auto, Android TV, and static navigation bar mode.
